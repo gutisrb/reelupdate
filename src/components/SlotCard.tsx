@@ -42,6 +42,7 @@ interface SlotCardProps {
   onReceiveInternalImage: (data: { fromSlot: number; imageIndex: number; toIndex?: number }) => void;
   onDuplicateToNext: (imageFile: File) => void;
   onReorderSlot: (fromSlot: number, toSlot: number) => void;
+  onBulkFilesAdded?: (files: File[], startingSlotIndex: number) => void;
 }
 
 export function SlotCard({
@@ -53,6 +54,7 @@ export function SlotCard({
   onReceiveInternalImage,
   onDuplicateToNext,
   onReorderSlot,
+  onBulkFilesAdded,
 }: SlotCardProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -63,8 +65,15 @@ export function SlotCard({
   const navigate = useNavigate();
 
   const addFiles = (files: File[]) => {
-    const next = [...images, ...files].slice(0, 2);
-    onImagesChange(next);
+    // If we have a bulk handler and more files than current slot can hold
+    if (onBulkFilesAdded && files.length > 0) {
+      // Use bulk handler to distribute across all slots starting from current
+      onBulkFilesAdded(files, slotIndex);
+    } else {
+      // Fallback to old behavior (just fill current slot)
+      const next = [...images, ...files].slice(0, 2);
+      onImagesChange(next);
+    }
   };
 
   const onDrop = (e: React.DragEvent) => {

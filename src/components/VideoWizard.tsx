@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { useProgress } from '@/contexts/ProgressContext';
 import { useWizard } from '@/contexts/WizardContext';
-import { MAKE_VIDEO_URL } from '@/config/make';
 import { compressMappedEntries } from '@/lib/compressWebhookImage';
 
 interface VideoWizardProps {
@@ -120,7 +119,12 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     setProgress(20);
 
     try {
-      const webhookUrl = MAKE_VIDEO_URL;
+      // Fetch webhook URL from user's profile (per-client custom endpoint)
+      const webhookUrl = profile?.webhook_url;
+
+      if (!webhookUrl) {
+        throw new Error('Webhook URL not configured for this user. Please contact support.');
+      }
 
       const { form: multipartData, originalCount, compressedCount } = await createMultipartFormData();
       setProgress(55);

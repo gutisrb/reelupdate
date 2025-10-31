@@ -1407,3 +1407,347 @@ label {
   outline: 2px solid hsl(var(--primary));
   outline-offset: 2px;
 }
+
+/* ========================================
+   MOBILE-ONLY STYLES (@media max-width: 900px)
+   ======================================== */
+
+@media (max-width: 900px) {
+  /* Compact Sticky Stepper */
+  .stepper-compact {
+    position: sticky;
+    top: 64px;
+    z-index: 40;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+
+  .stepper-compact-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    max-width: 200px;
+    margin: 0 auto;
+  }
+
+  .stepper-compact-circle {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 180ms ease-out;
+    border: 2px solid hsl(var(--border));
+    background: hsl(var(--surface));
+  }
+
+  .stepper-compact-circle.done {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(59, 91, 255, 0.3);
+  }
+
+  .stepper-compact-circle.active {
+    background: hsl(var(--surface));
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    border-width: 2px;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+  }
+
+  .stepper-compact-circle.pending {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .stepper-compact-connector {
+    width: 16px;
+    height: 2px;
+    background: hsl(var(--border));
+    border-radius: 1px;
+  }
+
+  /* Slots Carousel */
+  .slots-carousel-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .slots-carousel-viewport {
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .slots-carousel-track {
+    display: flex;
+    gap: 16px;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .slots-carousel-slide {
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+
+  .slots-carousel-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 12px;
+  }
+
+  .slots-carousel-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 50%;
+    background: hsl(var(--muted));
+    border: none;
+    cursor: pointer;
+    transition: all 180ms ease-out;
+    position: relative;
+  }
+
+  .slots-carousel-dot::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: hsl(var(--muted));
+    transition: all 180ms ease-out;
+  }
+
+  .slots-carousel-dot.active::before {
+    background: var(--gradient-primary);
+    width: 12px;
+    height: 12px;
+    box-shadow: 0 2px 8px rgba(59, 91, 255, 0.4);
+  }
+
+  .slots-carousel-dot:hover::before {
+    background: hsl(var(--primary) / 0.5);
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+
+  /* Slot Card Mobile Adjustments */
+  .slot-card {
+    touch-action: manipulation;
+  }
+
+  .slot-actions {
+    min-height: 48px;
+    padding: 0 12px;
+  }
+
+  .slot-action {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  /* Action Pills Mobile */
+  .action-pill {
+    min-height: 36px;
+    min-width: 64px;
+    padding: 8px 12px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  /* Photo Tiles Mobile */
+  .photo-tile {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* FAB Floating Action Button */
+  .fab-mobile {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 50;
+  }
+
+  /* Glass Pill Mobile */
+  .glass-pill {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Bottom Sheet Overlay */
+  [data-vaul-drawer] {
+    touch-action: none;
+  }
+
+  [data-vaul-overlay] {
+    backdrop-filter: blur(4px);
+  }
+
+  /* Mobile Input Heights */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  textarea {
+    min-height: 48px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Accordion Mobile Adjustments */
+  [data-radix-accordion-item] {
+    touch-action: manipulation;
+  }
+
+  [data-radix-accordion-trigger] {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+
+  /* Header Collapse Mobile */
+  .header-collapse-button {
+    min-height: 48px;
+    width: 100%;
+    touch-action: manipulation;
+  }
+
+  /* Clip Count Toggle Mobile */
+  .clip-count-toggle button {
+    min-height: 44px;
+    min-width: 80px;
+    font-size: 14px;
+  }
+
+  /* Toolbar Actions Mobile */
+  .toolbar-action {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+  }
+
+  /* Prevent Double-Tap Zoom */
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Scrollable Containers */
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Glass Bar Mobile (if used) */
+  .glass-bar {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Progress Rail Mobile */
+  .progress-rail {
+    min-height: 4px;
+    height: 4px;
+  }
+
+  /* Carousel Swipe Indicators */
+  .carousel-swipe-hint {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: hsl(var(--muted-foreground));
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  /* Mobile Slot Card Spacing */
+  .slot-card {
+    margin-bottom: 16px;
+  }
+
+  /* Hide Desktop-Only Elements */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Mobile Typography Adjustments */
+  h1 {
+    font-size: 32px;
+    line-height: 40px;
+  }
+
+  h2 {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  h3 {
+    font-size: 18px;
+    line-height: 26px;
+  }
+
+  /* Safe Area Insets for iOS */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .fab-mobile {
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      right: calc(24px + env(safe-area-inset-right));
+    }
+
+    .stepper-compact {
+      top: calc(64px + env(safe-area-inset-top));
+    }
+  }
+
+  /* Reduce Motion */
+  @media (prefers-reduced-motion: reduce) {
+    .slots-carousel-track,
+    .stepper-compact-circle,
+    .slots-carousel-dot,
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* High Contrast Mode */
+  @media (prefers-contrast: high) {
+    .stepper-compact-circle,
+    .action-pill,
+    .slot-action {
+      border-width: 2px;
+    }
+
+    .slots-carousel-dot.active::before {
+      border: 2px solid hsl(var(--foreground));
+    }
+  }
+}

@@ -1,5 +1,5 @@
 // src/components/Stepper.tsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 type Step = { key: number; label: string };
 
@@ -7,13 +7,26 @@ interface StepperProps {
   currentStep: number;              // 1-based index of the active step
   steps?: Step[];                   // optional; defaults to 3 steps
   className?: string;
+  compact?: boolean;                // New: force compact mode
 }
 
 export const Stepper: React.FC<StepperProps> = ({
   currentStep,
   steps,
-  className = ""
+  className = "",
+  compact = false
 }) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Default to 3 steps if none provided
   const defaultSteps: Step[] = [
     { key: 1, label: "Detalji" },
@@ -22,9 +35,46 @@ export const Stepper: React.FC<StepperProps> = ({
   ];
 
   const items = Array.isArray(steps) && steps.length > 0 ? steps : defaultSteps;
-
   const active = Math.min(Math.max(Number(currentStep) || 1, 1), items.length);
+  const showCompact = compact || isMobile;
 
+  if (showCompact) {
+    // Mobile: Compact Sticky Pill
+    return (
+      <div className={`stepper-compact ${className}`}>
+        <div className="stepper-compact-inner">
+          {items.map((step, idx) => {
+            const isDone = step.key < active;
+            const isActive = step.key === active;
+
+            return (
+              <React.Fragment key={step.key}>
+                <div
+                  className={[
+                    "stepper-compact-circle",
+                    isDone ? "done" : isActive ? "active" : "pending"
+                  ].join(" ")}
+                  aria-label={step.label}
+                  title={step.label}
+                >
+                  {isDone ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span className="text-xs font-semibold">{step.key}</span>
+                  )}
+                </div>
+                {idx < items.length - 1 && <div className="stepper-compact-connector" />}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: Full Stepper
   return (
     <div className={`w-full flex items-center justify-center ${className}`}>
       {items.map((step, idx) => {
@@ -52,12 +102,12 @@ export const Stepper: React.FC<StepperProps> = ({
                   step.key
                 )}
               </div>
-              
+
               {/* Label */}
               <div className="ml-3 text-sm">
                 <div className={[
                   "transition-all duration-200",
-                  isActive ? "font-semibold text-primary" : 
+                  isActive ? "font-semibold text-primary" :
                   isDone ? "font-medium text-foreground" :
                   "text-muted-foreground"
                 ].join(" ")}>
@@ -70,7 +120,7 @@ export const Stepper: React.FC<StepperProps> = ({
             {!isLast && (
               <div className="mx-6 relative">
                 <div className="w-16 h-[2px] bg-border rounded-full"></div>
-                <div 
+                <div
                   className={[
                     "absolute top-0 left-0 h-[2px] rounded-full transition-all duration-300 ease-out",
                     isDone ? "w-full gradient-primary progress-line-shimmer" :

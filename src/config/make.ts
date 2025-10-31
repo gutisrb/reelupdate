@@ -1,12 +1,19 @@
 // Make.com webhook configuration
-// Update these URLs with your actual Make.com webhook endpoints
+// Image generation webhooks (shared across all users)
+export const MAKE_CREATE_URL = import.meta.env.VITE_MAKE_CREATE_URL;
+export const MAKE_STATUS_URL = import.meta.env.VITE_MAKE_STATUS_URL;
 
-export const WEBHOOK_URL = "https://hook.eu2.make.com/xi4tj1g4fg9d2u68m1co6evr7kg32qdr";
-export const STATUS_URL = "https://hook.eu2.make.com/sia8lukw190bbdqc0ao122ga28ova5vq";
+// Legacy aliases (kept for backward compatibility)
+export const WEBHOOK_URL = MAKE_CREATE_URL;
+export const STATUS_URL = MAKE_STATUS_URL;
 
-export const MAKE_CREATE_URL = "https://hook.eu2.make.com/xi4tj1g4fg9d2u68m1co6evr7kg32qdr";
-export const MAKE_STATUS_URL = "https://hook.eu2.make.com/sia8lukw190bbdqc0ao122ga28ova5vq";
+// API Key for webhook authentication (if needed)
+export const MAKE_API_KEY = import.meta.env.VITE_MAKE_API_KEY;
 
-export const MAKE_API_KEY = "bager155";
-// src/config/make.ts
-export const MAKE_VIDEO_URL = "https://hook.eu2.make.com/2c6a9zs30ahk4267gjdfkb74kcwtluau";
+// NOTE: Video generation webhooks (MAKE_VIDEO_URL) are now fetched per-user from Supabase profiles.webhook_url
+// This allows each client to have their own custom webhook endpoint
+
+// Validate required environment variables
+if (!MAKE_CREATE_URL || !MAKE_STATUS_URL) {
+  console.warn('Missing Make.com environment variables. Image generation features may not work.');
+}
