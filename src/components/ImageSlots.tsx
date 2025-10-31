@@ -136,13 +136,13 @@ export function ImageSlots({
             Dodaj
           </Button>
           {totalImages > 0 && (
-            <Button 
-              onClick={handleRefreshAll} 
-              variant="secondary" 
+            <Button
+              onClick={handleRefreshAll}
+              variant="secondary"
               size="sm"
               className="h-8 px-3 text-sm"
             >
-              Osvježi
+              Osveži
             </Button>
           )}
           <span className="text-xs text-muted-foreground ml-2">JPG, PNG</span>

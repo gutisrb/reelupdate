@@ -207,10 +207,12 @@ export function SlotCard({
     setMovePopoverOpen(false);
   };
 
-  const handleUrediClick = (image: File) => {
-    // Navigate to Stage Studio with image
+  const handleUrediClick = (image: File, imageIndex: number) => {
+    // Navigate to Stage Studio with image and slot context
     const imageUrl = URL.createObjectURL(image);
     localStorage.setItem('stagingInputImage', imageUrl);
+    localStorage.setItem('stagingSlotIndex', String(slotIndex));
+    localStorage.setItem('stagingImageIndex', String(imageIndex));
     navigate('/app/stage');
   };
 
@@ -291,11 +293,11 @@ export function SlotCard({
                       )}
                       
                       {/* Per-Photo Actions */}
-                      <div 
+                      <div
                         className="action-pill uredi"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleUrediClick(image);
+                          handleUrediClick(image, index);
                         }}
                         title="Uredi u Stage Studio"
                       >

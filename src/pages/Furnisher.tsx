@@ -1,5 +1,6 @@
 // src/pages/Furnisher.tsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -8,34 +9,56 @@ import { ImageUploader } from '@/components/ImageUploader';
 import { MAKE_CREATE_URL, MAKE_STATUS_URL } from '@/config/make';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useWizard } from '@/contexts/WizardContext';
 
 export default function Furnisher() {
+  const navigate = useNavigate();
+  const { wizardData, updateSlots } = useWizard();
   const [images, setImages] = useState<File[]>([]);
   const [instructions, setInstructions] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
+  const [slotContext, setSlotContext] = useState<{slotIndex: number, imageIndex: number} | null>(null);
 
   // Auto-load image from localStorage when component mounts
   useEffect(() => {
     const loadStagedImage = async () => {
       const stagedImageUrl = localStorage.getItem('stagingInputImage');
+      const slotIndexStr = localStorage.getItem('stagingSlotIndex');
+      const imageIndexStr = localStorage.getItem('stagingImageIndex');
+
       if (stagedImageUrl) {
         try {
           const response = await fetch(stagedImageUrl);
           const blob = await response.blob();
           const file = new File([blob], 'staged-image.jpg', { type: blob.type });
           setImages([file]);
-          localStorage.removeItem('stagingInputImage'); // Clean up
+
+          // Load slot context if available
+          if (slotIndexStr !== null && imageIndexStr !== null) {
+            setSlotContext({
+              slotIndex: parseInt(slotIndexStr),
+              imageIndex: parseInt(imageIndexStr)
+            });
+          }
+
+          // Clean up localStorage
+          localStorage.removeItem('stagingInputImage');
+          localStorage.removeItem('stagingSlotIndex');
+          localStorage.removeItem('stagingImageIndex');
+
           toast.success('Slika je učitana iz Reel Studio-a');
         } catch (error) {
           console.error('Failed to load staged image:', error);
-          localStorage.removeItem('stagingInputImage'); // Clean up on error
+          localStorage.removeItem('stagingInputImage');
+          localStorage.removeItem('stagingSlotIndex');
+          localStorage.removeItem('stagingImageIndex');
         }
       }
     };
-    
+
     loadStagedImage();
   }, []);
 
@@ -193,6 +216,54 @@ export default function Furnisher() {
     }
   };
 
+  const handleReturnToSlot = async () => {
+    if (!resultImage || !slotContext) return;
+
+    try {
+      // Convert result image URL to File
+      const response = await fetch(resultImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'edited-image.jpg', { type: blob.type });
+
+      // Update the specific slot with the edited image
+      const newSlots = [...wizardData.slots];
+      const slot = newSlots[slotContext.slotIndex];
+
+      if (slot) {
+        // Replace the image at the specific index
+        const newImages = [...slot.images];
+        newImages[slotContext.imageIndex] = file;
+        newSlots[slotContext.slotIndex] = { ...slot, images: newImages };
+        updateSlots(newSlots);
+
+        toast.success('Slika je vraćena u slot');
+        navigate('/app/reel');
+      }
+    } catch (error) {
+      console.error('Failed to return image to slot:', error);
+      toast.error('Greška pri vraćanju slike');
+    }
+  };
+
+  const handleReEdit = async () => {
+    if (!resultImage) return;
+
+    try {
+      // Convert result image to File and use it as new input
+      const response = await fetch(resultImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'result-to-edit.jpg', { type: blob.type });
+
+      setImages([file]);
+      setResultImage(null);
+      setShowComparison(false);
+      toast.success('Slika je učitana za ponovnu obradu');
+    } catch (error) {
+      console.error('Failed to re-edit image:', error);
+      toast.error('Greška pri učitavanju slike');
+    }
+  };
+
   return (
     <div className="showtime min-h-[calc(100vh-64px)] bg-background">
       <div className="grain-overlay"></div>
@@ -204,30 +275,28 @@ export default function Furnisher() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel - Upload */}
           <Card className="card-premium">
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 p-6">
               {/* Image Upload */}
-              <div className="space-y-3">
-                <Label className="text-helper text-text-muted">Slike prostora *</Label>
-                <div className="stage-upload-zone">
-                  <ImageUploader
-                    images={images}
-                    onImagesChange={setImages}
-                    maxImages={2}
-                  />
-                </div>
-                <p className="text-helper text-text-muted">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-text-primary">Slike prostora *</Label>
+                <ImageUploader
+                  images={images}
+                  onImagesChange={setImages}
+                  maxImages={2}
+                />
+                <p className="text-xs text-text-muted">
                   Najbolji rezultati sa prirodnim osvetljenjem
                 </p>
               </div>
 
-              <div className="hairline-divider"></div>
+              <div className="hairline-divider my-4"></div>
 
               {/* Instructions */}
-              <div className="space-y-3">
-                <Label htmlFor="instructions" className="text-helper text-text-muted">
+              <div className="space-y-2">
+                <Label htmlFor="instructions" className="text-sm font-medium text-text-primary">
                   Instrukcije za AI
                 </Label>
                 <Textarea
@@ -235,9 +304,9 @@ export default function Furnisher() {
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
                   placeholder="npr. 'Namesti ovaj prazan dnevni boravak u skandinavskom stilu'"
-                  rows={4}
+                  rows={6}
                   disabled={isProcessing}
-                  className="focus-ring rounded-xl h-11 resize-none"
+                  className="focus-ring rounded-xl resize-none"
                 />
               </div>
             </CardContent>
@@ -299,47 +368,60 @@ export default function Furnisher() {
                     )}
 
                     {/* Toolbar */}
-                    <div className="absolute top-4 right-4 flex gap-2">
-                      <button
-                        onClick={handleRedo}
-                         className="w-9 h-9 rounded-full toolbar-glass flex items-center justify-center text-white/80 hover:text-white"
-                        title="Nova generacija"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={copyToClipboard}
-                        className="w-8 h-8 rounded-full bg-glass backdrop-blur-sm border border-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
-                        title="Kopiraj link"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={downloadImage}
-                         className="w-9 h-9 rounded-full toolbar-glass flex items-center justify-center text-white/80 hover:text-white"
-                        title="Preuzmi"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </button>
-                      {images[0] && (
+                    <div className="absolute top-4 right-4 flex flex-col gap-2">
+                      {/* Return to Slot button - only show if we have slot context */}
+                      {slotContext && (
                         <button
-                          onClick={() => setShowComparison(!showComparison)}
-                           className={`w-9 h-9 rounded-full toolbar-glass flex items-center justify-center transition-colors ${
-                             showComparison ? 'text-white shadow-lg' : 'text-white/80 hover:text-white'
-                           }`}
-                          title={showComparison ? 'Sakrij poređenje' : 'Pokaži poređenje'}
+                          onClick={handleReturnToSlot}
+                          className="h-10 px-4 rounded-full toolbar-glass flex items-center gap-2 text-white hover:bg-white/20 transition-all shadow-lg"
+                          title="Vrati sliku u Reel Studio"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                           </svg>
+                          <span className="text-sm font-medium">Vrati u slot</span>
                         </button>
                       )}
+
+                      {/* Action buttons row */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleReEdit}
+                          className="w-10 h-10 rounded-full toolbar-glass flex items-center justify-center text-white/90 hover:text-white hover:bg-white/20 transition-all"
+                          title="Uredi ponovo ovaj rezultat"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={handleRedo}
+                          className="w-10 h-10 rounded-full toolbar-glass flex items-center justify-center text-white/90 hover:text-white hover:bg-white/20 transition-all"
+                          title="Nova generacija"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={downloadImage}
+                          className="w-10 h-10 rounded-full toolbar-glass flex items-center justify-center text-white/90 hover:text-white hover:bg-white/20 transition-all"
+                          title="Preuzmi sliku"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={copyToClipboard}
+                          className="w-10 h-10 rounded-full toolbar-glass flex items-center justify-center text-white/90 hover:text-white hover:bg-white/20 transition-all"
+                          title="Kopiraj link"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}

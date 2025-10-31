@@ -172,14 +172,6 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     <div className="showtime min-h-[calc(100vh-64px)] bg-background">
       <div className="grain-overlay"></div>
       <main className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="aurora text-text-primary">Kreiranje video oglasa</h1>
-          <div className="aurora-stripe mb-4"></div>
-          <p className="text-muted-foreground">
-            Dodajte slike, uredite redosled i generišite reels oglas.
-          </p>
-        </div>
-
         <Stepper currentStep={wizardData.currentStep} />
 
         <div className="mt-8 relative pb-20">
