@@ -281,7 +281,7 @@ export default function Furnisher() {
     <div className="showtime min-h-screen bg-background">
       <div className="grain-overlay"></div>
 
-      <main className="container mx-auto px-4 py-6 max-w-7xl">
+      <main className="container mx-auto px-4 pt-20 pb-6 max-w-7xl">
         {/* Header */}
         <h1 className="aurora text-text-primary text-2xl mb-6">Stage Studio</h1>
 

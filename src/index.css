@@ -865,7 +865,8 @@ label {
   bottom: 0;
   z-index: -1;
   opacity: 0.03;
-  background-image: 
+  pointer-events: none;
+  background-image:
     radial-gradient(circle at 20% 50%, transparent 20%, rgba(255, 255, 255, 0.3) 21%, rgba(255, 255, 255, 0.3) 34%, transparent 35%, transparent),
     linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, 0.05) 75%, rgba(255, 255, 255, 0.05) 76%, transparent 77%, transparent);
   background-size: 3px 3px, 1px 1px;
