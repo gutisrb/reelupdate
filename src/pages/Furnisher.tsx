@@ -5,22 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ImageUploader } from '@/components/ImageUploader';
 import { MAKE_CREATE_URL, MAKE_STATUS_URL } from '@/config/make';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useWizard } from '@/contexts/WizardContext';
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from '@/components/ui/drawer';
-import { Settings2 } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 
 export default function Furnisher() {
   const navigate = useNavigate();
@@ -32,7 +21,6 @@ export default function Furnisher() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [slotContext, setSlotContext] = useState<{slotIndex: number, imageIndex: number} | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Auto-load image from localStorage when component mounts
   useEffect(() => {
@@ -68,9 +56,6 @@ export default function Furnisher() {
           localStorage.removeItem('stagingSlotIndex');
           localStorage.removeItem('stagingImageIndex');
         }
-      } else {
-        // Auto-open drawer if no images loaded (first visit)
-        setIsDrawerOpen(true);
       }
     };
 
@@ -279,22 +264,129 @@ export default function Furnisher() {
     }
   };
 
+  // Handle file input
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) {
+      setImages(prev => [...prev, ...files].slice(0, 2));
+    }
+    e.target.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   return (
-    <div className="showtime min-h-screen bg-background relative">
+    <div className="showtime min-h-screen bg-background">
       <div className="grain-overlay"></div>
 
-      {/* Main Content - Fullscreen Result Preview */}
-      <main className="h-screen flex flex-col">
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
-        <div className="container mx-auto px-6 py-6">
-          <h1 className="aurora text-text-primary text-2xl">Stage Studio</h1>
-        </div>
+        <h1 className="aurora text-text-primary text-2xl mb-6">Stage Studio</h1>
 
-        {/* Fullscreen Result Preview */}
-        <div className="flex-1 container mx-auto px-6 pb-24">
-          <Card className="card-premium relative h-full">
-            <CardContent className="p-0 h-full">
-              <div className="h-full relative overflow-hidden rounded-2xl canvas-spotlight shadow-deep border border-border/20">
+        {/* Responsive Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
+          {/* Left Panel - Compact Controls */}
+          <div className="space-y-4">
+            {/* Compact Image Selector */}
+            <Card className="card-premium">
+              <CardContent className="p-4 space-y-3">
+                <Label className="text-sm font-medium">Slike prostora *</Label>
+
+                {/* Image Thumbnails */}
+                {images.length > 0 && (
+                  <div className="flex gap-2">
+                    {images.map((image, index) => (
+                      <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-border">
+                        <img
+                          src={URL.createObjectURL(image)}
+                          alt={`Image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black/90 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                {images.length < 2 && (
+                  <div>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                    <Button
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {images.length === 0 ? 'Dodaj slike (1-2)' : 'Dodaj još jednu'}
+                    </Button>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Najbolji rezultati sa prirodnim osvetljenjem
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Instructions */}
+            <Card className="card-premium">
+              <CardContent className="p-4 space-y-3">
+                <Label htmlFor="instructions" className="text-sm font-medium">
+                  Instrukcije za AI
+                </Label>
+                <Textarea
+                  id="instructions"
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder="npr. 'Namesti ovaj prazan dnevni boravak u skandinavskom stilu'"
+                  rows={4}
+                  disabled={isProcessing}
+                  className="focus-ring rounded-xl resize-none text-sm"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Generate Button */}
+            <Button
+              onClick={handleSubmit}
+              className="w-full gradient-primary text-white hover-sheen h-12"
+              disabled={images.length === 0 || isProcessing}
+            >
+              {isProcessing ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.2s]"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.4s]"></div>
+                  </div>
+                  Generisanje…
+                </div>
+              ) : (
+                'Generiši sliku'
+              )}
+            </Button>
+          </div>
+
+          {/* Right Panel - Result Preview */}
+          <Card className="card-premium relative lg:min-h-[600px]">
+            <CardContent className="p-0">
+              <div className="aspect-square lg:aspect-auto lg:h-full relative overflow-hidden rounded-2xl canvas-spotlight shadow-deep border border-border/20">
                 {!resultImage && !isProcessing && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center space-y-4">
@@ -409,93 +501,6 @@ export default function Furnisher() {
           </Card>
         </div>
       </main>
-
-      {/* Drawer with Upload Controls */}
-      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DrawerTrigger asChild>
-          <Button
-            className="fixed bottom-8 right-8 h-14 px-6 rounded-full shadow-premium z-50"
-            size="lg"
-            disabled={isProcessing}
-          >
-            <Settings2 className="w-5 h-5 mr-2" />
-            Podešavanja
-          </Button>
-        </DrawerTrigger>
-        <DrawerContent className="max-h-[85vh]">
-          <div className="mx-auto w-full max-w-2xl">
-            <DrawerHeader>
-              <DrawerTitle>Podesi slike i instrukcije</DrawerTitle>
-              <DrawerDescription>
-                Dodajte 1-2 slike prostora i napišite instrukcije za AI
-              </DrawerDescription>
-            </DrawerHeader>
-
-            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
-              {/* Image Upload */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-text-primary">Slike prostora *</Label>
-                <ImageUploader
-                  images={images}
-                  onImagesChange={setImages}
-                  maxImages={2}
-                />
-                <p className="text-xs text-text-muted">
-                  Najbolji rezultati sa prirodnim osvetljenjem (1-2 slike)
-                </p>
-              </div>
-
-              <div className="hairline-divider my-4"></div>
-
-              {/* Instructions */}
-              <div className="space-y-2">
-                <Label htmlFor="instructions" className="text-sm font-medium text-text-primary">
-                  Instrukcije za AI
-                </Label>
-                <Textarea
-                  id="instructions"
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="npr. 'Namesti ovaj prazan dnevni boravak u skandinavskom stilu'"
-                  rows={6}
-                  disabled={isProcessing}
-                  className="focus-ring rounded-xl resize-none"
-                />
-              </div>
-            </div>
-
-            <DrawerFooter>
-              <Button
-                onClick={() => {
-                  handleSubmit();
-                  setIsDrawerOpen(false);
-                }}
-                className="w-full gradient-primary text-white hover-sheen"
-                size="lg"
-                disabled={images.length === 0 || isProcessing}
-              >
-                {isProcessing ? (
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
-                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.2s]"></div>
-                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.4s]"></div>
-                    </div>
-                    Generisanje…
-                  </div>
-                ) : (
-                  'Generiši sliku'
-                )}
-              </Button>
-              <DrawerClose asChild>
-                <Button variant="outline" className="w-full">
-                  Zatvori
-                </Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </div>
-        </DrawerContent>
-      </Drawer>
     </div>
   );
 }
