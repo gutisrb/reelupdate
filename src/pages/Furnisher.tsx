@@ -10,6 +10,17 @@ import { MAKE_CREATE_URL, MAKE_STATUS_URL } from '@/config/make';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useWizard } from '@/contexts/WizardContext';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import { Settings2 } from 'lucide-react';
 
 export default function Furnisher() {
   const navigate = useNavigate();
@@ -21,6 +32,7 @@ export default function Furnisher() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [slotContext, setSlotContext] = useState<{slotIndex: number, imageIndex: number} | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Auto-load image from localStorage when component mounts
   useEffect(() => {
@@ -56,6 +68,9 @@ export default function Furnisher() {
           localStorage.removeItem('stagingSlotIndex');
           localStorage.removeItem('stagingImageIndex');
         }
+      } else {
+        // Auto-open drawer if no images loaded (first visit)
+        setIsDrawerOpen(true);
       }
     };
 
@@ -265,57 +280,21 @@ export default function Furnisher() {
   };
 
   return (
-    <div className="showtime min-h-[calc(100vh-64px)] bg-background">
+    <div className="showtime min-h-screen bg-background relative">
       <div className="grain-overlay"></div>
-      <main className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="aurora text-text-primary">Stage Studio</h1>
-          <p className="text-text-muted mt-4">
-            Transformišite vaše prostori uz AI nameštanje
-          </p>
+
+      {/* Main Content - Fullscreen Result Preview */}
+      <main className="h-screen flex flex-col">
+        {/* Header */}
+        <div className="container mx-auto px-6 py-6">
+          <h1 className="aurora text-text-primary text-2xl">Stage Studio</h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Panel - Upload */}
-          <Card className="card-premium">
-            <CardContent className="space-y-4 p-6">
-              {/* Image Upload */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-text-primary">Slike prostora *</Label>
-                <ImageUploader
-                  images={images}
-                  onImagesChange={setImages}
-                  maxImages={2}
-                />
-                <p className="text-xs text-text-muted">
-                  Najbolji rezultati sa prirodnim osvetljenjem
-                </p>
-              </div>
-
-              <div className="hairline-divider my-4"></div>
-
-              {/* Instructions */}
-              <div className="space-y-2">
-                <Label htmlFor="instructions" className="text-sm font-medium text-text-primary">
-                  Instrukcije za AI
-                </Label>
-                <Textarea
-                  id="instructions"
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="npr. 'Namesti ovaj prazan dnevni boravak u skandinavskom stilu'"
-                  rows={6}
-                  disabled={isProcessing}
-                  className="focus-ring rounded-xl resize-none"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Right Panel - Result */}
-          <Card className="card-premium relative">
-            <CardContent className="p-0">
-              <div className="aspect-square relative overflow-hidden rounded-2xl canvas-spotlight shadow-deep border border-border/20">
+        {/* Fullscreen Result Preview */}
+        <div className="flex-1 container mx-auto px-6 pb-24">
+          <Card className="card-premium relative h-full">
+            <CardContent className="p-0 h-full">
+              <div className="h-full relative overflow-hidden rounded-2xl canvas-spotlight shadow-deep border border-border/20">
                 {!resultImage && !isProcessing && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center space-y-4">
@@ -429,30 +408,94 @@ export default function Furnisher() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Primary action button - bottom right */}
-        <div className="fixed bottom-8 right-8">
-          <Button
-            onClick={handleSubmit}
-            className="h-14 px-8 rounded-full shadow-premium"
-            size="lg"
-            disabled={images.length === 0 || isProcessing}
-          >
-            {isProcessing ? (
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.2s]"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.4s]"></div>
-                </div>
-                Generisanje…
-              </div>
-            ) : (
-              'Generiši sliku'
-            )}
-          </Button>
-        </div>
       </main>
+
+      {/* Drawer with Upload Controls */}
+      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <DrawerTrigger asChild>
+          <Button
+            className="fixed bottom-8 right-8 h-14 px-6 rounded-full shadow-premium z-50"
+            size="lg"
+            disabled={isProcessing}
+          >
+            <Settings2 className="w-5 h-5 mr-2" />
+            Podešavanja
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[85vh]">
+          <div className="mx-auto w-full max-w-2xl">
+            <DrawerHeader>
+              <DrawerTitle>Podesi slike i instrukcije</DrawerTitle>
+              <DrawerDescription>
+                Dodajte 1-2 slike prostora i napišite instrukcije za AI
+              </DrawerDescription>
+            </DrawerHeader>
+
+            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-text-primary">Slike prostora *</Label>
+                <ImageUploader
+                  images={images}
+                  onImagesChange={setImages}
+                  maxImages={2}
+                />
+                <p className="text-xs text-text-muted">
+                  Najbolji rezultati sa prirodnim osvetljenjem (1-2 slike)
+                </p>
+              </div>
+
+              <div className="hairline-divider my-4"></div>
+
+              {/* Instructions */}
+              <div className="space-y-2">
+                <Label htmlFor="instructions" className="text-sm font-medium text-text-primary">
+                  Instrukcije za AI
+                </Label>
+                <Textarea
+                  id="instructions"
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder="npr. 'Namesti ovaj prazan dnevni boravak u skandinavskom stilu'"
+                  rows={6}
+                  disabled={isProcessing}
+                  className="focus-ring rounded-xl resize-none"
+                />
+              </div>
+            </div>
+
+            <DrawerFooter>
+              <Button
+                onClick={() => {
+                  handleSubmit();
+                  setIsDrawerOpen(false);
+                }}
+                className="w-full gradient-primary text-white hover-sheen"
+                size="lg"
+                disabled={images.length === 0 || isProcessing}
+              >
+                {isProcessing ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.2s]"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:0.4s]"></div>
+                    </div>
+                    Generisanje…
+                  </div>
+                ) : (
+                  'Generiši sliku'
+                )}
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline" className="w-full">
+                  Zatvori
+                </Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
