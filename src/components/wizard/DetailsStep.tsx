@@ -157,7 +157,7 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
                 </div>
 
                 <div>
-                  <Label htmlFor="beds" className="text-xs text-muted-foreground mb-2 block">Spavaće sobe</Label>
+                  <Label htmlFor="beds" className="text-xs text-muted-foreground mb-2 block">Sobe</Label>
                   <Input
                     id="beds"
                     name="beds"
@@ -277,7 +277,7 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
         </div>
 
         <div>
-          <Label htmlFor="beds" className="text-13 text-muted-foreground mb-2 block">Spavaće sobe</Label>
+          <Label htmlFor="beds" className="text-13 text-muted-foreground mb-2 block">će sobe</Label>
           <Input
             id="beds"
             name="beds"

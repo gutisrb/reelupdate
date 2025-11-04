@@ -208,7 +208,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
           )}
 
           {/* Sticky Action Bar */}
-          <div className={`sticky-cta ${wizardData.currentStep > 0 && wizardData.currentStep !== 2 ? 'visible' : ''}`}>
+          <div className={`sticky-cta ${wizardData.currentStep > 0 ? 'visible' : ''}`}>
             <div className="p-4">
               <div className="container mx-auto flex justify-between items-center">
                 {wizardData.currentStep > 1 && (

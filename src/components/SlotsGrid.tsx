@@ -49,31 +49,39 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount }: SlotsGridProps) {
     const src = next[fromSlot];
     const dst = next[toSlot];
 
-    if (!src.images[imageIndex]) return;
+    // Safety check: ensure source image exists
+    if (!src || !src.images[imageIndex]) {
+      console.warn('Source image not found, skipping move');
+      return;
+    }
 
     const [img] = src.images.splice(imageIndex, 1);
 
     // if target index provided, place there or swap if occupied
-    if (typeof toIndex === "number") {
-      if (!dst.images[toIndex]) {
-        dst.images[toIndex] = img;
-      } else {
-        // Swap images - move displaced image back to source slot
-        const displacedImage = dst.images[toIndex];
-        dst.images[toIndex] = img;
+    if (typeof toIndex === "number" && toIndex < dst.images.length) {
+      // Target position exists, swap
+      const displacedImage = dst.images[toIndex];
+      dst.images[toIndex] = img;
+      if (displacedImage) {
         src.images.push(displacedImage);
       }
     } else {
-      // Dropping into general slot area
+      // Dropping into general slot area or beyond current length
       if (dst.images.length < 2) {
         dst.images.push(img);
       } else {
-        // Slot is full, swap with the last image
+        // Slot is full (has 2 images), swap with the last image
         const displacedImage = dst.images.pop()!;
         dst.images.push(img);
-        src.images.push(displacedImage);
+        if (displacedImage) {
+          src.images.push(displacedImage);
+        }
       }
     }
+
+    // Compact arrays to remove any undefined/null values
+    src.images = src.images.filter(Boolean);
+    dst.images = dst.images.filter(Boolean);
 
     onSlotsChange(next);
   };

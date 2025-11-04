@@ -8,13 +8,23 @@
   --input-radius: 12px;
   --pill-radius: 999px;
   
+  /* Reel Estate Brand Colors - From Logo */
+  --brand-blue-purple: #3B5BFF;     /* Deep blue-purple (left of gradient) */
+  --brand-blue: #3B82F6;            /* Medium blue (middle) */
+  --brand-cyan: #2DD4BF;            /* Cyan-turquoise (right) */
+  --brand-dark: #0F172A;            /* Premium dark */
+  --brand-light: #FAFAFA;           /* Clean light */
+
   /* Brand gradients */
-  --brand-grad: linear-gradient(135deg, #3E37F2 0%, #12D6C5 100%);
-  
-  /* Brand Gradient: #3B5BFF → #12D6C5 */
-  --primary: 227 100% 62%;          /* #3B5BFF */
-  --primary-glow: 172 84% 47%;      /* #12D6C5 */
+  --brand-grad: linear-gradient(135deg, #3B5BFF 0%, #3B82F6 50%, #2DD4BF 100%);
+
+  /* Primary colors (Blue-Purple) */
+  --primary: 235 91% 62%;           /* #3B5BFF */
   --primary-foreground: 0 0% 100%;  /* White */
+
+  /* Accent colors (Cyan) */
+  --accent-cyan: 175 60% 47%;       /* #2DD4BF */
+  --accent-cyan-foreground: 0 0% 100%;
   
   /* Brand Neutrals */
   --background: 210 40% 98%;        /* #F7F9FC */
@@ -66,9 +76,10 @@
   --sidebar-ring: 227 100% 62%;
   
   /* Brand Gradients */
-  --gradient-primary: linear-gradient(270deg, #3B5BFF 0%, #12D6C5 100%);
-  --gradient-aurora: linear-gradient(90deg, #3B5BFF 0%, #12D6C5 100%);
+  --gradient-primary: linear-gradient(135deg, #3B5BFF 0%, #3B82F6 50%, #2DD4BF 100%);
+  --gradient-aurora: linear-gradient(90deg, #3B5BFF 0%, #3B82F6 50%, #2DD4BF 100%);
   --gradient-card: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
+  --gradient-mesh: linear-gradient(135deg, #0F172A 0%, #3B5BFF 30%, #3B82F6 60%, #2DD4BF 100%);
   
   /* Elevation Shadows */
   --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -118,8 +129,10 @@
   --sidebar-ring: 219 92% 56%;
   
   /* Dark mode gradients */
-  --gradient-primary: linear-gradient(135deg, #2E6DEB 0%, #22D3EE 100%);
+  --gradient-primary: linear-gradient(135deg, #3B5BFF 0%, #3B82F6 50%, #2DD4BF 100%);
+  --gradient-aurora: linear-gradient(90deg, #3B5BFF 0%, #3B82F6 50%, #2DD4BF 100%);
   --gradient-card: linear-gradient(180deg, rgba(34,34,34,0.8) 0%, rgba(17,17,17,0.4) 100%);
+  --gradient-mesh: linear-gradient(135deg, #0F172A 0%, #3B5BFF 30%, #3B82F6 60%, #2DD4BF 100%);
 }
 
 /* Base element styling */
@@ -626,13 +639,52 @@ label {
 .action-pill.uredi {
   top: 8px;
   right: 8px;
+  background: linear-gradient(135deg, #3B5BFF 0%, #3B82F6 50%, #2DD4BF 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(59, 91, 255, 0.3);
+}
+
+.action-pill.uredi:hover {
+  background: linear-gradient(135deg, #3B5BFF 0%, #3B82F6 50%, #2DD4BF 100%);
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(59, 91, 255, 0.4);
+}
+
+.action-pill.remove-image {
+  top: 8px;
+  left: 8px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-pill.remove-image:hover {
+  background: rgba(220, 38, 38, 1);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 .action-pill.novi {
   bottom: 8px;
   right: 8px;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-1)));
+  background: linear-gradient(135deg, #3B82F6 0%, #2DD4BF 100%);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3);
+  font-weight: 500;
+}
+
+.action-pill.novi:hover {
+  background: linear-gradient(135deg, #3B82F6 0%, #2DD4BF 100%);
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(45, 212, 191, 0.4);
 }
 
 /* Add Second Photo Link */
@@ -675,16 +727,20 @@ label {
 
 .slot-action {
   font-size: 13px;
+  font-weight: 500;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
   transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .slot-action:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.5);
+  background: hsl(var(--muted) / 0.7);
+  border-color: hsl(var(--border));
+  transform: translateY(-1px);
 }
 
 .drag-handle {
@@ -1452,16 +1508,15 @@ label {
   .stepper-compact-circle.done {
     background: var(--gradient-primary);
     color: white;
-    border-color: transparent;
+    border: none;
     box-shadow: 0 4px 12px rgba(59, 91, 255, 0.3);
   }
 
   .stepper-compact-circle.active {
-    background: hsl(var(--surface));
-    color: hsl(var(--primary));
-    border-color: hsl(var(--primary));
-    border-width: 2px;
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15), 0 4px 12px rgba(59, 91, 255, 0.3);
   }
 
   .stepper-compact-circle.pending {
@@ -1666,9 +1721,15 @@ label {
 
   /* Glass Bar Mobile (if used) */
   .glass-bar {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .dark .glass-bar {
+    background: rgba(17, 17, 17, 0.95);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   /* Progress Rail Mobile */

@@ -4,7 +4,7 @@ import { useDrag } from "./DragContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, ArrowRight, Move, MoreHorizontal, Edit3 } from "lucide-react";
+import { Plus, Trash2, ArrowRight, Move, MoreHorizontal, Edit3, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Helper component to manage object URLs for File previews
@@ -276,22 +276,23 @@ export function SlotCard({
                           onDrop={(e) => handleImageDrop(e, index)}
                           onDragOver={(e) => e.preventDefault()}
                         >
-                          <img 
-                            src={url} 
+                          <img
+                            src={url}
                             alt={`Image ${index + 1}`}
                           />
-                      
-                      {/* Frame Pills */}
-                      {images.length === 2 ? (
-                        <div className={`frame-pill ${index === 0 ? 'start' : 'end'}`}>
-                          {index === 0 ? "Početak" : "Kraj"}
-                        </div>
-                      ) : (
-                        <div className="frame-pill center">
-                          Početak/Kraj
-                        </div>
-                      )}
-                      
+
+                      {/* Remove Individual Image Button */}
+                      <div
+                        className="action-pill remove-image"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeAt(index);
+                        }}
+                        title="Ukloni ovu sliku"
+                      >
+                        <X className="w-3 h-3" />
+                      </div>
+
                       {/* Per-Photo Actions */}
                       <div
                         className="action-pill uredi"
@@ -313,9 +314,10 @@ export function SlotCard({
                             e.stopPropagation();
                             handleNoviClick(image);
                           }}
-                          title="Dupliraj u sledeći slot"
+                          title="Kopiraj u sledeći slot kao početni frejm"
                         >
                           Novi
+                          <ArrowRight className="w-3 h-3 ml-1" />
                         </div>
                       )}
                         </div>
