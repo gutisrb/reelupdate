@@ -311,57 +311,19 @@ export function GalerijaDetail() {
           )}
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Status</CardTitle>
+        <div className="space-y-4">
+          {/* Akcije Card - Now First */}
+          <Card className="border-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Akcije</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Badge
-                className={
-                  statusColors[video.status as keyof typeof statusColors] ||
-                  'bg-muted text-muted-foreground'
-                }
-              >
-                {video.status === 'processing'
-                  ? 'Obrađuje se'
-                  : video.status === 'ready'
-                  ? 'Spremno'
-                  : 'Greška'}
-              </Badge>
-            </CardContent>
-          </Card>
-
-          {video.posted_channels_json && typeof video.posted_channels_json === 'object' && Object.keys(video.posted_channels_json).length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Status objave</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(video.posted_channels_json).map(([platform, status]: [string, any]) => (
-                    <Badge
-                      key={platform}
-                      className={channelStatusColors[status as keyof typeof channelStatusColors] || 'bg-muted'}
-                    >
-                      {platformIcons[platform] || platform}: {status}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Akcije</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2.5">
               {profile?.review_first && video.status === 'ready' && (
                 <Button
                   onClick={handlePostEverywhere}
-                  className="w-full"
+                  className="w-full gradient-primary text-white shadow-md hover:shadow-lg transition-all"
                   disabled={posting}
+                  size="lg"
                 >
                   {posting ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -392,28 +354,71 @@ export function GalerijaDetail() {
             </CardContent>
           </Card>
 
+          {/* Status Card - Now Second */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Meta podaci</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Status</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent>
+              <Badge
+                className={`${
+                  statusColors[video.status as keyof typeof statusColors] ||
+                  'bg-muted text-muted-foreground'
+                } px-3 py-1.5 text-sm font-medium`}
+              >
+                {video.status === 'processing'
+                  ? 'Obrađuje se'
+                  : video.status === 'ready'
+                  ? 'Spremno'
+                  : 'Greška'}
+              </Badge>
+            </CardContent>
+          </Card>
+
+          {/* Status objave Card */}
+          {video.posted_channels_json && typeof video.posted_channels_json === 'object' && Object.keys(video.posted_channels_json).length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Status objave</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(video.posted_channels_json).map(([platform, status]: [string, any]) => (
+                    <Badge
+                      key={platform}
+                      className={`${channelStatusColors[status as keyof typeof channelStatusColors] || 'bg-muted'} px-2.5 py-1 text-xs font-medium`}
+                    >
+                      {platformIcons[platform] || platform}: {status}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Meta podaci Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Meta podaci</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
               {video.title && (
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Naslov:</span>
-                  <span className="text-text-primary font-medium">{video.title}</span>
+                <div className="flex justify-between items-start gap-4">
+                  <span className="text-muted-foreground">Naslov:</span>
+                  <span className="text-foreground font-medium text-right">{video.title}</span>
                 </div>
               )}
               {video.duration_seconds && (
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Trajanje:</span>
-                  <span className="text-text-primary font-medium">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Trajanje:</span>
+                  <span className="text-foreground font-medium">
                     {formatDuration(video.duration_seconds)}
                   </span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span className="text-text-muted">Kreirano:</span>
-                <span className="text-text-primary font-medium">{formatDate(video.created_at)}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Kreirano:</span>
+                <span className="text-foreground font-medium">{formatDate(video.created_at)}</span>
               </div>
             </CardContent>
           </Card>

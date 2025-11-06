@@ -158,6 +158,12 @@ export default function Login() {
             <p className="mt-2 text-sm text-muted-foreground">
               Unesi svoje podatke za pristup
             </p>
+            {/* Info message for new visitors */}
+            <div className="mt-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Novi klijent?</strong> Kontaktirajte nas prvo da bismo vam omogućili pristup. Login je samo za postojeće klijente.
+              </p>
+            </div>
           </div>
 
           {/* Login Form */}
@@ -270,11 +276,10 @@ export default function Login() {
             Continue with Google
           </Button>
 
-          {/* Signup Link */}
+          {/* Back to home */}
           <p className="text-center text-sm text-muted-foreground">
-            Nemaš nalog?{' '}
-            <Link to="/signup" className="text-primary hover:underline font-medium">
-              Zatraži pristup →
+            <Link to="/" className="text-primary hover:underline font-medium">
+              ← Nazad na početnu
             </Link>
           </p>
         </motion.div>

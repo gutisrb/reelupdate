@@ -4,8 +4,8 @@ import { Clock, Zap, Target, TrendingUp } from 'lucide-react';
 const benefits = [
   {
     icon: Clock,
-    problem: 'Satima praviš videe ručno',
-    solution: 'Generiši profesionalne videe za par minuta',
+    problem: 'Satima praviš oglase ručno',
+    solution: 'Generiši profesionalne oglase za par minuta',
     gradient: 'from-[#3B5BFF] to-[#3B82F6]',
   },
   {
@@ -16,21 +16,21 @@ const benefits = [
   },
   {
     icon: Target,
-    problem: 'Teško se istakneš među konkurencijom',
+    problem: 'Teško se ističeš među konkurencijom',
     solution: 'AI glas, titlovi, muzika - uvek profesionalno',
     gradient: 'from-[#2DD4BF] to-[#3B5BFF]',
   },
   {
     icon: TrendingUp,
-    problem: 'Skupo angažovati video producenta',
-    solution: 'Jedna platforma za sve, dostupna cena',
+    problem: 'Skupo angažovanje editora',
+    solution: 'Jedna platforma za sve',
     gradient: 'from-[#3B5BFF] to-[#2DD4BF]',
   },
 ];
 
 export const WhyReelEstateSection = () => {
   return (
-    <section className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white">
+    <section id="zasto" className="relative py-32 bg-white">
       <div className="container mx-auto px-6">
         {/* Section Header */}
         <motion.div
@@ -38,9 +38,12 @@ export const WhyReelEstateSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-20"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <div className="inline-block px-4 py-2 rounded-full bg-gray-100 border border-gray-200 mb-4">
+            <span className="text-sm text-gray-600 font-medium">Tvoje probleme rešavamo</span>
+          </div>
+          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
             Zašto Reel Estate?
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">

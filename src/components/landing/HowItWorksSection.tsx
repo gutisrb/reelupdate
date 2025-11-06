@@ -12,8 +12,8 @@ const steps = [
   {
     icon: Wand2,
     title: 'Uredi (opciono)',
-    description: 'AI dodaje ili uklanja nameštaj po želji',
-    time: '30 sek',
+    description: 'Istakni svoj video uz AI',
+    time: '2 min',
     color: 'from-[#3B82F6] to-[#2DD4BF]',
   },
   {
@@ -34,7 +34,7 @@ const steps = [
 
 export const HowItWorksSection = () => {
   return (
-    <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-black/80 via-transparent to-black/80">
+    <section id="kako" className="relative py-32 bg-black">
       <div className="container mx-auto px-6">
         {/* Section Header */}
         <motion.div
@@ -44,10 +44,13 @@ export const HowItWorksSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-20"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <div className="inline-block px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
+            <span className="text-sm text-blue-400 font-medium">Jednostavno kao 1-2-3-4</span>
+          </div>
+          <h2 className="text-5xl md:text-6xl font-bold text-white mb-6">
             Kako funkcioniše
           </h2>
-          <p className="text-xl text-white/70 max-w-2xl mx-auto">
+          <p className="text-xl text-white/60 max-w-2xl mx-auto">
             Od fotografija do objavljenog videa za manje od 5 minuta
           </p>
         </motion.div>
