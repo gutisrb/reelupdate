@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Check, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ShaderBackground } from '@/components/ui/shaders-hero-section';
 
 export const BookConsultationSection = () => {
   const { toast } = useToast();
@@ -44,14 +45,9 @@ export const BookConsultationSection = () => {
   ];
 
   return (
-    <section id="contact" className="relative py-24 bg-gradient-to-b from-black via-gray-900 to-black">
-      {/* Gradient orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#3B5BFF]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#2DD4BF]/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="container mx-auto px-6 relative z-10">
+    <ShaderBackground>
+      <section id="contact" className="relative py-32">
+        <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-5xl mx-auto">
           {/* Section Header */}
           <motion.div
@@ -203,7 +199,8 @@ export const BookConsultationSection = () => {
             </motion.div>
           </div>
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </ShaderBackground>
   );
 };

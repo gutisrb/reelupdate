@@ -1,122 +1,123 @@
 import { motion } from 'framer-motion';
-import { Clock, Zap, Target, TrendingUp } from 'lucide-react';
-
-const benefits = [
-  {
-    icon: Clock,
-    problem: 'Satima praviš oglase ručno',
-    solution: 'Generiši profesionalne oglase za par minuta',
-    gradient: 'from-[#3B5BFF] to-[#3B82F6]',
-  },
-  {
-    icon: Zap,
-    problem: 'Objavljuješ ručno na svaku platformu',
-    solution: 'Automatski objavi svuda odjednom',
-    gradient: 'from-[#3B82F6] to-[#2DD4BF]',
-  },
-  {
-    icon: Target,
-    problem: 'Teško se ističeš među konkurencijom',
-    solution: 'AI glas, titlovi, muzika - uvek profesionalno',
-    gradient: 'from-[#2DD4BF] to-[#3B5BFF]',
-  },
-  {
-    icon: TrendingUp,
-    problem: 'Skupo angažovanje editora',
-    solution: 'Jedna platforma za sve',
-    gradient: 'from-[#3B5BFF] to-[#2DD4BF]',
-  },
-];
+import { Clock, Zap, Target, TrendingUp, ArrowRight } from 'lucide-react';
+import { ShaderBackground } from '@/components/ui/shaders-hero-section';
 
 export const WhyReelEstateSection = () => {
   return (
-    <section id="zasto" className="relative py-32 bg-white">
-      <div className="container mx-auto px-6">
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <div className="inline-block px-4 py-2 rounded-full bg-gray-100 border border-gray-200 mb-4">
-            <span className="text-sm text-gray-600 font-medium">Tvoje probleme rešavamo</span>
-          </div>
-          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Zašto Reel Estate?
-          </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Rešavamo najveće probleme real estate agenata na društvenim mrežama
-          </p>
-        </motion.div>
-
-        {/* Benefits Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {benefits.map((benefit, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              className="group relative"
-            >
-              <div className="h-full bg-white rounded-2xl p-8 border-2 border-gray-100 hover:border-gray-200 transition-all hover:shadow-xl">
-                {/* Icon */}
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${benefit.gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  <benefit.icon className="w-7 h-7 text-white" />
-                </div>
-
-                {/* Problem */}
-                <div className="mb-4">
-                  <div className="flex items-start gap-2 mb-2">
-                    <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-red-600 text-sm">✕</span>
-                    </div>
-                    <p className="text-gray-500 text-sm leading-relaxed">
-                      {benefit.problem}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Solution */}
-                <div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-green-600 text-sm">✓</span>
-                    </div>
-                    <p className="text-gray-900 font-semibold text-base leading-relaxed">
-                      {benefit.solution}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Glow effect on hover */}
-              <div className={`absolute -inset-1 bg-gradient-to-r ${benefit.gradient} rounded-2xl blur-xl opacity-0 group-hover:opacity-10 transition-opacity -z-10`} />
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Bottom stat/quote */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center mt-16"
-        >
-          <div className="inline-block px-6 py-3 rounded-full bg-gradient-to-r from-[#3B5BFF]/10 via-[#3B82F6]/10 to-[#2DD4BF]/10 border border-[#3B5BFF]/20">
-            <p className="text-gray-700 font-medium">
-              <span className="bg-gradient-to-r from-[#3B5BFF] via-[#3B82F6] to-[#2DD4BF] bg-clip-text text-transparent font-bold">
-                5 minuta
-              </span>{' '}
-              od fotografija do objavljenog videa na svim platformama
+    <ShaderBackground>
+      <section id="zasto" className="relative py-32 overflow-hidden">
+        <div className="container mx-auto px-6 relative z-10">
+          {/* Section Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-5xl md:text-6xl font-bold text-white mb-6">
+              Zašto Reel Estate?
+            </h2>
+            <p className="text-xl text-white/70 max-w-3xl mx-auto">
+              Rešavamo najveće probleme real estate agenata na društvenim mrežama
             </p>
+          </motion.div>
+
+          {/* Benefits - Before/After Style */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+            {[
+              {
+                icon: Clock,
+                before: 'Satima praviš oglase ručno',
+                after: 'Generiši profesionalne oglase za par minuta',
+                gradient: 'from-[#3B5BFF] to-[#3B82F6]',
+              },
+              {
+                icon: Zap,
+                before: 'Objavljuješ ručno na svaku platformu',
+                after: 'Automatski objavi svuda odjednom',
+                gradient: 'from-[#3B82F6] to-[#2DD4BF]',
+              },
+              {
+                icon: Target,
+                before: 'Teško se ističeš među konkurencijom',
+                after: 'AI glas, titlovi, muzika - uvek profesionalno',
+                gradient: 'from-[#2DD4BF] to-[#A855F7]',
+              },
+              {
+                icon: TrendingUp,
+                before: 'Skupo angažovanje editora',
+                after: 'Jedna platforma za sve',
+                gradient: 'from-[#A855F7] to-[#3B5BFF]',
+              },
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                className="group relative"
+              >
+                <div className="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all hover:shadow-2xl hover:shadow-blue-500/10">
+                  {/* Icon */}
+                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                    <item.icon className="w-7 h-7 text-white" />
+                  </div>
+
+                  {/* Before/After */}
+                  <div className="space-y-4">
+                    {/* Before */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                        <span className="text-red-400 text-xs font-bold">✕</span>
+                      </div>
+                      <p className="text-white/60 leading-relaxed line-through decoration-red-500/50">
+                        {item.before}
+                      </p>
+                    </div>
+
+                    {/* Arrow */}
+                    <div className="flex items-center gap-2 pl-3">
+                      <ArrowRight className="w-5 h-5 text-white/40" />
+                      <div className={`h-0.5 flex-1 bg-gradient-to-r ${item.gradient} opacity-30`} />
+                    </div>
+
+                    {/* After */}
+                    <div className="flex items-start gap-3">
+                      <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${item.gradient} bg-opacity-20 flex items-center justify-center flex-shrink-0 mt-1`}>
+                        <span className="text-green-400 text-xs font-bold">✓</span>
+                      </div>
+                      <p className="text-white font-semibold text-lg leading-relaxed">
+                        {item.after}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </motion.div>
-      </div>
-    </section>
+
+          {/* Bottom Highlight */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="text-center mt-20"
+          >
+            <div className="inline-block px-8 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
+              <p className="text-white text-lg font-medium">
+                <span className="bg-gradient-to-r from-[#3B5BFF] via-[#3B82F6] to-[#2DD4BF] bg-clip-text text-transparent font-bold text-2xl">
+                  5 minuta
+                </span>{' '}
+                <span className="text-white/80">od fotografija do objavljenog videa</span>
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    </ShaderBackground>
   );
 };

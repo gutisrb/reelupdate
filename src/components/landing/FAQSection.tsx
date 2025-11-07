@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { FloatingCTA } from './FloatingCTA';
+import { ShaderBackground } from '@/components/ui/shaders-hero-section';
 
 const faqs = [
   {
@@ -35,26 +36,27 @@ export const FAQSection = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="relative py-24 bg-black">
-      <div className="container mx-auto px-6 max-w-3xl">
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Najčešća Pitanja
-          </h2>
-          <p className="text-xl text-white/70">
-            Sve što trebaš da znaš o Reel Estate
-          </p>
-        </motion.div>
+    <ShaderBackground>
+      <section id="faq" className="relative py-32">
+        <div className="container mx-auto px-6 max-w-4xl relative z-10">
+          {/* Section Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-5xl md:text-6xl font-bold text-white mb-4">
+              Najčešća Pitanja
+            </h2>
+            <p className="text-xl text-white/70">
+              Sve što trebaš da znaš o Reel Estate
+            </p>
+          </motion.div>
 
-        {/* Accordion */}
-        <div className="space-y-4">
+        {/* Accordion - Better Aligned */}
+        <div className="space-y-3">
           {faqs.map((faq, index) => (
             <motion.div
               key={index}
@@ -62,21 +64,21 @@ export const FAQSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.05 }}
-              className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden"
+              className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden hover:border-white/20 transition-all"
             >
               {/* Question Button */}
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full flex items-center justify-between p-6 text-left hover:bg-white/5 transition-colors"
+                className="w-full flex items-center justify-between p-5 text-left hover:bg-white/5 transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  <span className="text-2xl">{faq.emoji}</span>
-                  <span className="text-lg font-semibold text-white">
+                <div className="flex items-center gap-3 flex-1">
+                  <span className="text-2xl flex-shrink-0">{faq.emoji}</span>
+                  <span className="text-base md:text-lg font-semibold text-white">
                     {faq.question}
                   </span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-white/60 transition-transform ${
+                  className={`w-5 h-5 text-white/60 transition-transform flex-shrink-0 ml-4 ${
                     openIndex === index ? 'rotate-180' : ''
                   }`}
                 />
@@ -92,8 +94,8 @@ export const FAQSection = () => {
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-6 pb-6 pl-[4.5rem]">
-                      <p className="text-white/70 leading-relaxed">
+                    <div className="px-5 pb-5 pl-14">
+                      <p className="text-white/80 leading-relaxed text-sm md:text-base">
                         {faq.answer}
                       </p>
                     </div>
@@ -113,7 +115,8 @@ export const FAQSection = () => {
             buttonText="Zakaži poziv"
           />
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </ShaderBackground>
   );
 };

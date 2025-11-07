@@ -67,26 +67,10 @@ export const HeroSection = () => {
                   onClick={scrollToWhatWeDo}
                   variant="outline"
                   size="lg"
-                  className="border-white/20 text-white hover:bg-white/5 px-8 h-12 text-base"
+                  className="border-white/20 text-white hover:text-white hover:bg-white/5 px-8 h-12 text-base"
                 >
                   Saznaj više
                 </Button>
-              </div>
-
-              {/* Social Proof / Stats */}
-              <div className="flex gap-8 pt-8 border-t border-white/10">
-                <div>
-                  <div className="text-2xl font-bold text-white">5 min</div>
-                  <div className="text-sm text-white/50">Do objave</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">10+</div>
-                  <div className="text-sm text-white/50">Platformi</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">AI</div>
-                  <div className="text-sm text-white/50">Powered</div>
-                </div>
               </div>
 
             </motion.div>
