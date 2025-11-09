@@ -24,9 +24,9 @@ export const CloudinaryVideo = ({
   // Get Cloudinary cloud name from environment variable
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo';
 
-  // Construct Cloudinary video URL with aggressive compression
-  // w_720: limit width to 720px, br_500k: limit bitrate to 500kbps for smaller files
-  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_720,br_500k,c_limit/${publicId}.mp4`;
+  // Construct Cloudinary video URL with decent quality
+  // w_1080: HD quality, q_auto: automatic quality optimization
+  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_1080,c_limit/${publicId}.mp4`;
 
   useEffect(() => {
     // Only autoplay if explicitly requested

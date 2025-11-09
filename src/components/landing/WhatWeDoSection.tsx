@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Film, Wand2, Palette, Type, Music, Sparkles, Upload, Sparkle, Plus } from 'lucide-react';
+import { Film, Wand2, Palette, Type, Music, Sparkles, ArrowRight } from 'lucide-react';
 
 export const WhatWeDoSection = () => {
   return (
@@ -17,270 +17,258 @@ export const WhatWeDoSection = () => {
             Sve što ti treba za profesionalne video oglase
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Dva moćna alata koja možeš koristiti zajedno ili odvojeno
+            Dva moćna alata koja rade zajedno ili odvojeno
           </p>
         </motion.div>
 
-        {/* Two Main Tools */}
-        <div className="max-w-7xl mx-auto space-y-16">
+        {/* Horizontal Workflow */}
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* Tool 1: AI Video Studio */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 rounded-3xl p-8 md:p-12 border-2 border-blue-100 shadow-xl"
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              {/* Left: Description */}
+            {/* Card 1: Reel Studio (AI Video Generator) */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              whileHover={{ scale: 1.05, y: -10 }}
+              className="group bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-8 border-2 border-blue-100 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer"
+            >
               <div className="space-y-6">
-                <div className="inline-flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-full">
-                  <Film className="w-5 h-5 text-white" />
-                  <span className="text-white font-semibold">AI Video Studio</span>
+                {/* Icon & Title */}
+                <div>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center mb-4">
+                    <Film className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Reel Studio</h3>
+                  <p className="text-sm text-blue-600 font-semibold">AI Video Generator</p>
                 </div>
 
-                <h3 className="text-3xl md:text-4xl font-bold text-gray-900">
-                  Automatski pravi profesionalne reel-friendly videe
-                </h3>
-
-                <p className="text-lg text-gray-600 leading-relaxed">
-                  Upload fotografije, dodaj osnovne informacije o nekretnini, i AI će za 5 minuta
-                  kreirati video (9:16) sa AI glasom, titlovima i muzikom. Objavi odmah na sve platforme.
+                {/* Description */}
+                <p className="text-gray-700 leading-relaxed">
+                  Automatski generiše profesionalne 9:16 reel videe sa AI glasom, titlovima i muzikom.
+                  Upload slike, dodaj osnovne info, i AI kreira video za 5 minuta.
                 </p>
 
-                <div className="grid grid-cols-2 gap-4 pt-4">
-                  {[
-                    { icon: Sparkle, text: 'AI glas i script' },
-                    { icon: Type, text: 'Automatski titlovi' },
-                    { icon: Music, text: 'Muzika i brending' },
-                    { icon: Upload, text: 'Multi-platform objava' },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-blue-100">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center flex-shrink-0">
-                        <item.icon className="w-5 h-5 text-white" />
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">{item.text}</span>
+                {/* Features */}
+                <div className="space-y-2 pt-4">
+                  {['AI glas i script', 'Automatski titlovi', 'Muzika i brending', 'Multi-platform objava'].map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF]" />
+                      {feature}
                     </div>
                   ))}
                 </div>
 
+                {/* Time Badge */}
                 <div className="pt-4">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-full">
-                    <span className="text-blue-700 font-semibold text-sm">⚡ ~5 min</span>
-                  </div>
+                  <span className="inline-block px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                    ⚡ ~5 min
+                  </span>
                 </div>
               </div>
+            </motion.div>
 
-              {/* Right: Visual Mockup */}
-              <div className="relative">
-                <div className="bg-white rounded-2xl p-6 shadow-2xl border-2 border-blue-200">
-                  {/* Interface Mockup */}
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                      <h4 className="font-bold text-gray-900">Reel Studio</h4>
-                      <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                        Processing
-                      </div>
-                    </div>
-
-                    {/* Photo Slots Preview */}
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 mb-3">Slike (5-6):</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                          <div
-                            key={i}
-                            className="aspect-square rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center border-2 border-blue-300"
-                          >
-                            <Upload className="w-6 h-6 text-blue-600" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Property Details */}
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 mb-3">Detalji:</p>
-                      <div className="space-y-2">
-                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                          <p className="text-xs text-gray-500">Naslov</p>
-                          <p className="text-sm font-medium text-gray-900">Luksuzni stan u centru grada</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <p className="text-xs text-gray-500">Cena</p>
-                            <p className="text-sm font-medium text-gray-900">€250,000</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <p className="text-xs text-gray-500">Površina</p>
-                            <p className="text-sm font-medium text-gray-900">85m²</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* AI Status */}
-                    <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl p-4 text-center">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <Sparkle className="w-5 h-5 text-white animate-pulse" />
-                        <p className="text-white font-bold">AI generiše video...</p>
-                      </div>
-                      <div className="w-full bg-white/20 rounded-full h-2">
-                        <div className="bg-white rounded-full h-2" style={{ width: '65%' }}></div>
-                      </div>
-                    </div>
+            {/* Card 2: Stage Studio (Photo Editor) - Workflow */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              whileHover={{ scale: 1.05, y: -10 }}
+              className="group bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-8 border-2 border-purple-100 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer"
+            >
+              <div className="space-y-6">
+                {/* Icon & Title */}
+                <div>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+                    <Wand2 className="w-8 h-8 text-white" />
                   </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Stage Studio</h3>
+                  <p className="text-sm text-purple-600 font-semibold">AI Photo Editor</p>
                 </div>
 
-                {/* Glow effect */}
-                <div className="absolute -inset-2 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-3xl blur-2xl opacity-20 -z-10" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Tool 2: Photo Editor */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-50 via-white to-pink-50 rounded-3xl p-8 md:p-12 border-2 border-purple-100 shadow-xl"
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              {/* Left: Visual Demo */}
-              <div className="order-2 lg:order-1">
-                <div className="bg-white rounded-2xl p-6 shadow-2xl border-2 border-purple-200">
-                  <p className="text-sm font-bold text-gray-900 mb-4">Kako funkcioniše:</p>
-
-                  {/* Before/After Images */}
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Originalna</p>
-                      <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-purple-200">
-                        <img
-                          src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-1"
-                          alt="Original"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 mb-2">AI editovana</p>
-                      <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-pink-200">
-                        <img
-                          src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-2"
-                          alt="AI Edited"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* AI Prompt Example */}
-                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-4">
-                    <p className="text-white/90 text-xs mb-2">AI Prompt primer:</p>
-                    <p className="text-white font-semibold text-sm italic">
-                      "Dodaj moderan nameštaj i dekoracije..."
-                    </p>
-                  </div>
-                </div>
-
-                <div className="absolute -inset-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl blur-2xl opacity-20 -z-10" />
-              </div>
-
-              {/* Right: Description */}
-              <div className="order-1 lg:order-2 space-y-6">
-                <div className="inline-flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full">
-                  <Wand2 className="w-5 h-5 text-white" />
-                  <span className="text-white font-semibold">AI Photo Editor</span>
-                </div>
-
-                <h3 className="text-3xl md:text-4xl font-bold text-gray-900">
-                  AI edituje slike za još bolje rezultate
-                </h3>
-
-                <p className="text-lg text-gray-600 leading-relaxed">
-                  Transformiši fotografije nekretnina pomoću AI-a. Dodaj nameštaj, ukloni objekte,
-                  promeni pozadinu, ili kreiraj frame-to-frame animacije za dinamičnije videe.
+                {/* Description */}
+                <p className="text-gray-700 leading-relaxed">
+                  Transformiši fotografije sa AI-om. Virtual staging, uklanjanje objekata, frame-to-frame animacije.
+                  Editovane slike možeš koristiti u Reel Studio-u.
                 </p>
 
+                {/* Features */}
+                <div className="space-y-2 pt-4">
+                  {['Virtual staging', 'Ukloni/dodaj objekte', 'Promeni pozadinu', 'Frame-to-frame'].map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+                      {feature}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Time Badge */}
+                <div className="pt-4">
+                  <span className="inline-block px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                    ⚡ 30 sek po slici
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 3: Combined Power */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              whileHover={{ scale: 1.05, y: -10 }}
+              className="group bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 border-2 border-gray-700 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer"
+            >
+              <div className="space-y-6">
+                {/* Icon & Title */}
+                <div>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center mb-4">
+                    <Sparkles className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Kombinuj</h3>
+                  <p className="text-sm text-cyan-400 font-semibold">Za najbolje rezultate</p>
+                </div>
+
+                {/* Description */}
+                <p className="text-white/80 leading-relaxed">
+                  Prvo edituj slike u Stage Studio-u, pa ih koristi kao frejm ove u Reel Studio-u za dinamične videe.
+                  Perfektna kombinacija!
+                </p>
+
+                {/* Workflow */}
                 <div className="space-y-3 pt-4">
-                  {[
-                    'Virtual staging - dodaj nameštaj',
-                    'Ukloni ili dodaj objekte',
-                    'Promeni pozadinu i osvetljenje',
-                    'Frame-to-frame animacije',
-                  ].map((text, idx) => (
-                    <div key={idx} className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <span className="text-gray-700 font-medium">{text}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                      <Wand2 className="w-4 h-4 text-purple-400" />
                     </div>
-                  ))}
-                </div>
-
-                <div className="pt-4">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full">
-                    <span className="text-purple-700 font-semibold text-sm">⚡ 30 sek po slici</span>
+                    <span className="text-sm text-white/70">1. Edituj slike</span>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <ArrowRight className="w-5 h-5 text-white/40" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                      <Film className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <span className="text-sm text-white/70">2. Generiši video</span>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <ArrowRight className="w-5 h-5 text-white/40" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-sm text-white">3. Objavi! 🎉</span>
                   </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
 
-          {/* Combination Example */}
+          {/* Detailed Stage Studio Workflow Below */}
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 md:p-12 border-2 border-gray-700 shadow-2xl"
+            className="mt-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-10 border-2 border-purple-200 shadow-xl"
           >
-            <div className="text-center max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-full mb-8">
-                <Plus className="w-6 h-6 text-white" />
-                <span className="text-white font-bold text-lg">Kombinuj oba alata</span>
-              </div>
-
-              <h3 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                Za najbolje rezultate, koristi zajedno
+            <div className="mb-10 text-center">
+              <h3 className="text-3xl font-bold text-gray-900 mb-3">
+                Stage Studio + Reel Studio = Perfektna kombinacija
               </h3>
-
-              <p className="text-xl text-white/80 mb-12 leading-relaxed">
-                Prvo edituj slike sa Photo Editor-om, pa ih upload-uj u AI Video Studio za finaln video.
-                <br />
-                <span className="text-white/60">Perfektna kombinacija za impresivne rezultate.</span>
+              <p className="text-lg text-gray-600">
+                Pogledaj kako funkcioniše kompletna automatizacija
               </p>
+            </div>
 
-              {/* Process Flow */}
-              <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-4">
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 flex-1 max-w-xs">
-                  <Wand2 className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-                  <p className="text-white font-semibold mb-1">1. Photo Editor</p>
-                  <p className="text-white/60 text-sm">Edituj fotografije</p>
-                </div>
+            {/* Horizontal Flow */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
 
-                <div className="hidden md:block text-white/40 text-4xl">→</div>
-
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 flex-1 max-w-xs">
-                  <Film className="w-12 h-12 text-blue-400 mx-auto mb-3" />
-                  <p className="text-white font-semibold mb-1">2. AI Video Studio</p>
-                  <p className="text-white/60 text-sm">Generiši video</p>
-                </div>
-
-                <div className="hidden md:block text-white/40 text-4xl">→</div>
-
-                <div className="bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-2xl p-6 flex-1 max-w-xs">
-                  <Sparkles className="w-12 h-12 text-white mx-auto mb-3" />
-                  <p className="text-white font-bold mb-1">3. Objavi</p>
-                  <p className="text-white/90 text-sm">Spreman za sve platforme!</p>
+              {/* Step 1: Original Photos */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-500 text-center">Originalne slike</p>
+                <div className="space-y-2">
+                  <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-purple-300">
+                    <img
+                      src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-1"
+                      alt="Original 1"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-purple-300">
+                    <img
+                      src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-2"
+                      alt="Original 2"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 </div>
               </div>
+
+              {/* Arrow 1 */}
+              <div className="flex justify-center">
+                <ArrowRight className="w-8 h-8 text-purple-400" />
+              </div>
+
+              {/* Step 2: AI Prompts + Edited Photos */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-500 text-center">AI edituje</p>
+                <div className="space-y-2">
+                  {/* Prompt 1 + Edited 1 */}
+                  <div className="space-y-1">
+                    <div className="bg-white rounded-lg p-2 border border-purple-200">
+                      <p className="text-xs text-gray-600 italic">"Dodaj nameštaj..."</p>
+                    </div>
+                    <div className="aspect-[4/3] rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 flex items-center justify-center">
+                      <p className="text-xs text-blue-700 font-semibold">Editovana 1</p>
+                    </div>
+                  </div>
+
+                  {/* Prompt 2 + Edited 2 */}
+                  <div className="space-y-1">
+                    <div className="bg-white rounded-lg p-2 border border-purple-200">
+                      <p className="text-xs text-gray-600 italic">"Dodaj karaktere..."</p>
+                    </div>
+                    <div className="aspect-[4/3] rounded-lg bg-gradient-to-br from-pink-100 to-pink-200 border-2 border-pink-300 flex items-center justify-center">
+                      <p className="text-xs text-pink-700 font-semibold">Editovana 2</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow 2 */}
+              <div className="flex justify-center">
+                <ArrowRight className="w-8 h-8 text-blue-400" />
+              </div>
+
+              {/* Step 3: Final Video Output */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-500 text-center">Finalni video</p>
+                <div className="bg-gray-900 rounded-xl p-4">
+                  <div className="aspect-[9/16] rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 border-2 border-gray-600 flex flex-col items-center justify-center gap-3 p-4">
+                    <Film className="w-12 h-12 text-cyan-400" />
+                    <p className="text-white text-sm font-semibold text-center">Video (9:16)</p>
+                    <p className="text-white/60 text-xs text-center">Frame-to-frame animacija između editovanih slika</p>
+                    <div className="px-3 py-1 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-full">
+                      <p className="text-white text-xs font-bold">Spreman! 🎬</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Explanation */}
+            <div className="mt-8 bg-white rounded-2xl p-6 border border-purple-200">
+              <p className="text-sm text-gray-700 text-center leading-relaxed">
+                <strong>Kako radi:</strong> Stage Studio AI edituje originalne slike po tvojim promptovima.
+                Zatim Reel Studio koristi te editovane slike kao prvi i poslednji frejm,
+                i AI generiše glatku animaciju između njih sa glasom, titlovima i muzikom.
+              </p>
             </div>
           </motion.div>
         </div>
@@ -318,7 +306,8 @@ export const WhatWeDoSection = () => {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: idx * 0.05 }}
-                  className="flex flex-col items-center text-center gap-3 p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg"
+                  whileHover={{ scale: 1.05 }}
+                  className="flex flex-col items-center text-center gap-3 p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg cursor-pointer"
                 >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center">
                     <item.icon className="w-6 h-6 text-white" />

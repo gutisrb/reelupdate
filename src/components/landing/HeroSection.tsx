@@ -104,7 +104,7 @@ export const HeroSection = () => {
                 <CloudinaryVideo
                   publicId="hero-video"
                   className="w-full aspect-video object-cover"
-                  autoPlay={false}
+                  autoPlay={true}
                 />
 
                 {/* Glow effect */}
