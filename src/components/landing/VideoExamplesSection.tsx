@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Play } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { CloudinaryVideo } from '@/components/CloudinaryVideo';
 
@@ -38,11 +38,40 @@ export const VideoExamplesSection = () => {
 };
 
 const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(0.5);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const toggleMute = () => {
+  const handleMouseEnter = () => {
+    if (videoRef.current && !isPlaying) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current && isPlaying) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
+
+  const handleClick = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
@@ -50,6 +79,7 @@ const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => 
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
     if (videoRef.current) {
@@ -78,22 +108,34 @@ const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => 
       className="group relative"
     >
       {/* Video with 9:16 aspect ratio */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 border border-white/10 hover:border-white/30 transition-all">
+      <div
+        className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 border border-white/10 hover:border-white/30 transition-all cursor-pointer"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
+      >
         {/* 9:16 aspect ratio container */}
         <div className="aspect-[9/16] relative bg-black">
           <video
             ref={videoRef}
             className="w-full h-full object-cover"
-            autoPlay
             loop
             muted
             playsInline
-            preload="none"
-            loading="lazy"
+            preload="metadata"
           >
             <source src={videoUrl} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
+
+          {/* Play button overlay */}
+          {!isPlaying && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity group-hover:bg-black/30">
+              <div className="w-20 h-20 rounded-full bg-white/90 flex items-center justify-center">
+                <Play className="w-10 h-10 text-gray-900 ml-1" fill="currentColor" />
+              </div>
+            </div>
+          )}
 
           {/* Video Controls Overlay */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">

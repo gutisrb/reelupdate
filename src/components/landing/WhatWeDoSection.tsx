@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
-import { Film, Wand2, Palette, Type, Music, Sparkles } from 'lucide-react';
+import { Film, Wand2, Palette, Type, Music, Sparkles, ArrowRight, Play } from 'lucide-react';
+import { useState, useRef } from 'react';
 
 export const WhatWeDoSection = () => {
   return (
-    <section id="funkcije" className="relative py-32 bg-white overflow-hidden">
+    <section id="funkcije" className="relative py-24 bg-white overflow-hidden">
       <div className="container mx-auto px-6">
         {/* Section Header */}
         <motion.div
@@ -11,151 +12,177 @@ export const WhatWeDoSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-20"
+          className="text-center mb-16"
         >
-          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Sve što ti treba za profesionalne video oglase na društvenim mrežama
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Sve što ti treba za profesionalne video oglase
           </h2>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            Kompletna automatizacija: od fotografije do finalnog videa spremnog za objavu
+          </p>
         </motion.div>
 
-        {/* Main Feature Cards - 1/3 AI Video Studio, 2/3 Photo Editor Demo */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto mb-16">
-          {/* AI Video Studio Card - 1/3 */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            whileHover={{ y: -8 }}
-            className="group relative lg:col-span-1"
-          >
-            <div className="h-full bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-8 border-2 border-blue-100 hover:border-blue-200 transition-all shadow-lg hover:shadow-2xl">
-              <div className="flex items-start justify-between mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center">
-                  <Film className="w-8 h-8 text-white" />
+        {/* Three-Column Workflow */}
+        <div className="max-w-7xl mx-auto mb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Column 1: Photo Editor - Input */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="bg-gradient-to-br from-cyan-50 to-purple-50 rounded-2xl p-6 border-2 border-cyan-100"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2DD4BF] to-[#A855F7] flex items-center justify-center flex-shrink-0">
+                  <Wand2 className="w-6 h-6 text-white" />
                 </div>
-                <div className="px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
-                  ⚡ ~5 min
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">1. Photo Editor</h3>
+                  <p className="text-sm text-gray-600">AI edituje slike</p>
                 </div>
               </div>
 
-              <h3 className="text-3xl font-bold text-gray-900 mb-4">
-                AI Video Studio
-              </h3>
-
-              <p className="text-lg text-gray-600 leading-relaxed mb-6">
-                Automatski pravi profesionalne reel-friendly videe (9:16) sa glasom, titlovima i muzikom.
-                Objavi na sve platforme odjednom.
-              </p>
-
-              <div className="grid grid-cols-1 gap-3">
-                {['AI glas i script', 'Automatski titlovi', 'Muzika i brending', 'Multi-platform objava'].map((item, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="flex items-center gap-2 text-sm text-gray-700 bg-white px-3 py-2 rounded-lg"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF]" />
-                    {item}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Photo Editor Interactive Demo - 2/3 */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="lg:col-span-2"
-          >
-            <div className="h-full bg-gradient-to-br from-cyan-50 to-purple-50 rounded-3xl p-8 border-2 border-cyan-100 hover:border-cyan-200 transition-all shadow-lg">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#2DD4BF] to-[#A855F7] flex items-center justify-center">
-                    <Wand2 className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-3xl font-bold text-gray-900">Photo Editor</h3>
-                    <p className="text-gray-600 mt-1">Frame-to-Frame tranzicije</p>
+              {/* Original Photos */}
+              <div className="space-y-4 mb-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Originalne slike:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="aspect-square rounded-lg overflow-hidden border-2 border-blue-200">
+                      <img
+                        src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-1"
+                        alt="Original 1"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="aspect-square rounded-lg overflow-hidden border-2 border-purple-200">
+                      <img
+                        src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-2"
+                        alt="Original 2"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="px-4 py-2 rounded-full bg-cyan-100 text-cyan-700 text-sm font-medium">
+
+                {/* AI Edits */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-2">AI edituje:</p>
+                  <div className="bg-white rounded-lg p-3 border border-gray-200 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-700">"Dodaj moderan nameštaj"</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-700">"Dodaj karaktere"</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center pt-2">
+                <div className="px-3 py-1.5 rounded-full bg-cyan-100 text-cyan-700 text-xs font-semibold">
                   ⚡ 30 sek
                 </div>
               </div>
+            </motion.div>
 
-              {/* Interactive Workflow Demo */}
-              <div className="bg-white rounded-2xl p-6 border-2 border-cyan-200">
-                <p className="text-sm font-semibold text-gray-900 mb-6 text-center">Kako funkcioniše:</p>
+            {/* Column 2: AI Video Studio - Processing */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-blue-100"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center flex-shrink-0">
+                  <Film className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">2. AI Video Studio</h3>
+                  <p className="text-sm text-gray-600">Generiše video</p>
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  {/* Image 1 */}
-                  <div className="space-y-3">
-                    <div className="aspect-[4/3] rounded-xl border-2 border-blue-300 overflow-hidden">
-                      <img
-                        src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-1"
-                        alt="Početni frejm"
-                        className="w-full h-full object-cover"
-                      />
+              {/* Processing Steps */}
+              <div className="space-y-3 mb-6">
+                <div className="bg-white rounded-lg p-3 border border-blue-200">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Ubaci editovane slike:</p>
+                  <div className="flex gap-2 items-center justify-center py-2">
+                    <div className="w-16 h-16 rounded bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-xs text-blue-700 font-semibold">
+                      Frame 1
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Prompt:</p>
-                      <p className="text-sm text-gray-700 italic">"Dodaj moderan nameštaj..."</p>
-                    </div>
-                  </div>
-
-                  {/* Image 2 */}
-                  <div className="space-y-3">
-                    <div className="aspect-[4/3] rounded-xl border-2 border-purple-300 overflow-hidden">
-                      <img
-                        src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-2"
-                        alt="Krajnji frejm"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Prompt:</p>
-                      <p className="text-sm text-gray-700 italic">"Dodaj karaktere..."</p>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                    <div className="w-16 h-16 rounded bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center text-xs text-purple-700 font-semibold">
+                      Frame 2
                     </div>
                   </div>
                 </div>
 
-                {/* Arrow pointing down */}
-                <div className="flex justify-center mb-6">
-                  <div className="flex flex-col items-center">
-                    <div className="text-gray-400 text-sm font-medium mb-2">AI generiše tranziciju</div>
-                    <div className="text-4xl text-gray-300">↓</div>
-                  </div>
+                <div className="bg-white rounded-lg p-3 border border-gray-200 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">AI automatski dodaje:</p>
+                  {['AI glas i script', 'Automatski titlovi', 'Muzika', 'Brending'].map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF]" />
+                      <p className="text-xs text-gray-700">{item}</p>
+                    </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* Video Output */}
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 text-center">
-                  <p className="text-white font-bold text-lg mb-4">Video Klip (9:16)</p>
-                  <div className="aspect-[9/16] max-w-xs mx-auto rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl">
-                    <video
-                      src="https://res.cloudinary.com/dyarnpqaq/video/upload/w_720,br_500k,c_limit/demo-video-4.mp4"
-                      className="w-full h-full object-cover"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                    />
-                  </div>
-                  <p className="text-white/90 text-sm mt-4">Glatka animacija između dva frejma</p>
-                  <div className="mt-4 inline-block px-4 py-2 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-full">
+              <div className="flex items-center justify-center">
+                <div className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+                  ⚡ ~5 min
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Column 3: Output Video */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 border-2 border-gray-700"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center flex-shrink-0">
+                  <Film className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">3. Finalni Video</h3>
+                  <p className="text-sm text-white/70">Spreman za objavu</p>
+                </div>
+              </div>
+
+              {/* Video Player */}
+              <HoverVideoPlayer
+                src="https://res.cloudinary.com/dyarnpqaq/video/upload/w_720,br_500k,c_limit/demo-video-4.mp4"
+              />
+
+              <div className="mt-4 space-y-3">
+                <div className="text-center">
+                  <p className="text-white/90 text-sm mb-3">Video format: 9:16 (Reel-friendly)</p>
+                  <div className="inline-block px-4 py-2 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-full">
                     <p className="text-white text-xs font-semibold">Spreman za objavu! 🎬</p>
                   </div>
                 </div>
+
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                  <p className="text-xs font-semibold text-white/80 mb-2">Objavi na:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Instagram', 'TikTok', 'YouTube', 'Facebook'].map((platform, idx) => (
+                      <span key={idx} className="text-xs px-2 py-1 bg-white/20 rounded text-white/90">
+                        {platform}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
 
         {/* Customization Reassurances */}
@@ -166,9 +193,9 @@ export const WhatWeDoSection = () => {
           transition={{ duration: 0.6 }}
           className="max-w-6xl mx-auto"
         >
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-3xl p-8 md:p-12 border border-gray-200">
-            <div className="text-center mb-10">
-              <h3 className="text-3xl font-bold text-gray-900 mb-3">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-3xl p-8 md:p-10 border border-gray-200">
+            <div className="text-center mb-8">
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                 100% prilagodljivo tvojoj agenciji
               </h3>
               <p className="text-gray-600">
@@ -176,7 +203,7 @@ export const WhatWeDoSection = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 { icon: Palette, text: 'Tvoj vodeni žig i brending' },
                 { icon: Type, text: 'Tvoj stil pisanja' },
@@ -191,12 +218,12 @@ export const WhatWeDoSection = () => {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: idx * 0.05 }}
-                  className="flex flex-col items-center text-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-all hover:shadow-md"
+                  className="flex flex-col items-center text-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-all hover:shadow-md"
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center">
-                    <item.icon className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3B5BFF] to-[#2DD4BF] flex items-center justify-center">
+                    <item.icon className="w-5 h-5 text-white" />
                   </div>
-                  <p className="text-sm font-medium text-gray-700">{item.text}</p>
+                  <p className="text-xs font-medium text-gray-700">{item.text}</p>
                 </motion.div>
               ))}
             </div>
@@ -204,5 +231,66 @@ export const WhatWeDoSection = () => {
         </motion.div>
       </div>
     </section>
+  );
+};
+
+// Hover-to-play video component
+const HoverVideoPlayer = ({ src }: { src: string }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
+
+  const handleClick = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  return (
+    <div
+      className="relative aspect-[9/16] rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl cursor-pointer group"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+    >
+      <video
+        ref={videoRef}
+        src={src}
+        className="w-full h-full object-cover"
+        loop
+        muted
+        playsInline
+        preload="metadata"
+      />
+
+      {/* Play button overlay */}
+      {!isPlaying && (
+        <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/20">
+          <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+            <Play className="w-8 h-8 text-gray-900 ml-1" fill="currentColor" />
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
