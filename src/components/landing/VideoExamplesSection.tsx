@@ -66,7 +66,8 @@ const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => 
 
   // Get Cloudinary cloud name
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo';
-  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/q_auto,f_auto/${publicId}.mp4`;
+  // Using basic transformations to reduce file size (w_1080 limits width to 1080px)
+  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_1080,c_limit/${publicId}.mp4`;
 
   return (
     <motion.div

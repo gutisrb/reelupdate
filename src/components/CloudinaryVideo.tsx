@@ -22,8 +22,9 @@ export const CloudinaryVideo = ({
   // Get Cloudinary cloud name from environment variable
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo';
 
-  // Construct Cloudinary video URL with optimizations
-  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/q_auto,f_auto/${publicId}.mp4`;
+  // Construct Cloudinary video URL with compression
+  // Using basic free-tier transformations to reduce file size
+  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_1080,c_limit/${publicId}.mp4`;
 
   useEffect(() => {
     // Ensure video plays on mobile devices
