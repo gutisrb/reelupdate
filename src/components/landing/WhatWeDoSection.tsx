@@ -98,12 +98,12 @@ export const WhatWeDoSection = () => {
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   {/* Image 1 */}
                   <div className="space-y-3">
-                    <div className="aspect-[4/3] bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl border-2 border-blue-300 flex items-center justify-center">
-                      <div className="text-center">
-                        <Type className="w-12 h-12 mx-auto text-blue-600 mb-2" />
-                        <p className="text-sm font-semibold text-blue-700">Slika 1</p>
-                        <p className="text-xs text-blue-600">Početni frejm</p>
-                      </div>
+                    <div className="aspect-[4/3] rounded-xl border-2 border-blue-300 overflow-hidden">
+                      <img
+                        src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-1"
+                        alt="Početni frejm"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Prompt:</p>
@@ -113,12 +113,12 @@ export const WhatWeDoSection = () => {
 
                   {/* Image 2 */}
                   <div className="space-y-3">
-                    <div className="aspect-[4/3] bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl border-2 border-purple-300 flex items-center justify-center">
-                      <div className="text-center">
-                        <Type className="w-12 h-12 mx-auto text-purple-600 mb-2" />
-                        <p className="text-sm font-semibold text-purple-700">Slika 2</p>
-                        <p className="text-xs text-purple-600">Krajnji frejm</p>
-                      </div>
+                    <div className="aspect-[4/3] rounded-xl border-2 border-purple-300 overflow-hidden">
+                      <img
+                        src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-2"
+                        alt="Krajnji frejm"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Prompt:</p>
@@ -136,11 +136,20 @@ export const WhatWeDoSection = () => {
                 </div>
 
                 {/* Video Output */}
-                <div className="bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl p-6 text-center">
-                  <Film className="w-16 h-16 mx-auto text-white mb-3" />
-                  <p className="text-white font-bold text-lg mb-2">Video Klip (9:16)</p>
-                  <p className="text-white/90 text-sm">Glatka animacija između dva frejma</p>
-                  <div className="mt-4 inline-block px-4 py-2 bg-white/20 rounded-full">
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 text-center">
+                  <p className="text-white font-bold text-lg mb-4">Video Klip (9:16)</p>
+                  <div className="aspect-[9/16] max-w-xs mx-auto rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl">
+                    <video
+                      src="https://res.cloudinary.com/dyarnpqaq/video/upload/w_720,br_500k,c_limit/demo-video-4.mp4"
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    />
+                  </div>
+                  <p className="text-white/90 text-sm mt-4">Glatka animacija između dva frejma</p>
+                  <div className="mt-4 inline-block px-4 py-2 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-full">
                     <p className="text-white text-xs font-semibold">Spreman za objavu! 🎬</p>
                   </div>
                 </div>

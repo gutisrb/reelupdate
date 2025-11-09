@@ -138,11 +138,6 @@ export const FloatingCTA = ({
             {buttonText}
             <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
-
-          {/* Trust badge */}
-          <p className="text-white/50 text-sm mt-6">
-            Besplatno · Bez obaveza · 15 minuta
-          </p>
         </div>
 
         {/* Gradient orbs */}

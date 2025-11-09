@@ -31,20 +31,6 @@ export const HeroSection = () => {
               transition={{ duration: 0.8, ease: 'easeOut' }}
               className="space-y-8 text-center lg:text-left"
             >
-              {/* Logo */}
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="inline-block"
-              >
-                <img
-                  src="/brand/mark.png"
-                  alt="Reel Estate"
-                  className="h-20 md:h-24 w-auto"
-                />
-              </motion.div>
-
               {/* Headline */}
               <div className="space-y-6">
                 {/* Problem */}

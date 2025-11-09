@@ -40,30 +40,31 @@ export function MarketingNav() {
       }`}
     >
       <div className="container mx-auto px-6">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-20 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
             <img
               src="/brand/wordmark.png"
               alt="Reel Estate"
-              className="hidden sm:block h-12 w-auto"
+              className="hidden sm:block h-16 w-auto"
             />
             <img
               src="/brand/mark.png"
               alt="Reel Estate"
-              className="block sm:hidden h-10 w-auto"
+              className="block sm:hidden h-12 w-auto"
             />
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-10">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => scrollToSection(item.id)}
-                className="text-sm text-white/70 hover:text-white transition-colors"
+                className="text-sm font-medium text-white/80 hover:text-white transition-colors relative group"
               >
                 {item.name}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] transition-all group-hover:w-full" />
               </button>
             ))}
           </div>
@@ -72,13 +73,13 @@ export function MarketingNav() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => scrollToSection('contact')}
-              className="bg-white text-black hover:bg-white/90 font-medium px-6 h-10 rounded-md transition-colors"
+              className="bg-gradient-to-r from-[#3B5BFF] via-[#3B82F6] to-[#2DD4BF] text-white hover:opacity-90 font-semibold px-6 h-11 rounded-lg transition-all hover:scale-105 shadow-lg shadow-blue-500/20"
             >
               Zakaži demo
             </button>
 
             {/* Login link for existing clients */}
-            <Link to="/app/login" className="text-sm text-white/60 hover:text-white transition-colors hidden sm:block">
+            <Link to="/app/login" className="text-sm font-medium text-white/70 hover:text-white transition-colors hidden sm:block">
               Prijavi se
             </Link>
 

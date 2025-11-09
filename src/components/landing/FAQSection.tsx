@@ -5,11 +5,7 @@ import { FloatingCTA } from './FloatingCTA';
 import { ShaderBackground } from '@/components/ui/shaders-hero-section';
 
 const faqs = [
-  {
-    emoji: '💰',
-    question: 'Koliko košta?',
-    answer: 'Platforma je trenutno u beta fazi i dostupna je potpuno besplatno za rane korisnike. Cene će biti objavljene kad izađemo iz beta faze.',
-  },
+
   {
     emoji: '🖼️',
     question: 'Kako funkcioniše AI nameštanje?',
