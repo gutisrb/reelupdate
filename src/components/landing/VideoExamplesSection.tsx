@@ -66,8 +66,8 @@ const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => 
 
   // Get Cloudinary cloud name
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo';
-  // Using basic transformations to reduce file size (w_1080 limits width to 1080px)
-  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_1080,c_limit/${publicId}.mp4`;
+  // Aggressive compression: w_720 limits width, br_500k limits bitrate for faster loading
+  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_720,br_500k,c_limit/${publicId}.mp4`;
 
   return (
     <motion.div
@@ -88,7 +88,8 @@ const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => 
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="none"
+            loading="lazy"
           >
             <source src={videoUrl} type="video/mp4" />
             Your browser does not support the video tag.

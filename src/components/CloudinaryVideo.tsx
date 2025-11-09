@@ -22,9 +22,9 @@ export const CloudinaryVideo = ({
   // Get Cloudinary cloud name from environment variable
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo';
 
-  // Construct Cloudinary video URL with compression
-  // Using basic free-tier transformations to reduce file size
-  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_1080,c_limit/${publicId}.mp4`;
+  // Construct Cloudinary video URL with aggressive compression
+  // w_720: limit width to 720px, br_500k: limit bitrate to 500kbps for smaller files
+  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/w_720,br_500k,c_limit/${publicId}.mp4`;
 
   useEffect(() => {
     // Ensure video plays on mobile devices
@@ -44,7 +44,8 @@ export const CloudinaryVideo = ({
       muted={muted}
       playsInline
       controls={controls}
-      preload="metadata"
+      preload="none"
+      loading="lazy"
     >
       <source src={videoUrl} type="video/mp4" />
       Your browser does not support the video tag.
