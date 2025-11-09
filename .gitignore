@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Large video files - use Cloudinary instead
+*.mp4
+*.mov
+*.avi
+*.webm
+*.mkv

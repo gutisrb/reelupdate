@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { CloudinaryVideo } from '@/components/CloudinaryVideo';
 
 export const VideoExamplesSection = () => {
   return (
@@ -27,8 +28,8 @@ export const VideoExamplesSection = () => {
 
         {/* Video Grid - 3 examples */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {['demo1.mp4', 'demo2.mp4', 'demo3.mp4'].map((videoFile, index) => (
-            <VideoCard key={index} videoFile={videoFile} index={index} />
+          {['demo-video-1', 'demo-video-2', 'demo-video-3'].map((publicId, index) => (
+            <VideoCard key={index} publicId={publicId} index={index} />
           ))}
         </div>
       </div>
@@ -36,7 +37,7 @@ export const VideoExamplesSection = () => {
   );
 };
 
-const VideoCard = ({ videoFile, index }: { videoFile: string; index: number }) => {
+const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(0.5);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -63,6 +64,10 @@ const VideoCard = ({ videoFile, index }: { videoFile: string; index: number }) =
     }
   };
 
+  // Get Cloudinary cloud name
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo';
+  const videoUrl = `https://res.cloudinary.com/${cloudName}/video/upload/q_auto,f_auto/${publicId}.mp4`;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -84,7 +89,7 @@ const VideoCard = ({ videoFile, index }: { videoFile: string; index: number }) =
             playsInline
             preload="metadata"
           >
-            <source src={`/${videoFile}`} type="video/mp4" />
+            <source src={videoUrl} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
 
