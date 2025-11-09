@@ -79,7 +79,7 @@ export const CloudinaryVideo = ({
         muted={muted}
         playsInline
         controls={controls}
-        preload="metadata"
+        preload="none"
       >
         <source src={videoUrl} type="video/mp4" />
         Your browser does not support the video tag.

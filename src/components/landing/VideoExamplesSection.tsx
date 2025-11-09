@@ -122,7 +122,7 @@ const VideoCard = ({ publicId, index }: { publicId: string; index: number }) => 
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="none"
           >
             <source src={videoUrl} type="video/mp4" />
             Your browser does not support the video tag.
