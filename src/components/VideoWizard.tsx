@@ -10,6 +10,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useProgress } from '@/contexts/ProgressContext';
 import { useWizard } from '@/contexts/WizardContext';
 import { compressMappedEntries } from '@/lib/compressWebhookImage';
+import { MAKE_VIDEO_URL } from '@/config/make';
 
 interface VideoWizardProps {
   user: User;
@@ -119,11 +120,11 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     setProgress(20);
 
     try {
-      // Fetch webhook URL from user's profile (per-client custom endpoint)
-      const webhookUrl = profile?.webhook_url;
+      // Use webhook URL from user's profile, or fall back to environment variable
+      const webhookUrl = profile?.webhook_url || MAKE_VIDEO_URL;
 
       if (!webhookUrl) {
-        throw new Error('Webhook URL not configured for this user. Please contact support.');
+        throw new Error('Webhook URL not configured. Please contact support.');
       }
 
       const { form: multipartData, originalCount, compressedCount } = await createMultipartFormData();
