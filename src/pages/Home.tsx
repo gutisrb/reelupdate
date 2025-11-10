@@ -29,11 +29,11 @@ export default function Home() {
       {/* How It Works - 4-step process */}
       <HowItWorksSection />
 
-      {/* FAQ - 5 key questions with CTA */}
-      <FAQSection />
-
       {/* Book Consultation - Main conversion point */}
       <BookConsultationSection />
+
+      {/* FAQ - 5 key questions with CTA */}
+      <FAQSection />
 
       {/* Footer */}
       <LandingFooter />

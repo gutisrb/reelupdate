@@ -176,74 +176,74 @@ export const WhatWeDoSection = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="mt-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-10 border-2 border-purple-200 shadow-xl"
+            className="mt-20 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-12 border-2 border-purple-200 shadow-xl"
           >
-            <div className="mb-10 text-center">
-              <h3 className="text-3xl font-bold text-gray-900 mb-3">
+            <div className="mb-12 text-center">
+              <h3 className="text-4xl font-bold text-gray-900 mb-4">
                 Stage Studio + Reel Studio = Perfektna kombinacija
               </h3>
-              <p className="text-lg text-gray-600">
+              <p className="text-xl text-gray-600">
                 Pogledaj kako funkcioniše kompletna automatizacija
               </p>
             </div>
 
-            {/* Horizontal Flow */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
+            {/* Horizontal Flow - Improved Layout */}
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 max-w-7xl mx-auto">
 
               {/* Step 1: Original Photos */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-gray-500 text-center">Originalne slike</p>
-                <div className="space-y-2">
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-purple-300">
+              <div className="flex-1 space-y-4">
+                <p className="text-sm font-bold text-gray-700 text-center uppercase tracking-wide">Originalne slike</p>
+                <div className="space-y-4">
+                  <div className="rounded-2xl overflow-hidden border-4 border-purple-300 shadow-lg">
                     <img
                       src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-1"
                       alt="Original 1"
-                      className="w-full h-full object-cover"
+                      className="w-full aspect-[4/3] object-cover"
                     />
                   </div>
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-purple-300">
+                  <div className="rounded-2xl overflow-hidden border-4 border-purple-300 shadow-lg">
                     <img
                       src="https://res.cloudinary.com/dyarnpqaq/image/upload/demo-photo-2"
                       alt="Original 2"
-                      className="w-full h-full object-cover"
+                      className="w-full aspect-[4/3] object-cover"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Arrow 1 */}
-              <div className="flex justify-center">
-                <ArrowRight className="w-8 h-8 text-purple-400" />
+              <div className="flex justify-center items-center px-4">
+                <ArrowRight className="w-12 h-12 text-purple-500" strokeWidth={2.5} />
               </div>
 
               {/* Step 2: AI Prompts + Edited Photos */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-gray-500 text-center">AI edituje</p>
-                <div className="space-y-2">
+              <div className="flex-1 space-y-4">
+                <p className="text-sm font-bold text-gray-700 text-center uppercase tracking-wide">AI edituje</p>
+                <div className="space-y-4">
                   {/* Prompt 1 + Edited 1 */}
-                  <div className="space-y-1">
-                    <div className="bg-white rounded-lg p-2 border border-purple-200">
-                      <p className="text-xs text-gray-600 italic">"Dodaj nameštaj..."</p>
+                  <div className="space-y-2">
+                    <div className="bg-white rounded-xl p-3 border-2 border-purple-300 shadow-sm">
+                      <p className="text-sm text-gray-700 font-medium italic">"Dodaj nameštaj..."</p>
                     </div>
-                    <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-blue-300">
+                    <div className="rounded-2xl overflow-hidden border-4 border-blue-400 shadow-lg">
                       <img
                         src="/wmremove-transformed (1).png"
                         alt="Edited 1"
-                        className="w-full h-full object-cover"
+                        className="w-full aspect-[4/3] object-cover"
                       />
                     </div>
                   </div>
 
                   {/* Prompt 2 + Edited 2 */}
-                  <div className="space-y-1">
-                    <div className="bg-white rounded-lg p-2 border border-purple-200">
-                      <p className="text-xs text-gray-600 italic">"Dodaj karaktere..."</p>
+                  <div className="space-y-2">
+                    <div className="bg-white rounded-xl p-3 border-2 border-purple-300 shadow-sm">
+                      <p className="text-sm text-gray-700 font-medium italic">"Dodaj karaktere..."</p>
                     </div>
-                    <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-pink-300">
+                    <div className="rounded-2xl overflow-hidden border-4 border-pink-400 shadow-lg">
                       <img
                         src="/wmremove-transformed (2).png"
                         alt="Edited 2"
-                        className="w-full h-full object-cover"
+                        className="w-full aspect-[4/3] object-cover"
                       />
                     </div>
                   </div>
@@ -251,19 +251,19 @@ export const WhatWeDoSection = () => {
               </div>
 
               {/* Arrow 2 */}
-              <div className="flex justify-center">
-                <ArrowRight className="w-8 h-8 text-blue-400" />
+              <div className="flex justify-center items-center px-4">
+                <ArrowRight className="w-12 h-12 text-blue-500" strokeWidth={2.5} />
               </div>
 
               {/* Step 3: Final Video Output */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-gray-500 text-center">Finalni video</p>
-                <div className="bg-gray-900 rounded-xl p-4">
-                  <div className="aspect-[9/16] rounded-lg overflow-hidden border-2 border-gray-600">
+              <div className="flex-1 space-y-4">
+                <p className="text-sm font-bold text-gray-700 text-center uppercase tracking-wide">Finalni video</p>
+                <div className="bg-gray-900 rounded-2xl p-6 shadow-xl">
+                  <div className="rounded-xl overflow-hidden border-4 border-cyan-400 shadow-lg">
                     <CloudinaryVideo
                       publicId="2f8d4e8b-beef-4a78-bb5d-53ac5e10a2aa_resultb692dce3581d5b25_y7wnsc"
-                      className="w-full h-full object-cover"
-                      autoPlay={false}
+                      className="w-full h-full"
+                      autoPlay={true}
                       loop={true}
                       muted={true}
                     />
@@ -273,9 +273,9 @@ export const WhatWeDoSection = () => {
             </div>
 
             {/* Explanation */}
-            <div className="mt-8 bg-white rounded-2xl p-6 border border-purple-200">
-              <p className="text-sm text-gray-700 text-center leading-relaxed">
-                <strong>Kako radi:</strong> Stage Studio AI edituje originalne slike po tvojim promptovima.
+            <div className="mt-12 bg-white rounded-2xl p-8 border-2 border-purple-300 shadow-lg">
+              <p className="text-base text-gray-700 text-center leading-relaxed">
+                <strong className="text-lg">Kako radi:</strong> Stage Studio AI edituje originalne slike po tvojim promptovima.
                 Zatim Reel Studio koristi te editovane slike kao prvi i poslednji frejm,
                 i AI generiše glatku animaciju između njih sa glasom, titlovima i muzikom.
               </p>
