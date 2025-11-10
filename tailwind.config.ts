@@ -145,6 +145,12 @@ export default {
 				'lift': {
 					'0%': { transform: 'scale(1) translateY(0)' },
 					'100%': { transform: 'scale(1.01) translateY(-1px)' }
+				},
+
+				/* Background gradient animation */
+				'gradient': {
+					'0%, 100%': { opacity: '0.2', transform: 'scale(1) rotate(0deg)' },
+					'50%': { opacity: '0.3', transform: 'scale(1.1) rotate(180deg)' }
 				}
 			},
 			animation: {
@@ -153,6 +159,7 @@ export default {
 				'fade-in': 'fade-in 180ms cubic-bezier(0, 0, 0.2, 1)',
 				'scale-in': 'scale-in 180ms cubic-bezier(0, 0, 0.2, 1)',
 				'lift': 'lift 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+				'gradient': 'gradient 8s ease-in-out infinite',
 			},
 			transitionDuration: {
 				'80': '80ms',

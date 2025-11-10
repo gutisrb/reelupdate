@@ -942,6 +942,17 @@ label {
   90% { transform: translate(1px, 0); }
 }
 
+@keyframes gradient {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.1) rotate(180deg);
+  }
+}
+
 /* Enhanced Animations */
 @keyframes stepper-glow-pulse {
   0% { box-shadow: 0 0 0 0 hsla(var(--primary), 0.3); }

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Film, Wand2, Palette, Type, Music, Sparkles, ArrowRight } from 'lucide-react';
+import { CloudinaryVideo } from '@/components/CloudinaryVideo';
 
 export const WhatWeDoSection = () => {
   return (
@@ -224,8 +225,12 @@ export const WhatWeDoSection = () => {
                     <div className="bg-white rounded-lg p-2 border border-purple-200">
                       <p className="text-xs text-gray-600 italic">"Dodaj nameštaj..."</p>
                     </div>
-                    <div className="aspect-[4/3] rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 flex items-center justify-center">
-                      <p className="text-xs text-blue-700 font-semibold">Editovana 1</p>
+                    <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-blue-300">
+                      <img
+                        src="/wmremove-transformed (1).png"
+                        alt="Edited 1"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
 
@@ -234,8 +239,12 @@ export const WhatWeDoSection = () => {
                     <div className="bg-white rounded-lg p-2 border border-purple-200">
                       <p className="text-xs text-gray-600 italic">"Dodaj karaktere..."</p>
                     </div>
-                    <div className="aspect-[4/3] rounded-lg bg-gradient-to-br from-pink-100 to-pink-200 border-2 border-pink-300 flex items-center justify-center">
-                      <p className="text-xs text-pink-700 font-semibold">Editovana 2</p>
+                    <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-pink-300">
+                      <img
+                        src="/wmremove-transformed (2).png"
+                        alt="Edited 2"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
                 </div>
@@ -250,13 +259,14 @@ export const WhatWeDoSection = () => {
               <div className="space-y-3">
                 <p className="text-xs font-bold text-gray-500 text-center">Finalni video</p>
                 <div className="bg-gray-900 rounded-xl p-4">
-                  <div className="aspect-[9/16] rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 border-2 border-gray-600 flex flex-col items-center justify-center gap-3 p-4">
-                    <Film className="w-12 h-12 text-cyan-400" />
-                    <p className="text-white text-sm font-semibold text-center">Video (9:16)</p>
-                    <p className="text-white/60 text-xs text-center">Frame-to-frame animacija između editovanih slika</p>
-                    <div className="px-3 py-1 bg-gradient-to-r from-[#3B5BFF] to-[#2DD4BF] rounded-full">
-                      <p className="text-white text-xs font-bold">Spreman! 🎬</p>
-                    </div>
+                  <div className="aspect-[9/16] rounded-lg overflow-hidden border-2 border-gray-600">
+                    <CloudinaryVideo
+                      publicId="2f8d4e8b-beef-4a78-bb5d-53ac5e10a2aa_resultb692dce3581d5b25_y7wnsc"
+                      className="w-full h-full object-cover"
+                      autoPlay={false}
+                      loop={true}
+                      muted={true}
+                    />
                   </div>
                 </div>
               </div>
