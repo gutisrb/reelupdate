@@ -147,7 +147,9 @@ export default function Furnisher() {
         formData.append('image2', '');
       }
 
-      formData.append('instructions', instructions);
+      // Clean instructions: remove leading/trailing whitespace and normalize newlines
+      const cleanedInstructions = instructions.trim().replace(/\n+/g, ' ');
+      formData.append('instructions', cleanedInstructions);
 
       const response = await fetch(MAKE_CREATE_URL, {
         method: 'POST',
