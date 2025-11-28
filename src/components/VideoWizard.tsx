@@ -11,6 +11,7 @@ import { useProgress } from '@/contexts/ProgressContext';
 import { useWizard } from '@/contexts/WizardContext';
 import { compressMappedEntries } from '@/lib/compressWebhookImage';
 import { MAKE_VIDEO_URL } from '@/config/make';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VideoWizardProps {
   user: User;
@@ -120,20 +121,33 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     setProgress(20);
 
     try {
-      // Use webhook URL from user's profile, or fall back to environment variable
-      const webhookUrl = profile?.webhook_url || MAKE_VIDEO_URL;
-
-      if (!webhookUrl) {
-        throw new Error('Webhook URL not configured. Please contact support.');
-      }
-
+      // Call Supabase Edge Function instead of Make.com
       const { form: multipartData, originalCount, compressedCount } = await createMultipartFormData();
-      setProgress(55);
+      setProgress(40);
 
-      const res = await fetch(webhookUrl, { method: "POST", body: multipartData });
+      // Get Supabase URL from environment or use default
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/process-video-generation`;
+
+      console.log('📡 Calling Edge Function:', edgeFunctionUrl);
+
+      const res = await fetch(edgeFunctionUrl, {
+        method: "POST",
+        body: multipartData,
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
       setProgress(90);
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (errorData.error === 'NO_VIDEO_CREDITS') {
+          throw new Error('Nemate dovoljno kredita za generisanje videa.');
+        }
+        throw new Error(`HTTP ${res.status}: ${errorData.error || 'Unknown error'}`);
+      }
 
       // Show warning if images were dropped
       if (compressedCount < originalCount) {

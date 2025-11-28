@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Library, Video, Home, BookOpen, User, LogOut } from 'lucide-react';
+import { Library, Video, Home, BookOpen, User, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
@@ -130,6 +130,12 @@ export function AppNavigation() {
                 <Link to="/app/profile" className="flex items-center cursor-pointer">
                   <User className="h-4 w-4 mr-2" />
                   Profil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/app/settings" className="flex items-center cursor-pointer">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Podešavanja
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

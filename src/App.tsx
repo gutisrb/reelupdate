@@ -20,6 +20,7 @@ import { Galerija } from "./pages/app/Galerija";
 import { GalerijaDetail } from "./pages/app/GalerijaDetail";
 import { Docs } from "./pages/app/Docs";
 import { Profile } from "./pages/app/Profile";
+import { Settings } from "./pages/app/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ function AppContent() {
               <Route path="stage" element={<Furnisher />} />
               <Route path="docs" element={<Docs />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="settings" element={<Settings />} />
               <Route path="assets" element={<Assets />} />
             </Route>
             <Route path="*" element={<NotFound />} />
