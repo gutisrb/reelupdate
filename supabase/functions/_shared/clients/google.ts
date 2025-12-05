@@ -71,7 +71,19 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
   /**
    * Generate TTS audio using Gemini TTS
    */
-  async generateTTS(text: string, voiceId: string): Promise<ArrayBuffer> {
+  async generateTTS(text: string, voiceId: string, styleInstructions?: string): Promise<ArrayBuffer> {
+    // Determine model and voice name from voiceId (e.g. "Zephyr-flash" -> model: Flash, voice: Zephyr)
+    let endpoint = API_ENDPOINTS.google.geminiTTSFlash; // Default to Flash
+    let voiceName = voiceId;
+
+    if (voiceId.endsWith('-pro')) {
+      endpoint = API_ENDPOINTS.google.geminiTTSPro;
+      voiceName = voiceId.replace('-pro', '');
+    } else if (voiceId.endsWith('-flash')) {
+      endpoint = API_ENDPOINTS.google.geminiTTSFlash;
+      voiceName = voiceId.replace('-flash', '');
+    }
+
     const body = {
       contents: [{
         parts: [{ text }],
@@ -81,15 +93,16 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: voiceId,
+              voiceName: voiceName,
             },
           },
+          ...(styleInstructions && { prompt: styleInstructions }),
         },
       },
     };
 
     const response = await fetch(
-      `${API_ENDPOINTS.google.geminiTTS}?key=${this.apiKey}`,
+      `${endpoint}?key=${this.apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

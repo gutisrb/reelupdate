@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -19,18 +20,31 @@ interface VoicePreset {
   voice_type: string;
 }
 
+interface GroupedVoice {
+  baseName: string;
+  baseVoiceId: string;
+  gender: string;
+  description: string;
+  flash: VoicePreset | null;
+  pro: VoicePreset | null;
+}
+
 interface VoiceSettingsProps {
   userId: string;
 }
 
+const DEFAULT_STYLE_INSTRUCTIONS = 'UGC style voiceover with warm, confident delivery in a sophisticated professional tone, emphasizing key features naturally, in a Belgrade Serbian dialect. and fast pace';
+
 export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
   const [voices, setVoices] = useState<VoicePreset[]>([]);
-  const [filteredVoices, setFilteredVoices] = useState<VoicePreset[]>([]);
+  const [groupedVoices, setGroupedVoices] = useState<GroupedVoice[]>([]);
+  const [filteredGroupedVoices, setFilteredGroupedVoices] = useState<GroupedVoice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
+  const [selectedModels, setSelectedModels] = useState<Record<string, 'flash' | 'pro'>>({});
+  const [styleInstructions, setStyleInstructions] = useState<string>(DEFAULT_STYLE_INSTRUCTIONS);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [genderFilter, setGenderFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,8 +56,12 @@ export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
   }, [userId]);
 
   useEffect(() => {
+    groupVoices();
+  }, [voices]);
+
+  useEffect(() => {
     filterVoices();
-  }, [voices, genderFilter, typeFilter, searchQuery]);
+  }, [groupedVoices, genderFilter, searchQuery]);
 
   const loadVoices = async () => {
     const { data, error } = await supabase
@@ -61,41 +79,66 @@ export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
     setLoading(false);
   };
 
+  const groupVoices = () => {
+    const grouped: Record<string, GroupedVoice> = {};
+
+    voices.forEach(voice => {
+      // Extract base name (remove model suffix from voice_id)
+      const baseVoiceId = voice.voice_id.replace(/-flash$|-pro$/, '');
+      const baseName = voice.name.replace(/\s*\((Flash|Pro)\)\s*$/, '').trim();
+
+      if (!grouped[baseVoiceId]) {
+        grouped[baseVoiceId] = {
+          baseName,
+          baseVoiceId,
+          gender: voice.gender,
+          description: voice.description,
+          flash: null,
+          pro: null,
+        };
+      }
+
+      if (voice.voice_type === 'flash') {
+        grouped[baseVoiceId].flash = voice;
+      } else if (voice.voice_type === 'pro') {
+        grouped[baseVoiceId].pro = voice;
+      }
+    });
+
+    setGroupedVoices(Object.values(grouped));
+  };
+
   const loadUserSettings = async () => {
     const { data, error } = await supabase
       .from('user_settings')
-      .select('voice_id')
+      .select('voice_id, voice_style_instructions')
       .eq('user_id', userId)
       .single();
 
     if (data) {
-      setSelectedVoiceId(data.voice_id);
+      setSelectedVoiceId((data as any).voice_id);
+      setStyleInstructions((data as any).voice_style_instructions || DEFAULT_STYLE_INSTRUCTIONS);
     }
   };
 
   const filterVoices = () => {
-    let filtered = [...voices];
+    let filtered = [...groupedVoices];
 
     // Gender filter
     if (genderFilter !== 'all') {
       filtered = filtered.filter(v => v.gender === genderFilter);
     }
 
-    // Type filter
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(v => v.voice_type === typeFilter);
-    }
-
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(v =>
-        v.name.toLowerCase().includes(query) ||
+        v.baseName.toLowerCase().includes(query) ||
         v.description.toLowerCase().includes(query)
       );
     }
 
-    setFilteredVoices(filtered);
+    setFilteredGroupedVoices(filtered);
   };
 
   const playPreview = (previewUrl: string | null, voiceId: string) => {
@@ -156,7 +199,7 @@ export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
         user_id: userId,
         voice_id: voiceId,
         updated_at: new Date().toISOString(),
-      }, {
+      } as any, {
         onConflict: 'user_id',
       });
 
@@ -176,16 +219,41 @@ export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
     }
   };
 
-  const getVoiceTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'hd': return 'bg-purple-500';
-      case 'premium': return 'bg-blue-500';
-      case 'wavenet': return 'bg-blue-500';
-      case 'ultra': return 'bg-indigo-500';
-      case 'neural2': return 'bg-indigo-500';
-      case 'studio': return 'bg-pink-500';
-      default: return 'bg-gray-500';
+  const saveStyleInstructions = async () => {
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: userId,
+        voice_style_instructions: styleInstructions,
+        updated_at: new Date().toISOString(),
+      } as any, {
+        onConflict: 'user_id',
+      });
+
+    setSaving(false);
+
+    if (error) {
+      toast({
+        title: "Greška",
+        description: "Došlo je do greške prilikom čuvanja stilskih instrukcija.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Uspešno",
+        description: "Stilske instrukcije su sačuvane.",
+      });
     }
+  };
+
+  const getSelectedModel = (baseVoiceId: string): 'flash' | 'pro' => {
+    return selectedModels[baseVoiceId] || 'flash';
+  };
+
+  const setSelectedModel = (baseVoiceId: string, model: 'flash' | 'pro') => {
+    setSelectedModels(prev => ({ ...prev, [baseVoiceId]: model }));
   };
 
   if (loading) {
@@ -201,6 +269,40 @@ export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Style Instructions */}
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium">Stilske Instrukcije</label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Opišite kako želite da glas zvuči (ton, tempo, akcenat, stil isporuke)
+            </p>
+          </div>
+          <Textarea
+            value={styleInstructions}
+            onChange={(e) => setStyleInstructions(e.target.value)}
+            placeholder={DEFAULT_STYLE_INSTRUCTIONS}
+            className="min-h-[100px]"
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={saveStyleInstructions}
+              disabled={saving}
+              size="sm"
+            >
+              {saving ? 'Čuvanje...' : 'Sačuvaj Instrukcije'}
+            </Button>
+            <Button
+              onClick={() => setStyleInstructions(DEFAULT_STYLE_INSTRUCTIONS)}
+              variant="outline"
+              size="sm"
+            >
+              Vrati na Podrazumevano
+            </Button>
+          </div>
+        </div>
+
+        <div className="border-t pt-6" />
+
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search */}
@@ -222,91 +324,111 @@ export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
               <TabsTrigger value="female">Ženski</TabsTrigger>
             </TabsList>
           </Tabs>
-
-          {/* Type Filter */}
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder="Tip glasa" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Svi tipovi</SelectItem>
-              <SelectItem value="hd">HD</SelectItem>
-              <SelectItem value="premium">Premium</SelectItem>
-              <SelectItem value="wavenet">WaveNet</SelectItem>
-              <SelectItem value="standard">Standard</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Voice Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredVoices.map((voice) => (
-            <div
-              key={voice.id}
-              className={`relative group rounded-lg border-2 p-4 transition-all cursor-pointer hover:shadow-lg ${
-                selectedVoiceId === voice.voice_id
+          {filteredGroupedVoices.map((groupedVoice) => {
+            const selectedModel = getSelectedModel(groupedVoice.baseVoiceId);
+            const currentVoice = selectedModel === 'flash' ? groupedVoice.flash : groupedVoice.pro;
+            const currentVoiceId = currentVoice?.voice_id || '';
+
+            // Check if this grouped voice contains the selected voice (either flash or pro variant)
+            const isSelected = selectedVoiceId === groupedVoice.flash?.voice_id ||
+              selectedVoiceId === groupedVoice.pro?.voice_id;
+
+            return (
+              <div
+                key={groupedVoice.baseVoiceId}
+                className={`relative group rounded-lg border-2 p-4 transition-all cursor-pointer hover:shadow-lg ${isSelected
                   ? 'border-primary bg-primary/5 shadow-md'
                   : 'border-border hover:border-primary/50'
-              }`}
-              onClick={() => selectVoice(voice.voice_id)}
-            >
-              {/* Selected Indicator */}
-              {selectedVoiceId === voice.voice_id && (
-                <div className="absolute top-2 right-2">
-                  <div className="bg-primary rounded-full p-1">
-                    <Check className="h-4 w-4 text-primary-foreground" />
+                  }`}
+                onClick={() => currentVoice && selectVoice(currentVoice.voice_id)}
+              >
+                {/* Selected Indicator */}
+                {isSelected && (
+                  <div className="absolute top-2 right-2">
+                    <div className="bg-primary rounded-full p-1">
+                      <Check className="h-4 w-4 text-primary-foreground" />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Voice Info */}
-              <div className="space-y-3">
-                <div>
-                  <h3 className="font-semibold text-lg">{voice.name.split('(')[0].trim()}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">
-                      {voice.gender === 'male' ? 'Muški' : 'Ženski'}
-                    </Badge>
-                    <Badge className={`text-xs ${getVoiceTypeBadgeColor(voice.voice_type)}`}>
-                      {voice.voice_type.toUpperCase()}
-                    </Badge>
+                {/* Voice Info */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-lg">{groupedVoice.baseName}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {groupedVoice.gender === 'male' ? 'Muški' : 'Ženski'}
+                      </Badge>
+                    </div>
                   </div>
+
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {groupedVoice.description}
+                  </p>
+
+                  {/* Model Selector */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant={selectedModel === 'flash' ? 'default' : 'outline'}
+                      size="sm"
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedModel(groupedVoice.baseVoiceId, 'flash');
+                      }}
+                      disabled={!groupedVoice.flash}
+                    >
+                      Flash
+                    </Button>
+                    <Button
+                      variant={selectedModel === 'pro' ? 'default' : 'outline'}
+                      size="sm"
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedModel(groupedVoice.baseVoiceId, 'pro');
+                      }}
+                      disabled={!groupedVoice.pro}
+                    >
+                      Pro
+                    </Button>
+                  </div>
+
+                  {/* Preview Button */}
+                  <Button
+                    variant={playingVoice === currentVoiceId ? "default" : "outline"}
+                    size="sm"
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playPreview(currentVoice?.preview_url || null, currentVoiceId);
+                    }}
+                    disabled={!currentVoice?.preview_url}
+                  >
+                    {playingVoice === currentVoiceId ? (
+                      <>
+                        <Pause className="h-4 w-4 mr-2" />
+                        Stop
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Preview
+                      </>
+                    )}
+                  </Button>
                 </div>
-
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {voice.description}
-                </p>
-
-                {/* Preview Button */}
-                <Button
-                  variant={playingVoice === voice.voice_id ? "default" : "outline"}
-                  size="sm"
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    playPreview(voice.preview_url, voice.voice_id);
-                  }}
-                  disabled={!voice.preview_url}
-                >
-                  {playingVoice === voice.voice_id ? (
-                    <>
-                      <Pause className="h-4 w-4 mr-2" />
-                      Stop
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Preview
-                    </>
-                  )}
-                </Button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* No Results */}
-        {filteredVoices.length === 0 && (
+        {filteredGroupedVoices.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Volume2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">Nema pronađenih glasova</p>
@@ -316,7 +438,7 @@ export function VoiceSettingsRedesigned({ userId }: VoiceSettingsProps) {
 
         {/* Count */}
         <div className="text-sm text-muted-foreground text-center">
-          Prikazano {filteredVoices.length} od {voices.length} glasova
+          Prikazano {filteredGroupedVoices.length} od {groupedVoices.length} glasova
         </div>
       </CardContent>
     </Card>

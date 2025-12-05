@@ -143,128 +143,156 @@ export function LogoSettings({ userId }: LogoSettingsProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Logo i Brending</CardTitle>
-        <CardDescription>
-          Dodajte vaš logo na videe i prilagodite poziciju i veličinu
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Logo Upload */}
-        <div className="space-y-4">
-          <Label>Logo Fajl</Label>
-          {logoUrl ? (
-            <div className="flex items-center gap-4">
-              <div className="relative w-32 h-32 border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-2">Logo je otpremljen</p>
-                <Button variant="outline" size="sm" onClick={removeLogo}>
-                  <X className="h-4 w-4 mr-2" />
-                  Ukloni Logo
-                </Button>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+      {/* LEFT COLUMN - CONTROLS */}
+      <div className="space-y-6 overflow-y-auto pb-20">
+        <Card>
+          <CardHeader>
+            <CardTitle>Logo Upload</CardTitle>
+            <CardDescription>Upload your brand logo (PNG, SVG recommended)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Logo Upload */}
+            <div className="space-y-4">
+              {logoUrl ? (
+                <div className="flex items-center gap-4">
+                  <div className="relative w-24 h-24 border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                    <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-2">Logo uploaded</p>
+                    <Button variant="outline" size="sm" onClick={removeLogo}>
+                      <X className="h-4 w-4 mr-2" />
+                      Remove Logo
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-muted/50 transition-colors">
+                  <input
+                    type="file"
+                    id="logo-upload"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                  <Label htmlFor="logo-upload" className="cursor-pointer block w-full h-full">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium mb-1">
+                      {uploading ? 'Uploading...' : 'Click to upload logo'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, SVG up to 2MB
+                    </p>
+                  </Label>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Position & Size</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Logo Position */}
+            <div className="space-y-4">
+              <Label>Position</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {LOGO_POSITIONS.map((position) => (
+                  <button
+                    key={position.value}
+                    onClick={() => setLogoPosition(position.value)}
+                    className={`p-3 rounded-lg border transition-all flex flex-col items-center justify-center gap-2 ${logoPosition === position.value
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-border hover:border-primary/50 hover:bg-muted'
+                      }`}
+                  >
+                    <span className="text-xl">{position.icon}</span>
+                    <span className="text-xs font-medium text-center">{position.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
-          ) : (
-            <div className="border-2 border-dashed rounded-lg p-8 text-center">
-              <input
-                type="file"
-                id="logo-upload"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={uploading}
+
+            {/* Logo Size */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Size</Label>
+                <span className="text-sm text-muted-foreground">{logoSize}%</span>
+              </div>
+              <Slider
+                value={[logoSize]}
+                onValueChange={(value) => setLogoSize(value[0])}
+                min={5}
+                max={50}
+                step={1}
+                className="w-full"
               />
-              <Label htmlFor="logo-upload" className="cursor-pointer">
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium mb-1">
-                  {uploading ? 'Otpremanje...' : 'Kliknite da otpremite logo'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  PNG, JPG, SVG do 2MB
-                </p>
-              </Label>
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Logo Position */}
-        <div className="space-y-4">
-          <Label>Pozicija Loga</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {LOGO_POSITIONS.map((position) => (
-              <button
-                key={position.value}
-                onClick={() => setLogoPosition(position.value)}
-                className={`p-4 rounded-lg border-2 transition-all text-left ${
-                  logoPosition === position.value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50'
-                }`}
-              >
-                <div className="text-2xl mb-1">{position.icon}</div>
-                <div className="text-sm font-medium">{position.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Logo Size */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>Veličina Loga</Label>
-            <span className="text-sm text-muted-foreground">{logoSize}% širine videa</span>
-          </div>
-          <Slider
-            value={[logoSize]}
-            onValueChange={(value) => setLogoSize(value[0])}
-            min={10}
-            max={25}
-            step={1}
-            className="w-full"
-          />
-          <p className="text-xs text-muted-foreground">
-            Preporučeno: 15-20% za optimalan prikaz
-          </p>
-        </div>
-
-        {/* Preview */}
-        {logoUrl && (
-          <div className="space-y-2">
-            <Label>Preview</Label>
-            <div className="relative w-full aspect-[9/16] max-w-xs mx-auto border rounded-lg overflow-hidden bg-muted">
-              <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-                Video Preview
-              </div>
-              {/* Logo overlay */}
-              <div
-                className={`absolute ${
-                  logoPosition === 'watermark'
-                    ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-30'
-                    : logoPosition === 'corner_top_left'
-                    ? 'top-4 left-4'
-                    : logoPosition === 'corner_top_right'
-                    ? 'top-4 right-4'
-                    : logoPosition === 'corner_bottom_left'
-                    ? 'bottom-4 left-4'
-                    : 'bottom-4 right-4'
-                }`}
-                style={{ width: `${logoSize}%` }}
-              >
-                <img src={logoUrl} alt="Logo" className="w-full h-auto" />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-end">
-          <Button onClick={saveSettings} disabled={saving}>
-            {saving ? 'Čuvanje...' : 'Sačuvaj Podešavanja'}
+        <div className="flex justify-end pt-4">
+          <Button onClick={saveSettings} disabled={saving} size="lg">
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* RIGHT COLUMN - PREVIEW */}
+      <div className="hidden lg:block relative">
+        <div className="sticky top-0">
+          <Card className="overflow-hidden border-0 shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
+              <CardTitle>Live Preview</CardTitle>
+              <CardDescription>See how your logo looks on a video</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="relative w-full max-w-[320px] mx-auto aspect-[9/16] rounded-3xl overflow-hidden border-4 border-gray-900 shadow-2xl bg-black">
+                {/* Video Background */}
+                <video
+                  src="https://res.cloudinary.com/dyarnpqaq/video/upload/v1764418592/b954d382-6941-4b58-9c03-4eccceeb9dae_resultf68dc3e6237c62b1_u7jqyz_apivdl.mp4"
+                  className="absolute inset-0 w-full h-full object-cover opacity-80"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+
+                {/* Logo Overlay */}
+                {logoUrl && (
+                  <div
+                    className={`absolute transition-all duration-300 ${logoPosition === 'watermark'
+                        ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50'
+                        : logoPosition === 'corner_top_left'
+                          ? 'top-6 left-6'
+                          : logoPosition === 'corner_top_right'
+                            ? 'top-6 right-6'
+                            : logoPosition === 'corner_bottom_left'
+                              ? 'bottom-24 left-6' // Adjusted for captions area
+                              : 'bottom-24 right-6'
+                      }`}
+                    style={{ width: `${logoSize}%` }}
+                  >
+                    <img src={logoUrl} alt="Logo" className="w-full h-auto drop-shadow-lg" />
+                  </div>
+                )}
+
+                {!logoUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm text-white text-sm">
+                      Upload a logo to preview
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

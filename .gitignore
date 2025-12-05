@@ -30,3 +30,9 @@ dist-ssr
 *.avi
 *.webm
 *.mkv
+
+# Temporary scripts and artifacts
+temp_transcribe.cjs
+temp_video.mp4
+transcript_output.txt
+voice_preview_results.json

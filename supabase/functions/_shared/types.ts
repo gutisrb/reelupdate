@@ -30,6 +30,7 @@ export interface VideoGenerationRequest {
 export interface UserSettings {
   voice_id: string;
   voice_language_code: string;
+  voice_style_instructions?: string;
   logo_url: string | null;
   logo_position: string;
   logo_size_percent: number;
@@ -39,6 +40,26 @@ export interface UserSettings {
   selected_custom_music_id: string | null;
   default_music_volume_db: number;
   post_description_template: string | null;
+  caption_system?: 'zapcap' | 'whisper';
+  caption_style_type?: 'template' | 'custom';
+  caption_font_family?: string;
+  caption_font_size?: number;
+  caption_font_color?: string;
+  caption_bg_color?: string;
+  caption_bg_opacity?: number;
+  caption_font_weight?: string;
+  caption_uppercase?: boolean;
+  caption_stroke_color?: string;
+  caption_stroke_width?: number;
+  caption_shadow_color?: string;
+  caption_shadow_blur?: number;
+  caption_shadow_x?: number;
+  caption_shadow_y?: number;
+  caption_position?: string;
+  caption_animation?: string;
+  caption_max_lines?: number;
+  caption_emojis?: boolean;
+  caption_single_word?: boolean;
 }
 
 export interface ClipData {
@@ -49,6 +70,8 @@ export interface ClipData {
   first_image_url: string;
   second_image_url: string | null;
   is_keyframe: boolean;
+  description?: string;
+  mood?: string;
 }
 
 export interface AudioData {

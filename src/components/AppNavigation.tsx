@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Library, Video, Home, BookOpen, User, LogOut, Settings } from 'lucide-react';
+import { Library, Video, Home, BookOpen, User, LogOut, Settings, Type, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
@@ -23,9 +23,9 @@ const navItems = [
     icon: Home,
   },
   {
-    name: 'Vodič & primeri',
-    href: '/app/docs',
-    icon: BookOpen,
+    name: 'Brand Kit',
+    href: '/app/settings',
+    icon: Palette,
   },
 ];
 
@@ -53,10 +53,10 @@ export function AppNavigation() {
         <div className="flex h-full items-center justify-between">
           {/* Logo */}
           <Link to="/app" className="flex items-center py-2">
-            <img 
-              src="/brand/mark.png" 
-              alt="Reel Estate" 
-              className="h-12 w-auto object-contain" 
+            <img
+              src="/brand/mark.png"
+              alt="Reel Estate"
+              className="h-12 w-auto object-contain"
               style={{ padding: '1px' }}
             />
           </Link>
@@ -108,13 +108,13 @@ export function AppNavigation() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="rounded-full transition-all duration-200 hover:ring-2 hover:ring-offset-2"
-                style={{ 
+                style={{
                   '--tw-ring-color': 'var(--brand-grad)',
-                  '--tw-ring-offset-color': 'transparent' 
+                  '--tw-ring-offset-color': 'transparent'
                 } as React.CSSProperties}
               >
                 <Avatar className="h-8 w-8">

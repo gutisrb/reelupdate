@@ -69,20 +69,54 @@ export class CloudinaryClient {
   }
 
   /**
-   * Assemble final video with clips + audio layers
-   * Uses Cloudinary's video transformation API
-   *
-   * This builds a URL that Cloudinary processes on-demand:
-   * 1. Concatenates video clips using fl_splice
-   * 2. Adds background music (looped, volume adjusted)
-   * 3. Adds voiceover on top
+   * Upload raw file (e.g., SRT) to Cloudinary
+   */
+  async uploadRaw(data: string, filename: string): Promise<CloudinaryUploadResponse> {
+    const formData = new FormData();
+    const blob = new Blob([data], { type: 'text/plain' });
+    formData.append('file', blob, filename);
+    formData.append('upload_preset', this.uploadPreset);
+    formData.append('resource_type', 'raw');
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${this.cloudName}/raw/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Cloudinary raw upload failed: ${error}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Assemble final video with clips + audio layers + optional subtitles
    */
   assembleVideo(
     clipUrls: string[],
     voiceoverUrl: string,
     musicUrl: string,
     totalDuration: number,
-    musicVolume: number = -60
+    musicVolume: number = -60,
+    subtitlePublicId?: string,
+    subtitleStyle?: {
+      fontFamily?: string;
+      fontSize?: number;
+      fontWeight?: string;
+      color?: string;
+      backgroundColor?: string;
+      opacity?: number;
+      strokeColor?: string;
+      strokeWidth?: number;
+      shadowColor?: string;
+      shadowBlur?: number;
+      position?: string;
+    }
   ): string {
     // Extract public IDs from Cloudinary URLs
     const clipPublicIds = clipUrls.map(url => this.extractPublicId(url));
@@ -100,7 +134,6 @@ export class CloudinaryClient {
     const baseClipId = clipPublicIds[0];
 
     // Concatenate additional clips using fl_splice
-    // fl_splice appends videos one after another
     for (let i = 1; i < clipPublicIds.length; i++) {
       transformations.push(
         `l_video:${clipPublicIds[i]}`,
@@ -110,8 +143,6 @@ export class CloudinaryClient {
     }
 
     // Add background music layer
-    // e_volume expects a percentage (-100 to 400), but we're using dB values
-    // Convert dB to percentage: -60dB ≈ 1%, -40dB ≈ 10%, -20dB ≈ 30%
     const musicVolumePercent = Math.max(1, Math.min(100, Math.round(Math.pow(10, musicVolume / 20) * 100)));
 
     transformations.push(
@@ -119,7 +150,7 @@ export class CloudinaryClient {
       'fl_layer_apply',
       `e_volume:${musicVolumePercent}`,
       'fl_splice',
-      `e_loop:${Math.ceil(totalDuration / 30)}` // Loop music to match video duration
+      `e_loop:${Math.ceil(totalDuration / 30)}`
     );
 
     // Add voiceover layer (full volume)
@@ -129,6 +160,87 @@ export class CloudinaryClient {
       'e_volume:100',
       'fl_splice'
     );
+
+    // Add subtitles if provided
+    if (subtitlePublicId) {
+      // Default styles
+      const font = subtitleStyle?.fontFamily || 'Arial';
+      const size = subtitleStyle?.fontSize || 20;
+      const weight = subtitleStyle?.fontWeight || '';
+
+      // Construct font string: font_size_weight
+      // e.g. Arial_20_bold
+      let fontString = `${font}_${size}`;
+      if (weight && weight !== 'normal') {
+        fontString += `_${weight}`;
+      }
+
+      // Construct subtitle transformation
+      let subtitleLayer = `l_subtitles:${fontString}:${subtitlePublicId}`;
+
+      // Add style modifiers
+      const styleModifiers = [];
+
+      // Font Color
+      const color = subtitleStyle?.color ? `co_rgb:${subtitleStyle.color}` : 'co_white';
+      styleModifiers.push(color);
+
+      // Background Color & Opacity
+      if (subtitleStyle?.backgroundColor) {
+        // Cloudinary background opacity is handled via alpha channel in hex or separate opacity param?
+        // Usually b_rgb:RRGGBB works. For opacity, we might need b_rgb:RRGGBBAA or o_opacity on the layer.
+        // Let's use b_rgb:RRGGBB and o_opacity if provided, but o_ affects text too.
+        // Better: b_rgb:RRGGBB
+        // If opacity is 0, we don't set background.
+        if (subtitleStyle.opacity !== undefined && subtitleStyle.opacity > 0) {
+          styleModifiers.push(`b_rgb:${subtitleStyle.backgroundColor}`);
+          // Note: Cloudinary doesn't easily support separate background opacity for text background box in l_subtitles 
+          // without using specific text_box modes which are complex. 
+          // For now, we apply solid background if opacity > 0.
+        }
+      }
+
+      // Stroke (Border)
+      if (subtitleStyle?.strokeWidth && subtitleStyle.strokeWidth > 0) {
+        const strokeColor = subtitleStyle.strokeColor || '000000';
+        styleModifiers.push(`bo_${subtitleStyle.strokeWidth}px_solid_rgb:${strokeColor}`);
+      }
+
+      // Shadow
+      if (subtitleStyle?.shadowBlur && subtitleStyle.shadowBlur > 0) {
+        // e_shadow:strength
+        styleModifiers.push(`e_shadow:${subtitleStyle.shadowBlur * 5}`); // Scale blur to strength roughly
+        if (subtitleStyle.shadowColor) {
+          styleModifiers.push(`co_rgb:${subtitleStyle.shadowColor}`); // Shadow color usually takes current color, tricky to override
+        }
+      }
+
+      // Position (Gravity)
+      if (subtitleStyle?.position) {
+        switch (subtitleStyle.position) {
+          case 'top':
+            styleModifiers.push('g_north', 'y_50');
+            break;
+          case 'bottom':
+            styleModifiers.push('g_south', 'y_50');
+            break;
+          case 'middle':
+            styleModifiers.push('g_center');
+            break;
+          default: // auto or custom
+            styleModifiers.push('g_south', 'y_50'); // Default to bottom
+        }
+      } else {
+        styleModifiers.push('g_south', 'y_50');
+      }
+
+      // Apply the layer
+      transformations.push(
+        subtitleLayer,
+        ...styleModifiers,
+        'fl_layer_apply'
+      );
+    }
 
     // Additional settings
     transformations.push(

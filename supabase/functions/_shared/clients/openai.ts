@@ -112,4 +112,64 @@ Return ONLY the corrected transcript with proper Serbian punctuation and capital
     const data = await response.json();
     return data.choices[0]?.message?.content || transcript;
   }
+
+  /**
+   * Transcribe audio using Whisper
+   */
+  async createTranscription(audioUrl: string): Promise<string> {
+    // Fetch audio file
+    const audioResponse = await fetch(audioUrl);
+    if (!audioResponse.ok) {
+      throw new Error(`Failed to fetch audio for transcription: ${audioResponse.statusText}`);
+    }
+    const audioBlob = await audioResponse.blob();
+
+    // Prepare FormData
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'verbose_json');
+    formData.append('timestamp_granularities[]', 'word'); // Request word-level timestamps if needed, or segment level
+
+    const response = await fetch(API_ENDPOINTS.openai.audioTranscriptions, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenAI transcription failed: ${error}`);
+    }
+
+    const data = await response.json();
+    return this.jsonToSrt(data);
+  }
+
+  /**
+   * Convert Whisper JSON response to SRT format
+   */
+  private jsonToSrt(data: any): string {
+    if (!data.segments) {
+      return '';
+    }
+
+    return data.segments.map((segment: any, index: number) => {
+      const start = this.formatTime(segment.start);
+      const end = this.formatTime(segment.end);
+      const text = segment.text.trim();
+      return `${index + 1}\n${start} --> ${end}\n${text}\n`;
+    }).join('\n');
+  }
+
+  private formatTime(seconds: number): string {
+    const date = new Date(0);
+    date.setMilliseconds(seconds * 1000);
+    const isoString = date.toISOString();
+    // Extract HH:mm:ss,ms from ISO string (1970-01-01T00:00:00.000Z)
+    // We need 00:00:00,000 format
+    return isoString.substring(11, 23).replace('.', ',');
+  }
 }

@@ -64,10 +64,12 @@ export const API_ENDPOINTS = {
   },
   google: {
     geminiVision: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
-    geminiTTS: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
+    geminiTTSFlash: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
+    geminiTTSPro: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-tts:generateContent',
   },
   openai: {
     chatCompletions: 'https://api.openai.com/v1/chat/completions',
+    audioTranscriptions: 'https://api.openai.com/v1/audio/transcriptions',
   },
   elevenlabs: {
     musicCompose: 'https://api.elevenlabs.io/v1/music/compose',
