@@ -9,6 +9,7 @@ import { LogoSettings } from '@/components/settings/LogoSettings';
 import { CaptionSettings } from '@/components/settings/CaptionSettings';
 import { PostTemplateSettings } from '@/components/settings/PostTemplateSettings';
 import { MusicSettings } from '@/components/settings/MusicSettings';
+import { SocialConnections } from '@/components/settings/SocialConnections';
 
 export function Settings() {
   const [user, setUser] = useState<User | null>(null);
@@ -67,6 +68,11 @@ export function Settings() {
               onClick={() => handleTabChange('post')}
               label="Post Template"
             />
+            <SidebarItem
+              active={activeTab === 'social'}
+              onClick={() => handleTabChange('social')}
+              label="Social Accounts"
+            />
           </nav>
         </div>
 
@@ -77,6 +83,7 @@ export function Settings() {
           {activeTab === 'logo' && <LogoSettings userId={user.id} />}
           {activeTab === 'captions' && <CaptionSettings userId={user.id} />}
           {activeTab === 'post' && <PostTemplateSettings userId={user.id} />}
+          {activeTab === 'social' && <SocialConnections userId={user.id} />}
         </div>
       </div>
     </div>
