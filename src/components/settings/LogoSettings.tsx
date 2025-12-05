@@ -124,6 +124,8 @@ export function LogoSettings({ userId }: LogoSettingsProps) {
         logo_position: logoPosition,
         logo_size_percent: logoSize,
         updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id'
       });
 
     setSaving(false);
@@ -206,8 +208,8 @@ export function LogoSettings({ userId }: LogoSettingsProps) {
                     key={position.value}
                     onClick={() => setLogoPosition(position.value)}
                     className={`p-3 rounded-lg border transition-all flex flex-col items-center justify-center gap-2 ${logoPosition === position.value
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'border-border hover:border-primary/50 hover:bg-muted'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border hover:border-primary/50 hover:bg-muted'
                       }`}
                   >
                     <span className="text-xl">{position.icon}</span>
@@ -266,14 +268,14 @@ export function LogoSettings({ userId }: LogoSettingsProps) {
                 {logoUrl && (
                   <div
                     className={`absolute transition-all duration-300 ${logoPosition === 'watermark'
-                        ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50'
-                        : logoPosition === 'corner_top_left'
-                          ? 'top-6 left-6'
-                          : logoPosition === 'corner_top_right'
-                            ? 'top-6 right-6'
-                            : logoPosition === 'corner_bottom_left'
-                              ? 'bottom-24 left-6' // Adjusted for captions area
-                              : 'bottom-24 right-6'
+                      ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50'
+                      : logoPosition === 'corner_top_left'
+                        ? 'top-6 left-6'
+                        : logoPosition === 'corner_top_right'
+                          ? 'top-6 right-6'
+                          : logoPosition === 'corner_bottom_left'
+                            ? 'bottom-24 left-6' // Adjusted for captions area
+                            : 'bottom-24 right-6'
                       }`}
                     style={{ width: `${logoSize}%` }}
                   >

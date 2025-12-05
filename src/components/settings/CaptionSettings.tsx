@@ -178,7 +178,9 @@ export function CaptionSettings({ userId }: CaptionSettingsProps) {
         caption_emojis: customSettings.emojis,
         caption_single_word: customSettings.singleWord,
         updated_at: new Date().toISOString(),
-      } as any);
+      } as any, {
+        onConflict: 'user_id'
+      });
 
     setSaving(false);
 
