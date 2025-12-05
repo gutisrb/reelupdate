@@ -19,6 +19,12 @@ const LOGO_POSITIONS = [
   { value: 'corner_bottom_right', label: 'Dole Desno', icon: '↘️' },
 ];
 
+interface UserSettings {
+  logo_url: string | null;
+  logo_position: string;
+  logo_size_percent: number;
+}
+
 export function LogoSettings({ userId }: LogoSettingsProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPosition, setLogoPosition] = useState('corner_top_right');
@@ -39,9 +45,10 @@ export function LogoSettings({ userId }: LogoSettingsProps) {
       .single();
 
     if (data) {
-      setLogoUrl(data.logo_url);
-      setLogoPosition(data.logo_position);
-      setLogoSize(data.logo_size_percent);
+      const settings = data as unknown as UserSettings;
+      setLogoUrl(settings.logo_url);
+      setLogoPosition(settings.logo_position);
+      setLogoSize(settings.logo_size_percent);
     }
   };
 
@@ -124,7 +131,7 @@ export function LogoSettings({ userId }: LogoSettingsProps) {
         logo_position: logoPosition,
         logo_size_percent: logoSize,
         updated_at: new Date().toISOString(),
-      }, {
+      } as any, {
         onConflict: 'user_id'
       });
 
@@ -228,8 +235,8 @@ export function LogoSettings({ userId }: LogoSettingsProps) {
               <Slider
                 value={[logoSize]}
                 onValueChange={(value) => setLogoSize(value[0])}
-                min={5}
-                max={50}
+                min={10}
+                max={25}
                 step={1}
                 className="w-full"
               />

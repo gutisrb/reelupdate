@@ -218,11 +218,15 @@ export function CaptionCustomizer({ settings, onChange }: CaptionCustomizerProps
 
         let text = currentSegment.text;
 
-        // Add emojis if enabled
+        // Add emojis if enabled (Serbian keywords)
         if (settings.emojis) {
-            if (text.toLowerCase().includes("home")) text += " 🏠";
-            if (text.toLowerCase().includes("view")) text += " 👀";
-            if (text.toLowerCase().includes("link")) text += " 🔗";
+            const lowerText = text.toLowerCase();
+            if (lowerText.includes("stan") || lowerText.includes("dom") || lowerText.includes("kuća")) text += " 🏠";
+            if (lowerText.includes("pogled") || lowerText.includes("vidik")) text += " 👀";
+            if (lowerText.includes("link") || lowerText.includes("opis") || lowerText.includes("profil")) text += " 🔗";
+            if (lowerText.includes("luksuz") || lowerText.includes("prestiž")) text += " ✨";
+            if (lowerText.includes("cena")) text += " 💰";
+            if (lowerText.includes("poruku") || lowerText.includes("kontakt")) text += " 📩";
         }
 
         // Handle Single Word
@@ -232,6 +236,15 @@ export function CaptionCustomizer({ settings, onChange }: CaptionCustomizerProps
             const timeInSegment = currentTime - currentSegment.start;
             const wordIndex = Math.floor((timeInSegment / segmentDuration) * words.length);
             return words[Math.min(wordIndex, words.length - 1)] || "";
+        }
+
+        // Handle Max Lines (Simple split for preview)
+        if (settings.maxLines === 1 && text.length > 25) {
+            // Truncate or split logic would go here, but for CSS rendering 
+            // we rely on the container width. However, if we want to force breaks:
+            // For now, let's just return the text and let CSS handle wrapping, 
+            // but we can enforce line breaks if needed.
+            // Actually, for a preview, we might want to simulate the split.
         }
 
         return text;
