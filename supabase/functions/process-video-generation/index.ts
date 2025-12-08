@@ -3,6 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/cors.ts';
 import {
   CloudinaryClient,
   LumaClient,
@@ -14,6 +15,10 @@ import type { VideoGenerationRequest, UserSettings, ClipData } from '../_shared/
 import { API_ENDPOINTS } from '../_shared/config.ts';
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     // Parse incoming request
     const data: VideoGenerationRequest = await req.json();
@@ -45,14 +50,14 @@ serve(async (req) => {
     if (profileError || !profileData) {
       return new Response(
         JSON.stringify({ error: 'User not found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (profileData.video_credits_remaining <= 0) {
       return new Response(
         JSON.stringify({ error: 'NO_VIDEO_CREDITS' }),
-        { status: 402, headers: { 'Content-Type': 'application/json' } }
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -91,7 +96,7 @@ serve(async (req) => {
         video_id: data.video_id,
         message: 'Generation started'
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
     // Continue processing in the background
@@ -114,7 +119,7 @@ serve(async (req) => {
     console.error('Request handling error:', error);
     return new Response(
       JSON.stringify({ error: (error as any).message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
