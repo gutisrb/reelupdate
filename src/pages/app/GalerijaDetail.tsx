@@ -161,39 +161,59 @@ export function GalerijaDetail() {
 
     setPosting(true);
     try {
-      const channels = ['instagram', 'tiktok', 'facebook', 'youtube'];
-      const webhookUrl = import.meta.env.VITE_MAKE_POST_WEBHOOK_URL;
+      // Define supported platforms
+      const platforms = ['tiktok', 'instagram'];
+      const results: Record<string, string> = {};
 
-      if (!webhookUrl) {
-        throw new Error('Webhook URL nije konfigurisan');
+      // Post to each platform
+      for (const platform of platforms) {
+        try {
+          // We use the optimized URL if available, otherwise the raw one
+          const urlToPost = videoUrl || video.video_url;
+
+          const { data, error } = await supabase.functions.invoke('post-social-content', {
+            body: {
+              userId: video.user_id,
+              platform,
+              videoUrl: urlToPost,
+              caption: description
+            }
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+
+          results[platform] = 'posted';
+          toast({
+            title: `Objavljeno na ${platformIcons[platform] || platform}`,
+            description: 'Video je uspešno poslat.',
+          });
+        } catch (err: any) {
+          console.error(`Failed to post to ${platform}:`, err);
+          // If the error is "No connection found", we can ignore it or mark as skipped
+          if (err.message && err.message.includes('No connection')) {
+            // results[platform] = 'skipped'; 
+          } else {
+            results[platform] = 'failed';
+            toast({
+              title: `Greška za ${platformIcons[platform] || platform}`,
+              description: err.message || 'Nije moguće objaviti.',
+              variant: 'destructive',
+            });
+          }
+        }
       }
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: video.user_id,
-          video_id: video.id,
-          channels,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Greška pri objavljivanju');
-
-      const updatedChannels = channels.reduce((acc, ch) => {
-        acc[ch] = 'pending';
-        return acc;
-      }, {} as Record<string, string>);
+      // Update video status in DB
+      // We merge with existing posted_channels_json
+      const currentChannels = video.posted_channels_json || {};
+      const updatedChannels = { ...currentChannels, ...results };
 
       await (supabase as any)
         .from('videos')
         .update({ posted_channels_json: updatedChannels })
         .eq('id', video.id);
 
-      toast({
-        title: 'Uspeh',
-        description: 'Video je poslat na objavu',
-      });
     } catch (error: any) {
       toast({
         title: 'Greška',
@@ -361,16 +381,15 @@ export function GalerijaDetail() {
             </CardHeader>
             <CardContent>
               <Badge
-                className={`${
-                  statusColors[video.status as keyof typeof statusColors] ||
+                className={`${statusColors[video.status as keyof typeof statusColors] ||
                   'bg-muted text-muted-foreground'
-                } px-3 py-1.5 text-sm font-medium`}
+                  } px-3 py-1.5 text-sm font-medium`}
               >
                 {video.status === 'processing'
                   ? 'Obrađuje se'
                   : video.status === 'ready'
-                  ? 'Spremno'
-                  : 'Greška'}
+                    ? 'Spremno'
+                    : 'Greška'}
               </Badge>
             </CardContent>
           </Card>

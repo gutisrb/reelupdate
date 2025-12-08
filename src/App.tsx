@@ -9,6 +9,7 @@ import { MarketingNav } from "@/components/MarketingNav";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { ProgressProvider } from "@/contexts/ProgressContext";
 import { WizardProvider } from "@/contexts/WizardContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import Home from "./pages/Home";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -79,15 +80,17 @@ function App() {
 export default function AppRoot() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <ProgressProvider>
-          <WizardProvider>
-            <App />
-          </WizardProvider>
-        </ProgressProvider>
-      </TooltipProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <ProgressProvider>
+            <WizardProvider>
+              <App />
+            </WizardProvider>
+          </ProgressProvider>
+        </TooltipProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }
