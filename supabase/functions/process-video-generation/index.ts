@@ -20,8 +20,59 @@ serve(async (req) => {
   }
 
   try {
-    // Parse incoming request
-    const data: VideoGenerationRequest = await req.json();
+    // Parse incoming request (FormData from frontend)
+    const formData = await req.formData();
+
+    // Extract fields from FormData
+    const videoId = formData.get('video_id') as string;
+    const userId = formData.get('user_id') as string;
+    const propertyDataStr = formData.get('property_data') as string;
+    const groupingStr = formData.get('grouping') as string;
+
+    if (!videoId || !userId || !propertyDataStr) {
+      throw new Error('Missing required fields: video_id, user_id, or property_data');
+    }
+
+    const propertyData = JSON.parse(propertyDataStr);
+    const grouping = groupingStr || '[]';
+
+    // Extract image slots from FormData
+    const imageSlots: any[] = [];
+    const slotModeInfo = JSON.parse(formData.get('slot_mode_info') as string || '[]');
+
+    for (let i = 0; i < slotModeInfo.length; i++) {
+      const slotInfo = slotModeInfo[i];
+      const images: any[] = [];
+
+      // Get images for this slot
+      for (let j = 0; j < slotInfo.image_count; j++) {
+        const imageKey = `slot_${i}_image_${j}`;
+        const imageFile = formData.get(imageKey) as File;
+
+        if (imageFile) {
+          // Convert File to ArrayBuffer
+          const arrayBuffer = await imageFile.arrayBuffer();
+          images.push({
+            data: arrayBuffer,
+            name: imageFile.name,
+          });
+        }
+      }
+
+      imageSlots.push({
+        mode: slotInfo.mode,
+        images: images,
+      });
+    }
+
+    // Build VideoGenerationRequest object
+    const data: VideoGenerationRequest = {
+      video_id: videoId,
+      user_id: userId,
+      property_data: propertyData,
+      image_slots: imageSlots,
+      grouping: grouping,
+    };
 
     // Initialize Supabase client
     const supabase = createClient(
