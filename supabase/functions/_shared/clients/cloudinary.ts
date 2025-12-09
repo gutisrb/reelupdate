@@ -95,7 +95,40 @@ export class CloudinaryClient {
   }
 
   /**
-   * Assemble final video with clips + audio layers + optional subtitles
+   * Upload from buffer (Uint8Array or ArrayBuffer)
+   * Generic upload method for any resource type
+   */
+  async uploadFromBuffer(
+    buffer: Uint8Array | ArrayBuffer,
+    filename: string,
+    resourceType: 'image' | 'video' | 'raw' = 'image'
+  ): Promise<CloudinaryUploadResponse> {
+    const formData = new FormData();
+    const blob = new Blob([buffer]);
+    formData.append('file', blob, filename);
+    formData.append('upload_preset', this.uploadPreset);
+    formData.append('resource_type', resourceType);
+
+    const endpoint = resourceType === 'image' ? 'image' : resourceType === 'video' ? 'video' : 'raw';
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${this.cloudName}/${endpoint}/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Cloudinary ${resourceType} upload failed: ${error}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Assemble final video with clips + audio layers
+   * NOTE: Subtitle parameters are deprecated - use in-house caption rendering instead
    */
   assembleVideo(
     clipUrls: string[],
@@ -103,7 +136,9 @@ export class CloudinaryClient {
     musicUrl: string,
     totalDuration: number,
     musicVolume: number = -60,
+    /** @deprecated Use in-house caption rendering via caption-compositor.ts */
     subtitlePublicId?: string,
+    /** @deprecated Use in-house caption rendering via caption-compositor.ts */
     subtitleStyle?: {
       fontFamily?: string;
       fontSize?: number;
@@ -161,86 +196,9 @@ export class CloudinaryClient {
       'fl_splice'
     );
 
-    // Add subtitles if provided
-    if (subtitlePublicId) {
-      // Default styles
-      const font = subtitleStyle?.fontFamily || 'Arial';
-      const size = subtitleStyle?.fontSize || 20;
-      const weight = subtitleStyle?.fontWeight || '';
-
-      // Construct font string: font_size_weight
-      // e.g. Arial_20_bold
-      let fontString = `${font}_${size}`;
-      if (weight && weight !== 'normal') {
-        fontString += `_${weight}`;
-      }
-
-      // Construct subtitle transformation
-      let subtitleLayer = `l_subtitles:${fontString}:${subtitlePublicId}`;
-
-      // Add style modifiers
-      const styleModifiers = [];
-
-      // Font Color
-      const color = subtitleStyle?.color ? `co_rgb:${subtitleStyle.color}` : 'co_white';
-      styleModifiers.push(color);
-
-      // Background Color & Opacity
-      if (subtitleStyle?.backgroundColor) {
-        // Cloudinary background opacity is handled via alpha channel in hex or separate opacity param?
-        // Usually b_rgb:RRGGBB works. For opacity, we might need b_rgb:RRGGBBAA or o_opacity on the layer.
-        // Let's use b_rgb:RRGGBB and o_opacity if provided, but o_ affects text too.
-        // Better: b_rgb:RRGGBB
-        // If opacity is 0, we don't set background.
-        if (subtitleStyle.opacity !== undefined && subtitleStyle.opacity > 0) {
-          styleModifiers.push(`b_rgb:${subtitleStyle.backgroundColor}`);
-          // Note: Cloudinary doesn't easily support separate background opacity for text background box in l_subtitles 
-          // without using specific text_box modes which are complex. 
-          // For now, we apply solid background if opacity > 0.
-        }
-      }
-
-      // Stroke (Border)
-      if (subtitleStyle?.strokeWidth && subtitleStyle.strokeWidth > 0) {
-        const strokeColor = subtitleStyle.strokeColor || '000000';
-        styleModifiers.push(`bo_${subtitleStyle.strokeWidth}px_solid_rgb:${strokeColor}`);
-      }
-
-      // Shadow
-      if (subtitleStyle?.shadowBlur && subtitleStyle.shadowBlur > 0) {
-        // e_shadow:strength
-        styleModifiers.push(`e_shadow:${subtitleStyle.shadowBlur * 5}`); // Scale blur to strength roughly
-        if (subtitleStyle.shadowColor) {
-          styleModifiers.push(`co_rgb:${subtitleStyle.shadowColor}`); // Shadow color usually takes current color, tricky to override
-        }
-      }
-
-      // Position (Gravity)
-      if (subtitleStyle?.position) {
-        switch (subtitleStyle.position) {
-          case 'top':
-            styleModifiers.push('g_north', 'y_50');
-            break;
-          case 'bottom':
-            styleModifiers.push('g_south', 'y_50');
-            break;
-          case 'middle':
-            styleModifiers.push('g_center');
-            break;
-          default: // auto or custom
-            styleModifiers.push('g_south', 'y_50'); // Default to bottom
-        }
-      } else {
-        styleModifiers.push('g_south', 'y_50');
-      }
-
-      // Apply the layer
-      transformations.push(
-        subtitleLayer,
-        ...styleModifiers,
-        'fl_layer_apply'
-      );
-    }
+    // NOTE: Subtitle overlay code removed - now handled by in-house caption rendering
+    // See caption-compositor.ts for the new caption compositing system
+    // The old Cloudinary l_subtitles transformation had limited styling support
 
     // Additional settings
     transformations.push(

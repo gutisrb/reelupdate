@@ -354,114 +354,79 @@ async function processVideoAsync(
 
       } else {
         // ============================================
-        // 7B. WHISPER SYSTEM (In-House)
+        // 7B. WHISPER SYSTEM (In-House Caption Burning)
         // ============================================
         try {
-          console.log(`[${data.video_id}] Using Whisper for captions`);
+          console.log(`[${data.video_id}] Using In-House Whisper caption rendering`);
 
-          // 1. Transcribe voiceover
-          // If emojis are enabled, we need to ask OpenAI to add them.
-          // Since createTranscription is just audio->text, we might need a second pass or modify the prompt if possible.
-          // The current createTranscription uses Whisper API which doesn't take a custom instruction for "add emojis".
-          // So we'll do a quick correction pass if emojis are enabled.
+          // Import caption rendering modules
+          const { parseSRT } = await import('../_shared/srt-parser.ts');
+          const { renderAllCaptions } = await import('../_shared/caption-renderer.ts');
+          const { compositeCaptionsOnVideo } = await import('../_shared/clients/caption-compositor.ts');
 
+          // 1. Transcribe voiceover with Whisper
+          console.log(`[${data.video_id}] Transcribing voiceover...`);
           let srtContent = await clients.openai.createTranscription(voiceoverUpload.secure_url);
 
-          if (userSettings.caption_emojis) {
-            console.log(`[${data.video_id}] Adding emojis to transcript...`);
-            // We reuse correctTranscript or create a new method. 
-            // correctTranscript is designed for alignment with script.
-            // Let's try to use a simple chat completion to "Add relevant emojis to this SRT content without changing timestamps".
-            // For now, to keep it simple and robust, we'll skip the complex SRT parsing/rebuilding in this iteration 
-            // and just log it, or if we have a robust way, do it.
-            // Given the complexity of preserving SRT timestamps with LLMs, it's risky without a parser.
-            // ALTERNATIVE: Use the 'correctTranscript' method if it supports it, but it takes a script.
+          // 2. Parse SRT content
+          console.log(`[${data.video_id}] Parsing SRT file...`);
+          const cues = parseSRT(srtContent);
+          console.log(`[${data.video_id}] Parsed ${cues.length} caption cues`);
 
-            // Let's try a safe approach: 
-            // We will implement this in the next iteration or if the user explicitly asks for the backend implementation details.
-            // The user said "lets both test our own caption service", so we should try.
-            // But modifying SRT with LLM is error-prone.
-            // A better place is to add emojis to the SCRIPT before generating voiceover? No, that reads emojis.
+          // 3. Build caption style from user settings
+          const captionStyle = {
+            fontFamily: userSettings.caption_font_family || 'Arial',
+            fontSize: userSettings.caption_font_size || 34,
+            fontWeight: userSettings.caption_font_weight || 'bold',
+            fontColor: userSettings.caption_font_color || 'FFFFFF',
+            bgColor: userSettings.caption_bg_color || '000000',
+            bgOpacity: userSettings.caption_bg_opacity || 100,
+            uppercase: userSettings.caption_uppercase || false,
+            strokeColor: userSettings.caption_stroke_color || '000000',
+            strokeWidth: userSettings.caption_stroke_width || 0,
+            shadowColor: userSettings.caption_shadow_color || '000000',
+            shadowBlur: userSettings.caption_shadow_blur || 0,
+            shadowX: userSettings.caption_shadow_x || 2,
+            shadowY: userSettings.caption_shadow_y || 2,
+            position: userSettings.caption_position || 'bottom',
+            animation: userSettings.caption_animation || 'none',
+            maxLines: userSettings.caption_max_lines || 2,
+            emojis: userSettings.caption_emojis || false,
+            singleWord: userSettings.caption_single_word || false,
+          };
 
-            // For now, we will proceed with standard transcription.
-            // TODO: Implement robust SRT emoji enrichment.
-          }
+          console.log(`[${data.video_id}] Caption style:`, JSON.stringify(captionStyle));
 
-          if (userSettings.caption_single_word) {
-            console.log(`[${data.video_id}] Single word captions requested.`);
-            // To implement this, we would need to request word-level timestamps from Whisper
-            // and construct the SRT such that each word is its own block.
-            // This is a significant change to the transcription pipeline.
-            // For now, we log it.
-          }
+          // 4. Render all caption frames
+          console.log(`[${data.video_id}] Rendering caption frames with Canvas...`);
+          const captionFrames = await renderAllCaptions(cues, captionStyle, {
+            width: 1080,
+            height: 1920,
+            fps: 30,
+          });
 
-          // 2. Upload SRT to Cloudinary
-          const srtUpload = await clients.cloudinary.uploadRaw(
-            srtContent,
-            `captions_${data.video_id}.srt`
+          console.log(`[${data.video_id}] Rendered ${captionFrames.length} caption frames`);
+
+          // 5. Get the base video public ID from the assembled video URL
+          const baseVideoPublicId = finalVideoUpload.public_id;
+
+          // 6. Composite captions onto video
+          console.log(`[${data.video_id}] Compositing captions onto video...`);
+          finalVideoWithCaptions = await compositeCaptionsOnVideo(
+            {
+              videoPublicId: baseVideoPublicId,
+              captionFrames: captionFrames,
+            },
+            clients.cloudinary
           );
 
-          subtitlePublicId = srtUpload.public_id;
-
-          // 3. Define subtitle style based on settings
-          if (userSettings.caption_style_type === 'custom') {
-            subtitleStyle = {
-              fontFamily: userSettings.caption_font_family || 'Arial',
-              fontSize: userSettings.caption_font_size || 34,
-              fontWeight: userSettings.caption_font_weight || 'bold',
-              color: userSettings.caption_font_color || 'FFFFFF',
-              backgroundColor: userSettings.caption_bg_color || '000000',
-              opacity: userSettings.caption_bg_opacity,
-              strokeColor: userSettings.caption_stroke_color || '000000',
-              strokeWidth: userSettings.caption_stroke_width || 0,
-              shadowColor: userSettings.caption_shadow_color || '000000',
-              shadowBlur: userSettings.caption_shadow_blur || 0,
-              position: userSettings.caption_position || 'auto'
-            };
-          } else {
-            // Use template (or default if no template selected)
-            subtitleStyle = {
-              fontFamily: 'Arial',
-              fontSize: 34,
-              fontWeight: 'bold',
-              color: 'FFFFFF',
-              backgroundColor: '000000',
-              opacity: 100,
-              position: 'bottom'
-            };
-          }
-
-          // Handle Uppercase (Modify SRT content if needed)
-          // Note: Modifying SRT content is complex here as we already uploaded it.
-          // Ideally we should modify srtContent BEFORE upload.
-          // Let's do a quick fix: if uppercase is requested, transform srtContent.
-          if (userSettings.caption_uppercase) {
-            // Simple regex to uppercase text in SRT (avoiding timestamps)
-            // This is a naive implementation, but works for simple cases.
-            // Better approach: parse SRT, uppercase text, rebuild.
-            // For now, we'll skip this optimization to ensure stability, 
-            // or we can just uppercase the whole file? No, that breaks timestamps.
-            // We will implement a basic text-only uppercaser if possible, or skip.
-            // SKIPPING for now to avoid breaking SRT structure.
-            // TODO: Implement SRT parsing/uppercasing.
-          }
-
-          // 4. Re-assemble video with captions
-          finalVideoWithCaptions = clients.cloudinary.assembleVideo(
-            clipUrls,
-            voiceoverUpload.secure_url,
-            musicUrl,
-            totalDuration,
-            userSettings.default_music_volume_db,
-            subtitlePublicId,
-            subtitleStyle
-          );
-
-          console.log(`[${data.video_id}] Whisper captions generated and applied`);
+          console.log(`[${data.video_id}] In-house captions successfully composited!`);
 
         } catch (e) {
-          console.error(`[${data.video_id}] Whisper caption generation failed:`, e);
-          // Continue without captions if they fail
+          console.error(`[${data.video_id}] In-house caption rendering failed:`, e);
+          // Fall back to video without captions
+          finalVideoWithCaptions = finalVideoUpload.secure_url;
+          console.log(`[${data.video_id}] Continuing with video without captions`);
         }
       }
     }
