@@ -127,7 +127,7 @@ export class CloudinaryClient {
   }
 
   /**
-   * Assemble final video with clips + audio layers
+   * Assemble final video with clips + audio layers + logo overlay
    * NOTE: Subtitle parameters are deprecated - use in-house caption rendering instead
    */
   assembleVideo(
@@ -136,6 +136,9 @@ export class CloudinaryClient {
     musicUrl: string,
     totalDuration: number,
     musicVolume: number = -60,
+    logoUrl?: string,
+    logoPosition?: string,
+    logoSizePercent?: number,
     /** @deprecated Use in-house caption rendering via caption-compositor.ts */
     subtitlePublicId?: string,
     /** @deprecated Use in-house caption rendering via caption-compositor.ts */
@@ -195,6 +198,54 @@ export class CloudinaryClient {
       'e_volume:100',
       'fl_splice'
     );
+
+    // Add logo overlay if provided
+    if (logoUrl && logoUrl.includes('cloudinary.com')) {
+      const logoPublicId = this.extractPublicId(logoUrl);
+      console.log(`[Cloudinary] Adding logo overlay: ${logoPublicId}`);
+      console.log(`[Cloudinary] Logo position: ${logoPosition}, size: ${logoSizePercent}%`);
+
+      // Determine gravity based on position setting
+      let gravity = 'north_east'; // Default: top-right
+      let xOffset = 30;
+      let yOffset = 50;
+
+      if (logoPosition) {
+        const pos = logoPosition.toLowerCase();
+        if (pos.includes('top') && pos.includes('left')) {
+          gravity = 'north_west';
+        } else if (pos.includes('top') && pos.includes('right')) {
+          gravity = 'north_east';
+        } else if (pos.includes('bottom') && pos.includes('left')) {
+          gravity = 'south_west';
+          yOffset = 100;
+        } else if (pos.includes('bottom') && pos.includes('right')) {
+          gravity = 'south_east';
+          yOffset = 100;
+        } else if (pos.includes('center') || pos.includes('middle')) {
+          gravity = 'center';
+          xOffset = 0;
+          yOffset = 0;
+        }
+      }
+
+      // Calculate logo width based on percentage of video width (1080px)
+      const sizePercent = logoSizePercent || 15;
+      const logoWidth = Math.round(1080 * sizePercent / 100);
+
+      // Add logo layer transformation
+      transformations.push(
+        `l_image:${logoPublicId}`,
+        `w_${logoWidth}`,
+        'o_80', // 80% opacity
+        `g_${gravity}`,
+        `x_${xOffset}`,
+        `y_${yOffset}`,
+        'fl_layer_apply'
+      );
+
+      console.log(`[Cloudinary] Logo layer added: ${logoWidth}px @ ${gravity}`);
+    }
 
     // NOTE: Subtitle overlay code removed - now handled by in-house caption rendering
     // See caption-compositor.ts for the new caption compositing system

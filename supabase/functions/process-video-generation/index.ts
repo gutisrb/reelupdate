@@ -324,7 +324,10 @@ async function processVideoAsync(
       voiceoverUpload.secure_url,
       musicUrl,
       totalDuration,
-      userSettings.default_music_volume_db
+      userSettings.default_music_volume_db,
+      userSettings.logo_url || undefined,
+      userSettings.logo_position || 'corner_top_right',
+      userSettings.logo_size_percent || 15
     );
 
     // Upload assembled video back to Cloudinary for final processing
