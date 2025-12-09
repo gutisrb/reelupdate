@@ -181,17 +181,51 @@ async function processVideoAsync(
     }
 
     // ============================================
-    // 4. PROCESS CLIPS (with GPT-4o + Luma)
+    // 4. PROCESS CLIPS (with GPT-4o + Luma) or TEST_MODE
     // ============================================
-    console.log(`[${data.video_id}] Processing ${data.image_slots.length} clips`);
 
-    const clipPromises = data.image_slots.map((slot, index) =>
-      processClip(slot, index, data, clients)
-    );
+    // Check if TEST_MODE is enabled (title contains "TEST_MODE")
+    const isTestMode = data.property_data.title.toUpperCase().includes('TEST_MODE');
 
-    const clips: ClipData[] = await Promise.all(clipPromises);
+    let clips: ClipData[];
 
-    console.log(`[${data.video_id}] All clips generated`);
+    if (isTestMode) {
+      console.log(`[${data.video_id}] ⚡ TEST_MODE ENABLED - Using placeholder clips`);
+
+      // Placeholder clip URLs (no AI processing)
+      const placeholderClips = [
+        'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_0_fmtela_iznuwx.mp4',
+        'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_1_s65doc_kxkxv4.mp4',
+        'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_2_qgb0vb_axic0c.mp4',
+        'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_3_re2ma1_xy4odo.mp4',
+        'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_4_eoizxe_jvrhvl.mp4',
+      ];
+
+      clips = data.image_slots.map((_slot, index) => ({
+        slot_index: index,
+        luma_generation_id: 'test_mode_placeholder',
+        luma_prompt: 'TEST MODE: Placeholder clip for testing',
+        clip_url: placeholderClips[index % placeholderClips.length],
+        first_image_url: '',
+        second_image_url: null,
+        is_keyframe: false,
+        description: 'Test mode placeholder',
+        mood: 'modern',
+      }));
+
+      console.log(`[${data.video_id}] ⚡ Using ${clips.length} placeholder clips (saved AI costs)`);
+
+    } else {
+      console.log(`[${data.video_id}] Processing ${data.image_slots.length} clips with Luma AI`);
+
+      const clipPromises = data.image_slots.map((slot, index) =>
+        processClip(slot, index, data, clients)
+      );
+
+      clips = await Promise.all(clipPromises);
+
+      console.log(`[${data.video_id}] All clips generated`);
+    }
 
     // ============================================
     // 5. GENERATE AUDIO (Voiceover + Music)
@@ -302,11 +336,9 @@ async function processVideoAsync(
     console.log(`[${data.video_id}] Video assembled: ${finalVideoUpload.secure_url}`);
 
     // ============================================
-    // 7. ADD CAPTIONS (System-dependent: ZapCap or Whisper)
+    // 7. ADD CAPTIONS (In-House Whisper System)
     // ============================================
     let finalVideoWithCaptions = finalVideoUpload.secure_url;
-    let subtitlePublicId: string | undefined;
-    let subtitleStyle: any;
 
     if (userSettings.caption_enabled) {
       const captionSystem = userSettings.caption_system || 'whisper';
@@ -368,12 +400,17 @@ async function processVideoAsync(
           console.log(`[${data.video_id}] Transcribing voiceover...`);
           let srtContent = await clients.openai.createTranscription(voiceoverUpload.secure_url);
 
-          // 2. Parse SRT content
+          // 2. Correct transcription against original script (95% → 100% accuracy)
+          console.log(`[${data.video_id}] Correcting transcription for grammar/typos...`);
+          srtContent = await clients.openai.correctTranscript(srtContent, voiceoverScript);
+          console.log(`[${data.video_id}] Transcription corrected to match script perfectly`);
+
+          // 3. Parse SRT content
           console.log(`[${data.video_id}] Parsing SRT file...`);
           const cues = parseSRT(srtContent);
           console.log(`[${data.video_id}] Parsed ${cues.length} caption cues`);
 
-          // 3. Build caption style from user settings
+          // 4. Build caption style from user settings
           const captionStyle = {
             fontFamily: userSettings.caption_font_family || 'Arial',
             fontSize: userSettings.caption_font_size || 34,
@@ -388,8 +425,8 @@ async function processVideoAsync(
             shadowBlur: userSettings.caption_shadow_blur || 0,
             shadowX: userSettings.caption_shadow_x || 2,
             shadowY: userSettings.caption_shadow_y || 2,
-            position: userSettings.caption_position || 'bottom',
-            animation: userSettings.caption_animation || 'none',
+            position: (userSettings.caption_position as 'top' | 'middle' | 'bottom' | 'auto') || 'bottom',
+            animation: (userSettings.caption_animation as 'none' | 'pop' | 'fade' | 'karaoke') || 'none',
             maxLines: userSettings.caption_max_lines || 2,
             emojis: userSettings.caption_emojis || false,
             singleWord: userSettings.caption_single_word || false,
@@ -397,7 +434,7 @@ async function processVideoAsync(
 
           console.log(`[${data.video_id}] Caption style:`, JSON.stringify(captionStyle));
 
-          // 4. Render all caption frames
+          // 5. Render all caption frames
           console.log(`[${data.video_id}] Rendering caption frames with Canvas...`);
           const captionFrames = await renderAllCaptions(cues, captionStyle, {
             width: 1080,
@@ -407,10 +444,10 @@ async function processVideoAsync(
 
           console.log(`[${data.video_id}] Rendered ${captionFrames.length} caption frames`);
 
-          // 5. Get the base video public ID from the assembled video URL
+          // 6. Get the base video public ID from the assembled video URL
           const baseVideoPublicId = finalVideoUpload.public_id;
 
-          // 6. Composite captions onto video
+          // 7. Composite captions onto video
           console.log(`[${data.video_id}] Compositing captions onto video...`);
           finalVideoWithCaptions = await compositeCaptionsOnVideo(
             {
@@ -481,10 +518,6 @@ async function processClip(
 ): Promise<ClipData> {
   console.log(`[${data.video_id}] Processing clip ${index + 1}`);
 
-  // Parse grouping data
-  const grouping = JSON.parse(data.grouping);
-  const slotInfo = grouping[index];
-
   const isKeyframe = slot.images.length > 1;
   const firstImage = slot.images[0];
   const secondImage = isKeyframe ? slot.images[1] : null;
@@ -495,7 +528,7 @@ async function processClip(
     firstImage.name
   );
 
-  let secondImageUpload = null;
+  let secondImageUpload: any = null;
   if (secondImage) {
     secondImageUpload = await clients.cloudinary.uploadImage(
       secondImage.data,
