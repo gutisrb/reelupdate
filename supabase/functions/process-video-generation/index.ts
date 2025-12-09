@@ -26,43 +26,60 @@ serve(async (req) => {
     // Extract fields from FormData
     const videoId = formData.get('video_id') as string;
     const userId = formData.get('user_id') as string;
-    const propertyDataStr = formData.get('property_data') as string;
     const groupingStr = formData.get('grouping') as string;
 
-    if (!videoId || !userId || !propertyDataStr) {
-      throw new Error('Missing required fields: video_id, user_id, or property_data');
+    if (!videoId || !userId) {
+      throw new Error('Missing required fields: video_id or user_id');
     }
 
-    const propertyData = JSON.parse(propertyDataStr);
-    const grouping = groupingStr || '[]';
+    // Build property_data from individual fields
+    const propertyData = {
+      title: formData.get('title') as string || '',
+      price: formData.get('price') as string || '',
+      location: formData.get('location') as string || '',
+      size: formData.get('size') as string || '',
+      beds: formData.get('beds') as string || '',
+      baths: formData.get('baths') as string || '',
+      sprat: formData.get('sprat') as string || '',
+      extras: formData.get('extras') as string || '',
+    };
 
-    // Extract image slots from FormData
-    const imageSlots: any[] = [];
-    const slotModeInfo = JSON.parse(formData.get('slot_mode_info') as string || '[]');
+    const grouping = JSON.parse(groupingStr || '[]');
 
-    for (let i = 0; i < slotModeInfo.length; i++) {
-      const slotInfo = slotModeInfo[i];
-      const images: any[] = [];
+    // Extract images from FormData (they're named image_0, image_1, etc.)
+    const totalImages = parseInt(formData.get('total_images') as string || '0');
+    const images: any[] = [];
 
-      // Get images for this slot
-      for (let j = 0; j < slotInfo.image_count; j++) {
-        const imageKey = `slot_${i}_image_${j}`;
-        const imageFile = formData.get(imageKey) as File;
-
-        if (imageFile) {
-          // Convert File to ArrayBuffer
-          const arrayBuffer = await imageFile.arrayBuffer();
-          images.push({
-            data: arrayBuffer,
-            name: imageFile.name,
-          });
-        }
+    for (let i = 0; i < totalImages; i++) {
+      const imageFile = formData.get(`image_${i}`) as File;
+      if (imageFile) {
+        const arrayBuffer = await imageFile.arrayBuffer();
+        images.push({
+          data: arrayBuffer,
+          name: imageFile.name,
+        });
       }
+    }
 
-      imageSlots.push({
-        mode: slotInfo.mode,
-        images: images,
-      });
+    // Build image_slots from grouping info
+    const imageSlots: any[] = [];
+    for (const group of grouping) {
+      if (group.type === 'frame-to-frame') {
+        // Two images for this slot
+        imageSlots.push({
+          mode: 'frame-to-frame',
+          images: [
+            images[group.first_index],
+            images[group.second_index],
+          ].filter(Boolean),
+        });
+      } else if (group.type === 'single') {
+        // Single image
+        imageSlots.push({
+          mode: 'image-to-video',
+          images: [images[group.index]].filter(Boolean),
+        });
+      }
     }
 
     // Build VideoGenerationRequest object
@@ -71,7 +88,7 @@ serve(async (req) => {
       user_id: userId,
       property_data: propertyData,
       image_slots: imageSlots,
-      grouping: grouping,
+      grouping: groupingStr,
     };
 
     // Initialize Supabase client
