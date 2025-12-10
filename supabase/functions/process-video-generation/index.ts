@@ -284,21 +284,33 @@ async function processVideoAsync(
       console.log(`[${data.video_id}] ⚡ Using ${clips.length} placeholder clips (saved AI costs)`);
 
     } else {
-      console.log(`[${data.video_id}] Processing ${data.image_slots.length} clips with Luma AI`);
+      // ============================================
+      // EFFICIENT APPROACH (from Make.com):
+      // 1. Prepare all clips in parallel (upload images + GPT-4o + START Luma, don't wait)
+      // 2. Generate audio in parallel with Luma rendering
+      // 3. Wait for all Luma completions
+      // ============================================
 
-      const clipPromises = data.image_slots.map((slot, index) =>
-        processClip(slot, index, data, clients)
+      console.log(`[${data.video_id}] Step 1: Preparing ${data.image_slots.length} clips (upload + GPT-4o + start Luma)...`);
+
+      // Step 1: Upload images, GPT-4o analysis, and START Luma generations (in parallel)
+      const clipPreparations = data.image_slots.map((slot, index) =>
+        prepareClip(slot, index, data, clients)
       );
 
-      clips = await Promise.all(clipPromises);
+      const preparedClips = await Promise.all(clipPreparations);
 
-      console.log(`[${data.video_id}] All clips generated`);
+      console.log(`[${data.video_id}] Step 1 complete: All Luma generations started (rendering in background)`);
+      console.log(`[${data.video_id}] Luma generation IDs:`, preparedClips.map(c => c.luma_generation_id).join(', '));
+
+      // Store prepared clips for later completion
+      clips = preparedClips;
     }
 
     // ============================================
-    // 5. GENERATE AUDIO (Voiceover + Music)
+    // 5. GENERATE AUDIO (Voiceover + Music) - IN PARALLEL WITH LUMA RENDERING
     // ============================================
-    console.log(`[${data.video_id}] Generating audio`);
+    console.log(`[${data.video_id}] Step 2: Generating audio (while Luma renders in background)...`);
 
     // Generate voiceover script
     const visualContext = clips.map(c => c.luma_prompt).join('; ');
@@ -380,12 +392,27 @@ async function processVideoAsync(
       musicSource = 'auto_generated';
     }
 
-    console.log(`[${data.video_id}] Audio generated (source: ${musicSource})`);
+    console.log(`[${data.video_id}] Step 2 complete: Audio generated (source: ${musicSource})`);
+
+    // ============================================
+    // 5B. WAIT FOR LUMA COMPLETIONS (if not TEST_MODE)
+    // ============================================
+    if (!isTestMode) {
+      console.log(`[${data.video_id}] Step 3: Waiting for all Luma generations to complete...`);
+
+      const completionPromises = clips.map((clip, index) =>
+        finishClip(clip, index, data, clients)
+      );
+
+      clips = await Promise.all(completionPromises);
+
+      console.log(`[${data.video_id}] Step 3 complete: All ${clips.length} clips ready`);
+    }
 
     // ============================================
     // 6. ASSEMBLE VIDEO
     // ============================================
-    console.log(`[${data.video_id}] Assembling video`);
+    console.log(`[${data.video_id}] Step 4: Assembling video...`);
 
     const clipUrls = clips.map(c => c.clip_url);
     const totalDuration = clips.length * 5; // 5 seconds per clip
@@ -582,15 +609,16 @@ async function processVideoAsync(
 }
 
 /**
- * Process a single clip (upload images, analyze with GPT-4o, generate with Luma)
+ * STEP 1: Prepare clip (upload images, GPT-4o analysis, START Luma - don't wait)
+ * Returns clip data with luma_generation_id but NO clip_url yet
  */
-async function processClip(
+async function prepareClip(
   slot: any,
   index: number,
   data: VideoGenerationRequest,
   clients: any
 ): Promise<ClipData> {
-  console.log(`[${data.video_id}] Processing clip ${index + 1}`);
+  console.log(`[${data.video_id}] Preparing clip ${index + 1} (upload + GPT-4o + start Luma)...`);
 
   const isKeyframe = slot.images.length > 1;
   const firstImage = slot.images[0];
@@ -617,28 +645,49 @@ async function processClip(
     getGPT4VisionPrompt() // Full prompt from blueprint
   );
 
-  // Generate video with Luma
+  // START Luma generation (don't wait for completion)
   const lumaGeneration = await clients.luma.createGeneration(
     visionAnalysis.luma_prompt,
     firstImageUpload.secure_url,
     secondImageUpload?.secure_url
   );
 
-  // Wait for completion
-  const clipUrl = await clients.luma.waitForCompletion(lumaGeneration.id);
+  console.log(`[${data.video_id}] Clip ${index + 1} prepared - Luma ID: ${lumaGeneration.id}`);
 
-  console.log(`[${data.video_id}] Clip ${index + 1} completed`);
-
+  // Return clip data WITHOUT clip_url (will be filled in finishClip)
   return {
     slot_index: index,
     luma_generation_id: lumaGeneration.id,
     luma_prompt: visionAnalysis.luma_prompt,
-    clip_url: clipUrl,
+    clip_url: '', // Will be filled by finishClip()
     first_image_url: firstImageUpload.secure_url,
     second_image_url: secondImageUpload?.secure_url || null,
     is_keyframe: isKeyframe,
     description: visionAnalysis.description,
     mood: visionAnalysis.mood,
+  };
+}
+
+/**
+ * STEP 3: Wait for Luma generation to complete and get clip URL
+ */
+async function finishClip(
+  clipData: ClipData,
+  index: number,
+  data: VideoGenerationRequest,
+  clients: any
+): Promise<ClipData> {
+  console.log(`[${data.video_id}] Waiting for clip ${index + 1} (Luma ID: ${clipData.luma_generation_id})...`);
+
+  // Wait for Luma completion
+  const clipUrl = await clients.luma.waitForCompletion(clipData.luma_generation_id);
+
+  console.log(`[${data.video_id}] Clip ${index + 1} ready: ${clipUrl}`);
+
+  // Return updated clip data with clip_url
+  return {
+    ...clipData,
+    clip_url: clipUrl,
   };
 }
 
