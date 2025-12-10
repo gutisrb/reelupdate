@@ -157,31 +157,36 @@ serve(async (req) => {
       console.error(`Failed to create video record: ${videoError.message}`);
     }
 
-    // Return immediately - processing continues asynchronously
-    const response = new Response(
+    // Process synchronously to avoid EarlyDrop (background tasks can be terminated)
+    try {
+      await processVideoAsync(
+        data,
+        supabase,
+        { cloudinary, luma, openai, google, elevenlabs }
+      );
+    } catch (error) {
+      console.error(`[${data.video_id}] Processing failed:`, error);
+      // Update video status to error
+      await supabase.from('videos').update({
+        status: 'error',
+        error_text: (error as any)?.message || 'Unknown error'
+      }).eq('id', data.video_id);
+
+      return new Response(
+        JSON.stringify({ ok: false, error: (error as any)?.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Completed
+    return new Response(
       JSON.stringify({
         ok: true,
         video_id: data.video_id,
-        message: 'Generation started'
+        message: 'Generation completed',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-    // Continue processing in the background
-    processVideoAsync(
-      data,
-      supabase,
-      { cloudinary, luma, openai, google, elevenlabs }
-    ).catch(error => {
-      console.error(`[${data.video_id}] Processing failed:`, error);
-      // Update video status to failed
-      supabase.from('videos').update({
-        status: 'error',
-        error_text: error.message
-      }).eq('id', data.video_id).then();
-    });
-
-    return response;
 
   } catch (error) {
     console.error('Request handling error:', error);
