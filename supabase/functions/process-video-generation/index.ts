@@ -288,6 +288,60 @@ async function processVideoAsync(
 
       console.log(`[${data.video_id}] ⚡ Using ${clips.length} placeholder clips (saved AI costs)`);
 
+      // Short-circuit in TEST_MODE to avoid long runtime and EarlyDrop
+      const totalDuration = clips.length * 5; // 5 seconds per clip
+      const finalVideoUrl = clips[0].clip_url; // use first placeholder as final
+
+      // Update DB and return early
+      const endTime = Date.now();
+      const processingTime = Math.floor((endTime - startTime) / 1000);
+
+      const { error: videoUpdateError } = await supabase.from('videos').update({
+        status: 'ready',
+        video_url: finalVideoUrl,
+        thumbnail_url: clips[0]?.clip_url || null,
+        duration_seconds: totalDuration,
+        updated_at: new Date().toISOString(),
+      }).eq('id', data.video_id);
+
+      if (videoUpdateError) {
+        console.error(`[${data.video_id}] Failed to update videos row (test mode): ${videoUpdateError.message}`);
+        throw new Error(`Failed to update videos row (test mode): ${videoUpdateError.message}`);
+      }
+
+      const { error: detailsError } = await supabase.from('video_generation_details').insert({
+        video_id: data.video_id,
+        clip_data: clips,
+        voiceover_script: 'TEST_MODE placeholder',
+        voiceover_url: finalVideoUrl,
+        music_url: finalVideoUrl,
+        music_source: 'auto_generated',
+        caption_data: {
+          template_id: captionTemplateId,
+          transcript: 'TEST_MODE placeholder',
+        },
+        settings_snapshot: userSettings,
+        processing_started_at: new Date(startTime).toISOString(),
+        processing_completed_at: new Date(endTime).toISOString(),
+        total_processing_time_seconds: processingTime,
+      });
+
+      if (detailsError) {
+        console.error(`[${data.video_id}] Failed to insert video_generation_details (test mode): ${detailsError.message}`);
+        throw new Error(`Failed to insert video_generation_details (test mode): ${detailsError.message}`);
+      }
+
+      console.log(`[${data.video_id}] TEST_MODE: completed quickly with placeholder video`);
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          video_id: data.video_id,
+          message: 'TEST_MODE completed',
+          video_url: finalVideoUrl,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
     } else {
       // ============================================
       // EFFICIENT APPROACH (from Make.com):
