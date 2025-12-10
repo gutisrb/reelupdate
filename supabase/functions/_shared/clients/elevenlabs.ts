@@ -9,11 +9,13 @@ export class ElevenLabsClient {
   /**
    * Generate background music based on mood
    */
-  async generateMusic(prompt: string): Promise<string> {
+  async generateMusic(prompt: string, durationMs: number = 30000): Promise<string> {
+    // Exact format from Make.com blueprint
     const body = {
-      text: prompt,
-      duration_seconds: 30, // Adjust based on video length
-      prompt_influence: 0.3,
+      prompt: prompt,
+      instrumental: true,
+      music_length_ms: durationMs,
+      output_format: 'mp3_44100_128',
     };
 
     const response = await fetch(API_ENDPOINTS.elevenlabs.musicCompose, {

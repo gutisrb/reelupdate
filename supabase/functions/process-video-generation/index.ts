@@ -325,6 +325,7 @@ async function processVideoAsync(
     // Generate or select music
     let musicUrl: string;
     let musicSource: string;
+    const musicDurationMs = data.image_slots.length * 5 * 1000; // Convert seconds to milliseconds
 
     if (userSettings.music_preference === 'custom') {
       // Use custom uploaded music
@@ -345,7 +346,7 @@ async function processVideoAsync(
           clips[0]?.mood || 'modern',
           clips[0]?.description || ''
         );
-        musicUrl = await clients.elevenlabs.generateMusic(musicPrompt);
+        musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
         musicSource = 'auto_generated';
       }
     } else if (userSettings.music_preference === 'library_pick') {
@@ -366,7 +367,7 @@ async function processVideoAsync(
           clips[0]?.mood || 'modern',
           clips[0]?.description || ''
         );
-        musicUrl = await clients.elevenlabs.generateMusic(musicPrompt);
+        musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
         musicSource = 'auto_generated';
       }
     } else {
@@ -375,7 +376,7 @@ async function processVideoAsync(
         clips[0]?.mood || 'modern',
         clips[0]?.description || ''
       );
-      musicUrl = await clients.elevenlabs.generateMusic(musicPrompt);
+      musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
       musicSource = 'auto_generated';
     }
 
