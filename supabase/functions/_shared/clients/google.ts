@@ -143,9 +143,15 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
       voiceName = voiceId.replace('-flash', '');
     }
 
+    // Gemini TTS style instructions must be embedded in the text content itself
+    // not as a separate field in speechConfig
+    const textWithStyle = styleInstructions
+      ? `${styleInstructions}\n\n${text}`
+      : text;
+
     const body = {
       contents: [{
-        parts: [{ text }],
+        parts: [{ text: textWithStyle }],
       }],
       generationConfig: {
         responseModalities: ['AUDIO'],
@@ -155,7 +161,6 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
               voiceName: voiceName,
             },
           },
-          ...(styleInstructions && { prompt: styleInstructions }),
         },
       },
     };
