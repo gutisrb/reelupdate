@@ -193,17 +193,61 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    return bytes.buffer;
+    // Wrap PCM data in WAV container so Cloudinary recognizes it
+    return this.wrapPCMInWAV(bytes.buffer);
   }
 
   /**
-   * Convert PCM audio to MP3 using FFmpeg (via Shotstack)
-   * Note: This requires FFmpeg processing - may need to use Cloudinary or similar
+   * Wrap raw PCM audio data in WAV file format
+   * Gemini TTS returns LINEAR16 PCM at 24kHz mono
    */
-  async convertPCMToMP3(pcmData: ArrayBuffer): Promise<ArrayBuffer> {
-    // TODO: Implement FFmpeg conversion
-    // For now, we'll rely on uploading to Cloudinary which handles audio conversion
-    // Or use a separate service like Shotstack
-    return pcmData;
+  private wrapPCMInWAV(pcmData: ArrayBuffer): ArrayBuffer {
+    const pcmBytes = new Uint8Array(pcmData);
+    const sampleRate = 24000; // Gemini TTS default
+    const numChannels = 1; // Mono
+    const bitsPerSample = 16; // LINEAR16
+    const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+    const blockAlign = numChannels * (bitsPerSample / 8);
+    const dataSize = pcmBytes.length;
+    const fileSize = 36 + dataSize; // WAV header is 44 bytes, minus 8 for RIFF header
+
+    // Create WAV file buffer
+    const wavBuffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(wavBuffer);
+
+    // Write WAV header
+    // RIFF header
+    this.writeString(view, 0, 'RIFF');
+    view.setUint32(4, fileSize, true);
+    this.writeString(view, 8, 'WAVE');
+
+    // fmt chunk
+    this.writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); // fmt chunk size
+    view.setUint16(20, 1, true); // audio format (1 = PCM)
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+
+    // data chunk
+    this.writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // Copy PCM data
+    const wavBytes = new Uint8Array(wavBuffer);
+    wavBytes.set(pcmBytes, 44);
+
+    return wavBuffer;
+  }
+
+  /**
+   * Helper to write string to DataView
+   */
+  private writeString(view: DataView, offset: number, str: string): void {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
   }
 }

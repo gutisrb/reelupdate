@@ -316,10 +316,10 @@ async function processVideoAsync(
       userSettings.voice_style_instructions
     );
 
-    // Upload voiceover to Cloudinary
+    // Upload voiceover to Cloudinary (now in WAV format with proper headers)
     const voiceoverUpload = await clients.cloudinary.uploadVideo(
       voiceoverPCM,
-      `voiceover_${data.video_id}.mp3`
+      `voiceover_${data.video_id}.wav`
     );
 
     // Generate or select music
