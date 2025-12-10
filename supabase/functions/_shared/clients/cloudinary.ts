@@ -222,38 +222,35 @@ export class CloudinaryClient {
       throw new Error('No clips provided for video assembly');
     }
 
-    // Build transformation array
+    // Build transformation array mirroring the known-working pattern
     const transformations: string[] = [];
 
     // Start with first clip as base
     const baseClipId = clipPublicIds[0];
 
-    // Concatenate additional clips using fl_splice
+    // Normalize aspect ratio and size on base
+    transformations.push('ar_9:16,c_fill,w_1080,h_1920,ac_none');
+
+    // Concatenate additional clips using fl_splice with consistent sizing
     for (let i = 1; i < clipPublicIds.length; i++) {
       transformations.push(
-        `l_video:${clipPublicIds[i]}`,
-        'fl_splice',
+        `l_video:${clipPublicIds[i]},ar_9:16,c_fill,w_1080,h_1920,fl_splice,ac_none`,
         'fl_layer_apply'
       );
     }
 
-    // Add background music layer
+    // Add background music layer (loop as needed, apply volume before layer apply)
     const musicVolumePercent = Math.max(1, Math.min(100, Math.round(Math.pow(10, musicVolume / 20) * 100)));
-
+    const musicLoopCount = Math.max(1, Math.ceil(totalDuration / 30));
     transformations.push(
-      `l_video:${musicPublicId}`,
-      'fl_layer_apply',
-      `e_volume:${musicVolumePercent}`,
-      'fl_splice',
-      `e_loop:${Math.ceil(totalDuration / 30)}`
+      `l_audio:${musicPublicId},so_0,du_${totalDuration},e_loop:${musicLoopCount},e_volume:${musicVolumePercent}`,
+      'fl_layer_apply'
     );
 
     // Add voiceover layer (full volume)
     transformations.push(
-      `l_video:${voicePublicId}`,
-      'fl_layer_apply',
-      'e_volume:100',
-      'fl_splice'
+      `l_audio:${voicePublicId},so_0,du_${totalDuration},e_volume:100`,
+      'fl_layer_apply'
     );
 
     // Add logo overlay if provided
@@ -292,12 +289,7 @@ export class CloudinaryClient {
 
       // Add logo layer transformation
       transformations.push(
-        `l_image:${logoPublicId}`,
-        `w_${logoWidth}`,
-        'o_80', // 80% opacity
-        `g_${gravity}`,
-        `x_${xOffset}`,
-        `y_${yOffset}`,
+        `l_image:${logoPublicId},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`,
         'fl_layer_apply'
       );
 
