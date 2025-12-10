@@ -42,7 +42,7 @@ export class CloudinaryClient {
     if (typeof videoData === 'string') {
       // If it's already a Cloudinary URL, don't re-upload; just return the details
       if (videoData.includes('cloudinary.com')) {
-        const publicId = this.extractPublicId(videoData);
+        const publicId = this.extractPublicIdFromCloudinaryUrl(videoData);
         console.log(`[Cloudinary] uploadVideo(url) short-circuit for Cloudinary asset: ${publicId}`);
         return {
           asset_id: publicId,
@@ -355,6 +355,28 @@ export class CloudinaryClient {
     } catch (e) {
       console.error('Error extracting public ID from URL:', url, e);
       return url;
+    }
+  }
+
+  /**
+   * Extract public ID from a full Cloudinary URL more strictly:
+   * - takes the portion after /upload/
+   * - strips version and file extension
+   * - ignores any transformation segments
+   */
+  private extractPublicIdFromCloudinaryUrl(url: string): string {
+    try {
+      const [, afterUpload] = url.split('/upload/');
+      if (!afterUpload) return url;
+
+      const parts = afterUpload.split('/');
+      // The public ID is the last segment after transformations
+      const last = parts[parts.length - 1];
+      // Remove extension
+      const withoutExt = last.replace(/\.[^/.]+$/, '');
+      return withoutExt;
+    } catch {
+      return this.extractPublicId(url);
     }
   }
 }
