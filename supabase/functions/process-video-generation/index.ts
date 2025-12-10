@@ -673,6 +673,18 @@ async function processVideoAsync(
 
   } catch (error) {
     console.error(`[${data.video_id}] Error:`, error);
+    console.error(`[${data.video_id}] Error stack:`, (error as any)?.stack);
+
+    // Make sure error is recorded in database
+    try {
+      await supabase.from('videos').update({
+        status: 'failed',
+        error_text: `${(error as any)?.message || 'Unknown error'}\n\nStack: ${(error as any)?.stack || 'No stack trace'}`
+      }).eq('id', data.video_id);
+    } catch (dbError) {
+      console.error(`[${data.video_id}] Failed to update error in database:`, dbError);
+    }
+
     throw error;
   }
 }
