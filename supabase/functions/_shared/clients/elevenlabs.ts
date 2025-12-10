@@ -83,10 +83,11 @@ export class ElevenLabsClient {
 
   /**
    * Generate music prompt from video mood/description
+   * User's custom format: Simple comma-separated descriptors
    */
   generateMusicPrompt(mood: string, description: string): string {
-    // This creates a prompt for ElevenLabs based on the video mood
-    // Based on the prompt from your Make.com blueprint
-    return `Instrumental ${mood} track, no vocals, modern production, subtle background music suitable for real estate video, mid-tempo 105 BPM, clean mix, warm pads, light percussion`;
+    // Simple single-line format from user's Make.com blueprint
+    // Instrumental, elegant, minimal, warm, modern, corporate, mid-tempo, ambient, subtle, professional
+    return `Instrumental, ${mood}, minimal, warm, modern, mid-tempo, ambient, subtle, professional`;
   }
 }

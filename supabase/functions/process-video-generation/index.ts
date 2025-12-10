@@ -302,9 +302,11 @@ async function processVideoAsync(
 
     // Generate voiceover script
     const visualContext = clips.map(c => c.luma_prompt).join('; ');
+    const videoLength = data.image_slots.length * 5; // 5 seconds per clip
     const voiceoverScript = await clients.google.generateVoiceoverScript(
       data.property_data,
-      visualContext
+      visualContext,
+      videoLength
     );
 
     // Generate TTS audio
@@ -650,9 +652,87 @@ Return ONLY the JSON fields: is_keyframe, description, luma_prompt, mood.
 ALLOWED CAMERA MOTIONS (choose EXACTLY one token, verbatim)
 Static | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down
 
-[... Full prompt from blueprint continues ...]
+1) ANALYZE IMAGES (do not output this analysis)
+- Room type & scale (tight / medium / wide). Lighting (bright daylight / warm indoor / mixed / evening).
+- Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.
+- Edits/themes/hooks actually visible: balloons/confetti/seasonal decor; mascot/large toy; signage/text overlay; 3D room "cube on white"; added furniture; renovation deltas.
+- Actors/people: none | only frame 1 | only frame 2 | present in both (note if positions differ).
+- Frame relation: ONE_IMAGE | SAME_SPACE | ADJACENT_VIEW | DIFFERENT_ROOM | CUBE_START.
 
-OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional text )
+2) CAMERA MOTION SELECTION (pick ONE from the list)
+- Prefer Push In / Move Left / Move Right / Pan Left / Pan Right for tight interiors.
+- Allow Orbit / Crane / Pull Out only in large/open spaces or exteriors.
+- If any actors visible, downshift to Push In / Move / Pan (avoid Orbit/Crane/Pull Out/Zoom).
+- Use Static only if artifacts demand it.
+
+PROFESSIONAL CAMERA LANGUAGE REQUIREMENT:
+When composing luma_prompt, ALWAYS use professional cinematography descriptors:
+- Movement quality: "glides smoothly", "sweeps gradually", "tracks steadily", "dollies fluidly", "pans gracefully"
+- Reveal verbs: "revealing", "showcasing", "highlighting", "unveiling" (NEVER "explore", "past" alone)
+- Motion quality: "with cinematic parallax", "with fluid motion", "with smooth acceleration"
+- Easing: "starts gently and accelerates" or "eases into motion" when space allows
+
+3) COMPOSE luma_prompt AS TWO SHORT SENTENCES (total 20–30 words)
+Sentence A (professional cinematography + space):
+- Start with the chosen CAMERA MOTION token (exact text), followed by a colon.
+- Add professional movement descriptor: "camera glides smoothly", "camera sweeps gradually", "camera tracks steadily", "camera dollies fluidly"
+- Add 1–2 spatial anchors using cinematic language:
+  - Use "gliding alongside" (NOT "past" or "along" alone)
+  - Use "sweeping across" or "tracking through" (NOT bare prepositions)
+  - Use "revealing [feature]" or "showcasing [detail]" (NOT "exploring")
+  - Examples: "camera glides smoothly alongside window wall, revealing dining area"
+              "camera tracks steadily from media wall, showcasing architectural flow"
+              "camera sweeps gradually across living space, highlighting natural light"
+- Add motion quality descriptor: "with cinematic parallax", "with fluid spatial flow", "with smooth acceleration"
+- Add ONE relation clause:
+  – ONE_IMAGE: "smoothly revealing [architectural feature]" or "gradually showcasing [spatial detail]"
+  – SAME_SPACE: "fluid transition with cinematic parallax; seamless geometry preservation; avoid dissolve"
+  – ADJACENT_VIEW: "professional camera movement connecting views; maintain spatial continuity; avoid dissolve"
+  – DIFFERENT_ROOM: "smooth cinematic transition into second space; professional match-cut; no dissolve"
+  – CUBE_START: "cinematic push from exterior into interior; smooth acceleration; maintain motion flow"
+
+Sentence B (include ONLY what applies; keep compact):
+- Actors:
+  – only frame 1 → "character remains first frame only; exits naturally; no rapid motion."
+  – only frame 2 → "character enters naturally in second frame; minimal motion."
+  – in both → "characters hold still (blinks okay); no rapid movement; maintain identity."
+  – none → "no people."
+- Hooks/themes/props (ONLY IF SALIENT): mention category-level only (e.g., "balloons", "seasonal decor", "signage") when visually central or ≳15% of frame; otherwise do NOT mention.
+  – Use ONE simple verb: drift / settle / appear / clear / pop softly.
+- Small decor (frames, plants, small plush/toys, table items): remain static and SHOULD NOT be mentioned.
+- Furnishing change: choose ONE → "furniture appears naturally" OR "furniture clears naturally."
+- End Sentence B with lighting and ONE mood word (from the whitelist below).
+
+PROFESSIONAL CAMERA EXAMPLES (use this language style):
+✅ "Move Right: camera glides smoothly alongside media wall, revealing dining area with cinematic parallax; seamless spatial transition. No people. Bright daylight, cozy."
+✅ "Push In: camera dollies forward steadily toward window, showcasing panoramic views with smooth acceleration. No people. Natural lighting, elegant."
+✅ "Pan Left: camera sweeps gradually across living space, highlighting architectural features with fluid motion. No people. Warm lighting, sophisticated."
+✅ "Static: camera holds steady at window wall, smoothly revealing seating arrangement in natural light. No people. Bright lighting, spacious."
+
+❌ AVOID these (sounds like walking/handheld):
+❌ "Move Right past media wall and dining table"
+❌ "explore seating arrangement"
+❌ "along window wall" (without "gliding" or "smoothly")
+❌ "over geometric floor" (without smooth descriptor)
+
+4) COMPOSE description (STRICT PROPERTY-ONLY, 12–18 words)
+- Include ONLY architectural/permanent features and natural lighting: layout & room type; windows/doors/balcony; beams/coffers/skylight; built-ins/cabinetry/media wall; fixed kitchen/bath items; flooring material/pattern; view; lighting as observed.
+- EXCLUDE everything movable or likely edited: people/actors; balloons/confetti/themes; loose furniture/decor; rugs; plants; tableware; toys; signage/text overlays; staged props.
+- If two images, favor features present in BOTH; if unsure a feature is permanent, omit it.
+- Friendly marketing tone.
+
+5) FINAL SELF-CHECK BEFORE OUTPUT
+- luma_prompt begins with a valid motion token followed by colon; total ≤ 30 words.
+- luma_prompt includes PROFESSIONAL CAMERA LANGUAGE: "glides/sweeps/tracks/dollies/smoothly/gradually/fluidly"
+- luma_prompt uses CINEMATIC REVEAL VERBS: "revealing/showcasing/highlighting" (NOT "past/explore/along" alone)
+- Movement includes quality descriptor: "with cinematic parallax", "with fluid motion", "with smooth acceleration"
+- If is_keyframe = true and "avoid dissolve" is missing, add it to Sentence A.
+- If any actors detected and motion is Orbit/Crane/Pull Out/Zoom, downgrade to Push In.
+- luma_prompt contains no tiny-prop nouns; use category-level only when salient (≥15% frame).
+- description contains NO people/props/themes/staging words (property-only).
+- NO WALKING LANGUAGE: verify no "past", "explore", or bare "along"/"over" without smooth descriptors
+
+6) OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional text )
 {
   "is_keyframe": boolean,
   "description": "property-only, 12–18 words",
