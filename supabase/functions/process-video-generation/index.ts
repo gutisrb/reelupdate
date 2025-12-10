@@ -176,7 +176,7 @@ serve(async (req) => {
       console.error(`[${data.video_id}] Processing failed:`, error);
       // Update video status to failed
       supabase.from('videos').update({
-        status: 'failed',
+        status: 'error',
         error_text: error.message
       }).eq('id', data.video_id).then();
     });
@@ -576,7 +576,7 @@ async function processVideoAsync(
     const processingTime = Math.floor((endTime - startTime) / 1000);
 
     const { error: videoUpdateError } = await supabase.from('videos').update({
-      status: 'completed',
+      status: 'ready',
       video_url: finalVideoWithCaptions,
       thumbnail_url: clips[0]?.first_image_url || null,
       duration_seconds: totalDuration,
