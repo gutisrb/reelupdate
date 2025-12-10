@@ -40,8 +40,26 @@ export class CloudinaryClient {
     const formData = new FormData();
 
     if (typeof videoData === 'string') {
+      // If it's already a Cloudinary URL, don't re-upload; just return the details
+      if (videoData.includes('cloudinary.com')) {
+        const publicId = this.extractPublicId(videoData);
+        console.log(`[Cloudinary] uploadVideo(url) short-circuit for Cloudinary asset: ${publicId}`);
+        return {
+          asset_id: publicId,
+          public_id: publicId,
+          secure_url: videoData,
+          url: videoData,
+          resource_type: 'video',
+          bytes: 0,
+        } as CloudinaryUploadResponse;
+      }
+
       // If it's a URL, use fetch to get the data
       const videoResponse = await fetch(videoData);
+      if (!videoResponse.ok) {
+        const errorText = await videoResponse.text();
+        throw new Error(`Cloudinary upload aborted: failed to fetch URL (${videoResponse.status}): ${errorText}`);
+      }
       const blob = await videoResponse.blob();
       console.log(`[Cloudinary] uploadVideo(url) blob size: ${blob.size} bytes`);
       if (blob.size === 0) {
