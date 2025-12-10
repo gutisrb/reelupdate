@@ -751,12 +751,21 @@ async function finishClip(
   // Wait for Luma completion
   const clipUrl = await clients.luma.waitForCompletion(clipData.luma_generation_id);
 
-  console.log(`[${data.video_id}] Clip ${index + 1} ready: ${clipUrl}`);
+  console.log(`[${data.video_id}] Clip ${index + 1} ready from Luma: ${clipUrl}`);
 
-  // Return updated clip data with clip_url
+  // Upload Luma clip to Cloudinary for permanent storage
+  // (Luma URLs are temporary and expire - Cloudinary URLs are permanent)
+  console.log(`[${data.video_id}] Uploading clip ${index + 1} to Cloudinary...`);
+  const cloudinaryUpload = await clients.cloudinary.uploadVideo(
+    clipUrl,
+    `clip_${data.video_id}_${index}.mp4`
+  );
+  console.log(`[${data.video_id}] Clip ${index + 1} uploaded to Cloudinary: ${cloudinaryUpload.secure_url}`);
+
+  // Return updated clip data with Cloudinary URL (not Luma URL)
   return {
     ...clipData,
-    clip_url: clipUrl,
+    clip_url: cloudinaryUpload.secure_url,
   };
 }
 
