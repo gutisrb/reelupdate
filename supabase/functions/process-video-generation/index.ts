@@ -575,7 +575,7 @@ async function processVideoAsync(
     const endTime = Date.now();
     const processingTime = Math.floor((endTime - startTime) / 1000);
 
-    await supabase.from('videos').update({
+    const { error: videoUpdateError } = await supabase.from('videos').update({
       status: 'completed',
       video_url: finalVideoWithCaptions,
       thumbnail_url: clips[0]?.first_image_url || null,
@@ -583,7 +583,12 @@ async function processVideoAsync(
       updated_at: new Date().toISOString(),
     }).eq('id', data.video_id);
 
-    await supabase.from('video_generation_details').insert({
+    if (videoUpdateError) {
+      console.error(`[${data.video_id}] Failed to update videos row: ${videoUpdateError.message}`);
+      throw new Error(`Failed to update videos row: ${videoUpdateError.message}`);
+    }
+
+    const { error: detailsError } = await supabase.from('video_generation_details').insert({
       video_id: data.video_id,
       clip_data: clips,
       voiceover_script: voiceoverScript,
@@ -599,6 +604,11 @@ async function processVideoAsync(
       processing_completed_at: new Date(endTime).toISOString(),
       total_processing_time_seconds: processingTime,
     });
+
+    if (detailsError) {
+      console.error(`[${data.video_id}] Failed to insert video_generation_details: ${detailsError.message}`);
+      throw new Error(`Failed to insert video_generation_details: ${detailsError.message}`);
+    }
 
     console.log(`[${data.video_id}] Processing completed in ${processingTime}s`);
 
