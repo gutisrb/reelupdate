@@ -143,10 +143,11 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
       voiceName = voiceId.replace('-flash', '');
     }
 
-    // Gemini TTS style instructions must be embedded in the text content itself
-    // not as a separate field in speechConfig
+    // Gemini TTS style instructions are prepended to the text (from Make.com blueprint line 4097)
+    // Format: "[Style instructions]: [text]"
+    // Example: "Speak with warm, confident delivery in a sophisticated professional tone: [voiceover text]"
     const textWithStyle = styleInstructions
-      ? `${styleInstructions}\n\n${text}`
+      ? `${styleInstructions}: ${text}`
       : text;
 
     const body = {
@@ -183,8 +184,11 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
     const base64Audio = data.candidates[0]?.content?.parts[0]?.inlineData?.data;
 
     if (!base64Audio) {
+      console.error('[Gemini TTS] Response structure:', JSON.stringify(data, null, 2));
       throw new Error('No audio data returned from Gemini TTS');
     }
+
+    console.log(`[Gemini TTS] Base64 audio length: ${base64Audio.length} chars`);
 
     // Decode base64 to ArrayBuffer
     const binaryString = atob(base64Audio);
@@ -193,8 +197,13 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
       bytes[i] = binaryString.charCodeAt(i);
     }
 
+    console.log(`[Gemini TTS] Decoded audio: ${bytes.length} bytes`);
+
     // Wrap PCM data in WAV container so Cloudinary recognizes it
-    return this.wrapPCMInWAV(bytes.buffer);
+    const wavBuffer = this.wrapPCMInWAV(bytes.buffer);
+    console.log(`[Gemini TTS] WAV file size: ${wavBuffer.byteLength} bytes`);
+
+    return wavBuffer;
   }
 
   /**
