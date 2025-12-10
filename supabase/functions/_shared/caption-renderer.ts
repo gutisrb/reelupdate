@@ -3,7 +3,19 @@
  * Renders captions with full CSS-like styling support
  */
 
-import { createCanvas, loadImage } from "https://deno.land/x/canvas@v1.4.1/mod.ts";
+// Lazy-load canvas for Deno and polyfill __dirname to avoid ReferenceError in deno.land/x/canvas
+let canvasModulePromise: Promise<{ createCanvas: any }> | null = null;
+
+async function getCanvasModule() {
+  if (!canvasModulePromise) {
+    // Polyfill __dirname for canvas internals that expect Node globals
+    if (typeof (globalThis as any).__dirname === 'undefined') {
+      (globalThis as any).__dirname = new URL('.', import.meta.url).pathname;
+    }
+    canvasModulePromise = import("https://deno.land/x/canvas@v1.4.1/mod.ts") as Promise<{ createCanvas: any }>;
+  }
+  return canvasModulePromise;
+}
 import type { SRTCue, SRTWord } from './srt-parser.ts';
 
 export interface CaptionStyle {
@@ -129,6 +141,7 @@ export async function renderCaptionFrame(
   options: RenderOptions = DEFAULT_RENDER_OPTIONS,
   animationProgress: number = 1.0 // 0.0 to 1.0 for animations
 ): Promise<Uint8Array> {
+  const { createCanvas } = await getCanvasModule();
   const canvas = createCanvas(options.width, options.height);
   const ctx = canvas.getContext('2d');
 
