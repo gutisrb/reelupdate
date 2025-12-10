@@ -32,18 +32,19 @@ export class ElevenLabsClient {
       throw new Error(`ElevenLabs music generation failed: ${error}`);
     }
 
-    const data: ElevenLabsMusicResponse = await response.json();
+    // ElevenLabs returns the MP3 file directly (not JSON)
+    // Get raw audio data and upload to Cloudinary
+    const audioData = await response.arrayBuffer();
 
-    // Poll for completion if needed
-    if (data.status === 'pending') {
-      return await this.waitForMusicGeneration(data.music_id);
-    }
+    // Upload to Cloudinary and return URL
+    const { CloudinaryClient } = await import('./cloudinary.ts');
+    const cloudinary = new CloudinaryClient();
+    const uploadResult = await cloudinary.uploadVideo(
+      audioData,
+      `music_${Date.now()}.mp3`
+    );
 
-    if (!data.audio_url) {
-      throw new Error('No audio URL returned from ElevenLabs');
-    }
-
-    return data.audio_url;
+    return uploadResult.secure_url;
   }
 
   /**
