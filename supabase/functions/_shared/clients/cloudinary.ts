@@ -43,10 +43,23 @@ export class CloudinaryClient {
       // If it's a URL, use fetch to get the data
       const videoResponse = await fetch(videoData);
       const blob = await videoResponse.blob();
+      console.log(`[Cloudinary] uploadVideo(url) blob size: ${blob.size} bytes`);
+      if (blob.size === 0) {
+        throw new Error('Cloudinary upload aborted: fetched URL returned empty file');
+      }
       formData.append('file', blob, filename);
     } else {
-      const blob = new Blob([videoData]);
-      formData.append('file', blob, filename);
+      // Cloudinary sometimes rejects raw blobs from Deno as "Empty file".
+      // Send as a base64 data URI to guarantee payload delivery.
+      const bytes = videoData instanceof Uint8Array ? videoData : new Uint8Array(videoData);
+      console.log(`[Cloudinary] uploadVideo(buffer) byte length: ${bytes.length}`);
+      if (bytes.length === 0) {
+        throw new Error('Cloudinary upload aborted: zero-length buffer');
+      }
+      const mimeType = this.getMimeTypeFromFilename(filename);
+      const base64 = this.arrayBufferToBase64(bytes);
+      console.log(`[Cloudinary] uploadVideo base64 length: ${base64.length}`);
+      formData.append('file', `data:${mimeType};base64,${base64}`);
     }
 
     formData.append('upload_preset', this.uploadPreset);
@@ -66,6 +79,32 @@ export class CloudinaryClient {
     }
 
     return await response.json();
+  }
+
+  /**
+   * Convert ArrayBuffer/Uint8Array to base64 string
+   */
+  private arrayBufferToBase64(buffer: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < buffer.length; i++) {
+      binary += String.fromCharCode(buffer[i]);
+    }
+    return btoa(binary);
+  }
+
+  /**
+   * Derive MIME type from filename extension for audio/video
+   */
+  private getMimeTypeFromFilename(filename: string): string {
+    const lower = filename.toLowerCase();
+    if (lower.endsWith('.mp3')) return 'audio/mpeg';
+    if (lower.endsWith('.wav')) return 'audio/wav';
+    if (lower.endsWith('.m4a')) return 'audio/mp4';
+    if (lower.endsWith('.aac')) return 'audio/aac';
+    if (lower.endsWith('.ogg')) return 'audio/ogg';
+    if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.mov')) return 'video/quicktime';
+    return 'video/mp4';
   }
 
   /**
