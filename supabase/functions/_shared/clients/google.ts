@@ -59,9 +59,18 @@ OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional te
       throw new Error('No text returned from Gemini');
     }
 
-    // Parse JSON response
+    // Parse JSON response (strip markdown code blocks if present)
     try {
-      const parsed: VoiceScriptResponse = JSON.parse(text);
+      let cleanText = text.trim();
+
+      // Remove markdown code blocks: ```json ... ``` or ``` ... ```
+      if (cleanText.startsWith('```json')) {
+        cleanText = cleanText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+      } else if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```\n?/, '').replace(/\n?```$/, '').trim();
+      }
+
+      const parsed: VoiceScriptResponse = JSON.parse(cleanText);
       return parsed.voice_text;
     } catch (e) {
       throw new Error(`Failed to parse Gemini response as JSON: ${text}`);
