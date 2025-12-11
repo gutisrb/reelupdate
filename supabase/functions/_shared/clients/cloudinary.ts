@@ -309,9 +309,11 @@ export class CloudinaryClient {
       const logoWidth = Math.round(1080 * sizePercent / 100);
 
       // Add logo layer transformation
-      // Format: l_image:public_id,params (use slashes in public_id for folder paths)
+      // Format: l_image:public_id,params
+      // NOTE: Cloudinary transformation URLs use colons for folder separators, not slashes
+      const logoPublicIdForTransform = logoPublicId.replace(/\//g, ':');
       transformations.push(
-        `l_image:${logoPublicId},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`,
+        `l_image:${logoPublicIdForTransform},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`,
         'fl_layer_apply'
       );
 
