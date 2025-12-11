@@ -477,6 +477,11 @@ async function processVideoAsync(
     const clipUrls = clips.map(c => c.clip_url);
     const totalDuration = clips.length * 5; // 5 seconds per clip
 
+    // Assemble video with Cloudinary transformations (returns transformation URL)
+    // NOTE: This returns a transformation URL, NOT an actual video file
+    // Cloudinary will process the transformation on-demand when the URL is accessed
+    const baseClipPublicId = clients.cloudinary['extractPublicId'](clipUrls[0]);
+
     const assembledVideoUrl = clients.cloudinary.assembleVideo(
       clipUrls,
       voiceoverUpload.secure_url,
@@ -488,18 +493,12 @@ async function processVideoAsync(
       userSettings.logo_size_percent || 15
     );
 
-    // Upload assembled video back to Cloudinary for final processing
-    const finalVideoUpload = await clients.cloudinary.uploadVideo(
-      assembledVideoUrl,
-      `final_${data.video_id}.mp4`
-    );
-
-    console.log(`[${data.video_id}] Video assembled: ${finalVideoUpload.secure_url}`);
+    console.log(`[${data.video_id}] Video assembly transformation URL: ${assembledVideoUrl}`);
 
     // ============================================
     // 7. ADD CAPTIONS (Browser-Rendered Caption Overlay)
     // ============================================
-    let finalVideoWithCaptions = finalVideoUpload.secure_url;
+    let finalVideoWithCaptions = assembledVideoUrl;
 
     // Check if caption video was provided from browser
     if (data.caption_video_url) {
@@ -510,20 +509,15 @@ async function processVideoAsync(
         const captionPublicId = clients.cloudinary['extractPublicId'](data.caption_video_url);
         console.log(`[${data.video_id}] Caption video public_id: ${captionPublicId}`);
 
-        // Build Cloudinary transformation URL with caption overlay
-        const baseVideoPublicId = finalVideoUpload.public_id;
+        // Extract existing transformation from assembled URL
         const cloudName = clients.cloudinary['cloudName'];
+        const urlParts = assembledVideoUrl.split('/upload/');
+        const existingTransformation = urlParts[1].split(`/${baseClipPublicId}`)[0];
 
-        // Simple overlay transformation
-        const transformation = [
-          'f_mp4',
-          'vc_h264',
-          'q_auto:good',
-          `l_video:${captionPublicId}`,  // Overlay caption video
-          'fl_layer_apply'
-        ].join('/');
+        // Add caption overlay to existing transformation
+        const transformationWithCaptions = `${existingTransformation}/l_video:${captionPublicId},fl_layer_apply`;
 
-        finalVideoWithCaptions = `https://res.cloudinary.com/${cloudName}/video/upload/${transformation}/${baseVideoPublicId}.mp4`;
+        finalVideoWithCaptions = `https://res.cloudinary.com/${cloudName}/video/upload/${transformationWithCaptions}/${baseClipPublicId}.mp4`;
 
         console.log(`[${data.video_id}] Caption overlay added successfully`);
         console.log(`[${data.video_id}] Final video URL: ${finalVideoWithCaptions}`);

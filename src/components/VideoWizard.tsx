@@ -7,6 +7,7 @@ import { PhotosStep } from '@/components/wizard/PhotosStep';
 import { PreviewStep } from '@/components/wizard/PreviewStep';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { useProgress } from '@/contexts/ProgressContext';
 import { useWizard } from '@/contexts/WizardContext';
 import { compressMappedEntries } from '@/lib/compressWebhookImage';
@@ -24,6 +25,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
 
   const { toast } = useToast();
   const { profile, loading: profileLoading } = useProfile(user);
+  const { settings: userSettings, loading: settingsLoading } = useUserSettings(user);
   const { progress, setProgress } = useProgress();
   const { 
     wizardData, 
@@ -129,34 +131,34 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
       // Render caption video in browser if captions are enabled
       let captionVideoUrl: string | null = null;
 
-      console.log('[Caption Video] DEBUG: profile =', profile);
-      console.log('[Caption Video] DEBUG: caption_enabled =', profile?.caption_enabled);
+      console.log('[Caption Video] DEBUG: userSettings =', userSettings);
+      console.log('[Caption Video] DEBUG: caption_enabled =', userSettings?.caption_enabled);
 
-      if (profile?.caption_enabled) {
+      if (userSettings?.caption_enabled) {
         console.log('[Caption Video] Captions enabled - rendering caption overlay video...');
         setProgress(35);
 
         try {
-          // Fetch caption settings from user profile
+          // Fetch caption settings from user settings
           const captionSettings: CaptionSettings = {
-            fontFamily: profile.caption_font_family || 'Arial',
-            fontSize: profile.caption_font_size || 34,
-            fontColor: profile.caption_font_color || 'FFFFFF',
-            bgColor: profile.caption_bg_color || '000000',
-            bgOpacity: profile.caption_bg_opacity || 0,
-            fontWeight: profile.caption_font_weight || 'bold',
-            uppercase: profile.caption_uppercase || false,
-            strokeColor: profile.caption_stroke_color || '000000',
-            strokeWidth: profile.caption_stroke_width || 0,
-            shadowColor: profile.caption_shadow_color || '000000',
-            shadowBlur: profile.caption_shadow_blur || 4,
-            shadowX: profile.caption_shadow_x || 0,
-            shadowY: profile.caption_shadow_y || 2,
-            position: profile.caption_position || 'bottom',
-            animation: profile.caption_animation || 'fade',
-            maxLines: profile.caption_max_lines || 2,
-            emojis: profile.caption_emojis || false,
-            singleWord: profile.caption_single_word || false,
+            fontFamily: userSettings.caption_font_family || 'Arial',
+            fontSize: userSettings.caption_font_size || 34,
+            fontColor: userSettings.caption_font_color || 'FFFFFF',
+            bgColor: userSettings.caption_bg_color || '000000',
+            bgOpacity: userSettings.caption_bg_opacity || 0,
+            fontWeight: userSettings.caption_font_weight || 'bold',
+            uppercase: userSettings.caption_uppercase || false,
+            strokeColor: userSettings.caption_stroke_color || '000000',
+            strokeWidth: userSettings.caption_stroke_width || 0,
+            shadowColor: userSettings.caption_shadow_color || '000000',
+            shadowBlur: userSettings.caption_shadow_blur || 4,
+            shadowX: userSettings.caption_shadow_x || 0,
+            shadowY: userSettings.caption_shadow_y || 2,
+            position: userSettings.caption_position || 'bottom',
+            animation: userSettings.caption_animation || 'fade',
+            maxLines: userSettings.caption_max_lines || 2,
+            emojis: userSettings.caption_emojis || false,
+            singleWord: userSettings.caption_single_word || false,
           };
 
           // Create placeholder transcript
