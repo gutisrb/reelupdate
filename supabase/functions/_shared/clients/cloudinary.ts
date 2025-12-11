@@ -53,21 +53,8 @@ export class CloudinaryClient {
     const publicId = filename.replace(/\.[^/.]+$/, '');
 
     if (typeof videoData === 'string') {
-      // If it's already a Cloudinary URL, don't re-upload; just return the details
-      if (videoData.includes('cloudinary.com')) {
-        const existingPublicId = this.extractPublicIdFromCloudinaryUrl(videoData);
-        console.log(`[Cloudinary] uploadVideo(url) short-circuit for Cloudinary asset: ${existingPublicId}`);
-        return {
-          asset_id: existingPublicId,
-          public_id: existingPublicId,
-          secure_url: videoData,
-          url: videoData,
-          resource_type: 'video',
-          bytes: 0,
-        } as CloudinaryUploadResponse;
-      }
-
-      // If it's a URL, use fetch to get the data
+      // Fetch the URL (this triggers Cloudinary to process transformation URLs)
+      console.log(`[Cloudinary] Fetching video from URL: ${videoData}`);
       const videoResponse = await fetch(videoData);
       if (!videoResponse.ok) {
         const errorText = await videoResponse.text();
