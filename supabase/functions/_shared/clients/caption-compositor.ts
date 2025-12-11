@@ -3,7 +3,9 @@
  * Overlays rendered caption PNG frames onto video with precise timing
  */
 
-import type { CaptionFrame } from '../caption-renderer.ts';
+import type { CaptionFrame, CaptionStyle, RenderOptions } from '../caption-renderer.ts';
+import { renderCueFrames, renderKaraokeFrames } from '../caption-renderer.ts';
+import type { SRTCue } from '../srt-parser.ts';
 import { CloudinaryClient } from './cloudinary.ts';
 
 export interface CompositeOptions {
@@ -133,6 +135,105 @@ export async function compositeCaptionsOnVideo(
 
   // The URL itself triggers Cloudinary to process the video
   // We can optionally "prime" it by making a HEAD request
+  try {
+    await fetch(compositeUrl, { method: 'HEAD' });
+  } catch (e) {
+    console.warn('[Caption Compositor] Failed to prime composite URL:', e);
+  }
+
+  return compositeUrl;
+}
+
+/**
+ * STREAMING APPROACH: Render and upload captions one cue at a time
+ *
+ * This solves the "Memory limit exceeded" error by processing cues incrementally:
+ * 1. Render frames for one cue
+ * 2. Upload those frames immediately
+ * 3. Clear frames from memory
+ * 4. Repeat for next cue
+ *
+ * Memory usage: O(1) per cue instead of O(n) total frames
+ */
+export async function renderAndCompositeCaptionsStreaming(
+  cues: SRTCue[],
+  style: CaptionStyle,
+  renderOptions: RenderOptions,
+  videoPublicId: string,
+  cloudinary: CloudinaryClient
+): Promise<string> {
+  console.log(`[Caption Compositor] Streaming render+upload for ${cues.length} cues`);
+
+  const uploadedFrames: Array<{ publicId: string; timestamp: number; duration: number }> = [];
+  let totalFrameCount = 0;
+
+  // Process each cue one at a time
+  for (let cueIndex = 0; cueIndex < cues.length; cueIndex++) {
+    let cue = cues[cueIndex];
+
+    console.log(`[Caption Compositor] Processing cue ${cueIndex + 1}/${cues.length}: "${cue.text.substring(0, 30)}..."`);
+
+    // Apply emojis if enabled
+    if (style.emojis) {
+      const { addEmojis } = await import('../srt-parser.ts');
+      cue = { ...cue, text: addEmojis(cue.text) };
+    }
+
+    // Render frames for this cue only
+    let cueFrames: CaptionFrame[];
+
+    if (style.singleWord) {
+      // Karaoke mode: split into words
+      const { splitCueIntoWords } = await import('../srt-parser.ts');
+      const words = splitCueIntoWords(cue);
+      cueFrames = await renderKaraokeFrames(words, style, renderOptions);
+    } else {
+      // Normal mode: render entire cue text
+      cueFrames = await renderCueFrames(cue, style, renderOptions);
+    }
+
+    console.log(`[Caption Compositor] Rendered ${cueFrames.length} frames for cue ${cueIndex + 1}`);
+
+    // Upload all frames for this cue in parallel (10x faster than sequential)
+    console.log(`[Caption Compositor] Uploading ${cueFrames.length} frames in parallel...`);
+    const uploadPromises = cueFrames.map((frame, frameIndex) => {
+      const globalFrameIndex = totalFrameCount + frameIndex;
+      const filename = `caption_${videoPublicId}_frame_${globalFrameIndex}.png`;
+
+      // Upload frame as PNG and return metadata
+      return cloudinary.uploadFromBuffer(
+        frame.imageData,
+        filename,
+        'image'
+      ).then(result => ({
+        publicId: result.public_id,
+        timestamp: frame.timestamp,
+        duration: frame.duration,
+      }));
+    });
+
+    // Wait for all uploads to complete in parallel
+    const uploadedCueFrames = await Promise.all(uploadPromises);
+    uploadedFrames.push(...uploadedCueFrames);
+
+    totalFrameCount += cueFrames.length;
+
+    // Frames are now out of scope and eligible for garbage collection
+    console.log(`[Caption Compositor] Uploaded ${cueFrames.length} frames for cue ${cueIndex + 1} in parallel (total: ${totalFrameCount})`);
+  }
+
+  console.log(`[Caption Compositor] All ${totalFrameCount} frames uploaded, building composite URL`);
+
+  // Build composite URL with all uploaded frames
+  const compositeUrl = buildCompositeUrl(
+    videoPublicId,
+    uploadedFrames,
+    cloudinary['cloudName']
+  );
+
+  console.log(`[Caption Compositor] Composite URL: ${compositeUrl}`);
+
+  // Prime the URL
   try {
     await fetch(compositeUrl, { method: 'HEAD' });
   } catch (e) {

@@ -27,9 +27,15 @@ serve(async (req) => {
     const videoId = formData.get('video_id') as string;
     const userId = formData.get('user_id') as string;
     const groupingStr = formData.get('grouping') as string;
+    const captionVideoUrl = formData.get('caption_video_url') as string | null;
 
     if (!videoId || !userId) {
       throw new Error('Missing required fields: video_id or user_id');
+    }
+
+    // Log caption video URL if provided
+    if (captionVideoUrl) {
+      console.log(`[${videoId}] Caption video URL provided from browser: ${captionVideoUrl}`);
     }
 
     // Build property_data from individual fields
@@ -89,6 +95,9 @@ serve(async (req) => {
       property_data: propertyData,
       image_slots: imageSlots,
       grouping: groupingStr,
+      slot_mode_info: groupingStr, // Same as grouping for compatibility
+      total_images: totalImages,
+      caption_video_url: captionVideoUrl || undefined, // Browser-rendered caption overlay
     };
 
     // Initialize Supabase client
@@ -158,14 +167,20 @@ serve(async (req) => {
     }
 
     // Process synchronously to avoid EarlyDrop (background tasks can be terminated)
+    console.log(`[${data.video_id}] DEBUG: About to call processVideoAsync`);
     try {
       await processVideoAsync(
         data,
         supabase,
         { cloudinary, luma, openai, google, elevenlabs }
       );
+      console.log(`[${data.video_id}] DEBUG: processVideoAsync completed successfully`);
     } catch (error) {
       console.error(`[${data.video_id}] Processing failed:`, error);
+      console.error(`[${data.video_id}] ERROR stack:`, (error as any)?.stack);
+      console.error(`[${data.video_id}] ERROR name:`, (error as any)?.name);
+      console.error(`[${data.video_id}] ERROR message:`, (error as any)?.message);
+
       // Update video status to error
       await supabase.from('videos').update({
         status: 'error',
@@ -207,16 +222,25 @@ async function processVideoAsync(
 ) {
   const startTime = Date.now();
   console.log(`[${data.video_id}] Processing started`);
+  console.log(`[${data.video_id}] DEBUG: processVideoAsync called`);
+  console.log(`[${data.video_id}] DEBUG: data.video_id = ${data.video_id}`);
+  console.log(`[${data.video_id}] DEBUG: data.user_id = ${data.user_id}`);
+  console.log(`[${data.video_id}] DEBUG: data.property_data.title = ${data.property_data.title}`);
 
   try {
+    console.log(`[${data.video_id}] DEBUG: Inside try block`);
+
     // ============================================
     // 3. GET USER SETTINGS
     // ============================================
+    console.log(`[${data.video_id}] DEBUG: Fetching user settings...`);
     const { data: settings } = await supabase
       .from('user_settings')
       .select('*')
       .eq('user_id', data.user_id)
       .single();
+
+    console.log(`[${data.video_id}] DEBUG: User settings fetched:`, settings ? 'found' : 'not found');
 
     const userSettings: UserSettings = settings || {
       voice_id: 'sr-RS-Standard-A',
@@ -256,13 +280,18 @@ async function processVideoAsync(
     // ============================================
     // 4. PROCESS CLIPS (with GPT-4o + Luma) or TEST_MODE
     // ============================================
+    console.log(`[${data.video_id}] DEBUG: About to check TEST_MODE`);
 
     // Check if TEST_MODE is enabled (title contains "TEST_MODE")
     const isTestMode = data.property_data.title.toUpperCase().includes('TEST_MODE');
+    console.log(`[${data.video_id}] DEBUG: isTestMode = ${isTestMode}`);
 
     let clips: ClipData[];
 
     if (isTestMode) {
+      // ============================================
+      // TEST_MODE: Use placeholder clips to save AI costs
+      // ============================================
       console.log(`[${data.video_id}] ⚡ TEST_MODE ENABLED - Using placeholder clips`);
 
       // Placeholder clip URLs (no AI processing)
@@ -287,64 +316,11 @@ async function processVideoAsync(
       }));
 
       console.log(`[${data.video_id}] ⚡ Using ${clips.length} placeholder clips (saved AI costs)`);
-
-      // Short-circuit in TEST_MODE to avoid long runtime and EarlyDrop
-      const totalDuration = clips.length * 5; // 5 seconds per clip
-      const finalVideoUrl = clips[0].clip_url; // use first placeholder as final
-
-      // Update DB and return early
-      const endTime = Date.now();
-      const processingTime = Math.floor((endTime - startTime) / 1000);
-
-      const { error: videoUpdateError } = await supabase.from('videos').update({
-        status: 'ready',
-        video_url: finalVideoUrl,
-        thumbnail_url: clips[0]?.clip_url || null,
-        duration_seconds: totalDuration,
-        updated_at: new Date().toISOString(),
-      }).eq('id', data.video_id);
-
-      if (videoUpdateError) {
-        console.error(`[${data.video_id}] Failed to update videos row (test mode): ${videoUpdateError.message}`);
-        throw new Error(`Failed to update videos row (test mode): ${videoUpdateError.message}`);
-      }
-
-      const { error: detailsError } = await supabase.from('video_generation_details').insert({
-        video_id: data.video_id,
-        clip_data: clips,
-        voiceover_script: 'TEST_MODE placeholder',
-        voiceover_url: finalVideoUrl,
-        music_url: finalVideoUrl,
-        music_source: 'auto_generated',
-        caption_data: {
-          template_id: captionTemplateId,
-          transcript: 'TEST_MODE placeholder',
-        },
-        settings_snapshot: userSettings,
-        processing_started_at: new Date(startTime).toISOString(),
-        processing_completed_at: new Date(endTime).toISOString(),
-        total_processing_time_seconds: processingTime,
-      });
-
-      if (detailsError) {
-        console.error(`[${data.video_id}] Failed to insert video_generation_details (test mode): ${detailsError.message}`);
-        throw new Error(`Failed to insert video_generation_details (test mode): ${detailsError.message}`);
-      }
-
-      console.log(`[${data.video_id}] TEST_MODE: completed quickly with placeholder video`);
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          video_id: data.video_id,
-          message: 'TEST_MODE completed',
-          video_url: finalVideoUrl,
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log(`[${data.video_id}] TEST_MODE will continue through full pipeline (voiceover, music, assembly, captions)`);
 
     } else {
       // ============================================
-      // EFFICIENT APPROACH (from Make.com):
+      // REGULAR MODE: EFFICIENT APPROACH (from Make.com):
       // 1. Prepare all clips in parallel (upload images + GPT-4o + START Luma, don't wait)
       // 2. Generate audio in parallel with Luma rendering
       // 3. Wait for all Luma completions
@@ -370,35 +346,59 @@ async function processVideoAsync(
     // 5. GENERATE AUDIO (Voiceover + Music) - IN PARALLEL WITH LUMA RENDERING
     // ============================================
     console.log(`[${data.video_id}] Step 2: Generating audio (while Luma renders in background)...`);
+    console.log(`[${data.video_id}] DEBUG: clips.length = ${clips.length}`);
 
-    // Generate voiceover script
-    const visualContext = clips.map(c => c.luma_prompt).join('; ');
-    const videoLength = data.image_slots.length * 5; // 5 seconds per clip
-    const voiceoverScript = await clients.google.generateVoiceoverScript(
-      data.property_data,
-      visualContext,
-      videoLength
-    );
-
-    // Generate TTS audio
-    const voiceoverPCM = await clients.google.generateTTS(
-      voiceoverScript,
-      userSettings.voice_id,
-      userSettings.voice_style_instructions
-    );
-
-    // Upload voiceover to Cloudinary (now in WAV format with proper headers)
-    const voiceoverUpload = await clients.cloudinary.uploadVideo(
-      voiceoverPCM,
-      `voiceover_${data.video_id}.wav`
-    );
-
-    // Generate or select music
+    let voiceoverScript: string;
+    let voiceoverUpload: any;
     let musicUrl: string;
     let musicSource: string;
-    const musicDurationMs = data.image_slots.length * 5 * 1000; // Convert seconds to milliseconds
 
-    if (userSettings.music_preference === 'custom') {
+    if (isTestMode) {
+      // TEST_MODE: Use placeholder audio to save credits
+      console.log(`[${data.video_id}] TEST_MODE: Using placeholder music and voiceover (saving AI credits)`);
+
+      voiceoverScript = 'TEST_MODE placeholder voiceover script';
+      voiceoverUpload = {
+        secure_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765407043/cwl0mqzkwc3xf7iesmgl.wav',
+        public_id: 'cwl0mqzkwc3xf7iesmgl',
+      };
+
+      musicUrl = 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765440325/music_1765440324652.mp3';
+      musicSource = 'test_mode_placeholder';
+
+    } else {
+      // REGULAR MODE: Generate real audio
+      console.log(`[${data.video_id}] DEBUG: About to generate voiceover script`);
+
+      // Generate voiceover script
+      const visualContext = clips.map(c => c.luma_prompt).join('; ');
+      const videoLength = data.image_slots.length * 5; // 5 seconds per clip
+      console.log(`[${data.video_id}] DEBUG: videoLength = ${videoLength}s, visualContext length = ${visualContext.length} chars`);
+
+      voiceoverScript = await clients.google.generateVoiceoverScript(
+        data.property_data,
+        visualContext,
+        videoLength
+      );
+      console.log(`[${data.video_id}] DEBUG: Voiceover script generated: ${voiceoverScript.length} chars`);
+
+      // Generate TTS audio
+      const voiceoverPCM = await clients.google.generateTTS(
+        voiceoverScript,
+        userSettings.voice_id,
+        userSettings.voice_style_instructions
+      );
+
+      // Upload voiceover to Cloudinary (now in WAV format with proper headers)
+      voiceoverUpload = await clients.cloudinary.uploadVideo(
+        voiceoverPCM,
+        `voiceover_${data.video_id}.wav`
+      );
+
+      // Generate or select music
+      const musicDurationMs = data.image_slots.length * 5 * 1000; // Convert seconds to milliseconds
+
+      if (userSettings.music_preference === 'custom') {
       // Use custom uploaded music
       const { data: musicData } = await supabase
         .from('custom_music_uploads')
@@ -449,6 +449,7 @@ async function processVideoAsync(
       );
       musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
       musicSource = 'auto_generated';
+      }
     }
 
     console.log(`[${data.video_id}] Step 2 complete: Audio generated (source: ${musicSource})`);
@@ -496,136 +497,43 @@ async function processVideoAsync(
     console.log(`[${data.video_id}] Video assembled: ${finalVideoUpload.secure_url}`);
 
     // ============================================
-    // 7. ADD CAPTIONS (In-House Whisper System)
+    // 7. ADD CAPTIONS (Browser-Rendered Caption Overlay)
     // ============================================
     let finalVideoWithCaptions = finalVideoUpload.secure_url;
 
-    if (userSettings.caption_enabled) {
-      const captionSystem = userSettings.caption_system || 'whisper';
-      console.log(`[${data.video_id}] Generating captions using ${captionSystem} system`);
+    // Check if caption video was provided from browser
+    if (data.caption_video_url) {
+      console.log(`[${data.video_id}] Adding browser-rendered caption overlay...`);
 
-      if (captionSystem === 'zapcap') {
-        // ============================================
-        // 7A. ZAPCAP SYSTEM
-        // ============================================
-        try {
-          console.log(`[${data.video_id}] Using ZapCap for captions`);
+      try {
+        // Extract public_id from caption video URL
+        const captionPublicId = clients.cloudinary['extractPublicId'](data.caption_video_url);
+        console.log(`[${data.video_id}] Caption video public_id: ${captionPublicId}`);
 
-          // Create ZapCap task
-          const taskId = await clients.zapcap.createCaptionTask(
-            finalVideoUpload.secure_url,
-            captionTemplateId
-          );
+        // Build Cloudinary transformation URL with caption overlay
+        const baseVideoPublicId = finalVideoUpload.public_id;
+        const cloudName = clients.cloudinary['cloudName'];
 
-          console.log(`[${data.video_id}] ZapCap task created: ${taskId}`);
+        // Simple overlay transformation
+        const transformation = [
+          'f_mp4',
+          'vc_h264',
+          'q_auto:good',
+          `l_video:${captionPublicId}`,  // Overlay caption video
+          'fl_layer_apply'
+        ].join('/');
 
-          // Wait for transcription (30 seconds)
-          await new Promise(resolve => setTimeout(resolve, 30000));
+        finalVideoWithCaptions = `https://res.cloudinary.com/${cloudName}/video/upload/${transformation}/${baseVideoPublicId}.mp4`;
 
-          // Get transcript
-          const transcript = await clients.zapcap.getTranscript(data.video_id, taskId);
-
-          // Correct transcript using voiceover script
-          const correctedTranscript = await clients.openai.correctTranscript(
-            transcript,
-            voiceoverScript
-          );
-
-          // Update transcript
-          await clients.zapcap.updateTranscript(data.video_id, taskId, correctedTranscript);
-
-          // Approve and get final video
-          finalVideoWithCaptions = await clients.zapcap.approveTranscript(data.video_id, taskId);
-
-          console.log(`[${data.video_id}] ZapCap captions added successfully`);
-
-        } catch (e) {
-          console.error(`[${data.video_id}] ZapCap caption generation failed:`, e);
-          // Continue without captions if they fail
-        }
-
-      } else {
-        // ============================================
-        // 7B. WHISPER SYSTEM (In-House Caption Burning)
-        // ============================================
-        try {
-          console.log(`[${data.video_id}] Using In-House Whisper caption rendering`);
-
-          // Import caption rendering modules
-          const { parseSRT } = await import('../_shared/srt-parser.ts');
-          const { renderAllCaptions } = await import('../_shared/caption-renderer.ts');
-          const { compositeCaptionsOnVideo } = await import('../_shared/clients/caption-compositor.ts');
-
-          // 1. Transcribe voiceover with Whisper
-          console.log(`[${data.video_id}] Transcribing voiceover...`);
-          let srtContent = await clients.openai.createTranscription(voiceoverUpload.secure_url);
-
-          // 2. Correct transcription against original script (95% → 100% accuracy)
-          console.log(`[${data.video_id}] Correcting transcription for grammar/typos...`);
-          srtContent = await clients.openai.correctTranscript(srtContent, voiceoverScript);
-          console.log(`[${data.video_id}] Transcription corrected to match script perfectly`);
-
-          // 3. Parse SRT content
-          console.log(`[${data.video_id}] Parsing SRT file...`);
-          const cues = parseSRT(srtContent);
-          console.log(`[${data.video_id}] Parsed ${cues.length} caption cues`);
-
-          // 4. Build caption style from user settings
-          const captionStyle = {
-            fontFamily: userSettings.caption_font_family || 'Arial',
-            fontSize: userSettings.caption_font_size || 34,
-            fontWeight: userSettings.caption_font_weight || 'bold',
-            fontColor: userSettings.caption_font_color || 'FFFFFF',
-            bgColor: userSettings.caption_bg_color || '000000',
-            bgOpacity: userSettings.caption_bg_opacity || 100,
-            uppercase: userSettings.caption_uppercase || false,
-            strokeColor: userSettings.caption_stroke_color || '000000',
-            strokeWidth: userSettings.caption_stroke_width || 0,
-            shadowColor: userSettings.caption_shadow_color || '000000',
-            shadowBlur: userSettings.caption_shadow_blur || 0,
-            shadowX: userSettings.caption_shadow_x || 2,
-            shadowY: userSettings.caption_shadow_y || 2,
-            position: (userSettings.caption_position as 'top' | 'middle' | 'bottom' | 'auto') || 'bottom',
-            animation: (userSettings.caption_animation as 'none' | 'pop' | 'fade' | 'karaoke') || 'none',
-            maxLines: userSettings.caption_max_lines || 2,
-            emojis: userSettings.caption_emojis || false,
-            singleWord: userSettings.caption_single_word || false,
-          };
-
-          console.log(`[${data.video_id}] Caption style:`, JSON.stringify(captionStyle));
-
-          // 5. Render all caption frames
-          console.log(`[${data.video_id}] Rendering caption frames with Canvas...`);
-          const captionFrames = await renderAllCaptions(cues, captionStyle, {
-            width: 1080,
-            height: 1920,
-            fps: 30,
-          });
-
-          console.log(`[${data.video_id}] Rendered ${captionFrames.length} caption frames`);
-
-          // 6. Get the base video public ID from the assembled video URL
-          const baseVideoPublicId = finalVideoUpload.public_id;
-
-          // 7. Composite captions onto video
-          console.log(`[${data.video_id}] Compositing captions onto video...`);
-          finalVideoWithCaptions = await compositeCaptionsOnVideo(
-            {
-              videoPublicId: baseVideoPublicId,
-              captionFrames: captionFrames,
-            },
-            clients.cloudinary
-          );
-
-          console.log(`[${data.video_id}] In-house captions successfully composited!`);
-
-        } catch (e) {
-          console.error(`[${data.video_id}] In-house caption rendering failed:`, e);
-          // Fall back to video without captions
-          finalVideoWithCaptions = finalVideoUpload.secure_url;
-          console.log(`[${data.video_id}] Continuing with video without captions`);
-        }
+        console.log(`[${data.video_id}] Caption overlay added successfully`);
+        console.log(`[${data.video_id}] Final video URL: ${finalVideoWithCaptions}`);
+      } catch (e) {
+        console.error(`[${data.video_id}] Failed to add caption overlay:`, e);
+        // Continue without captions
+        console.log(`[${data.video_id}] Continuing with video without captions`);
       }
+    } else {
+      console.log(`[${data.video_id}] No caption video provided, skipping captions`);
     }
 
     // ============================================

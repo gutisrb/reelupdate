@@ -13,9 +13,16 @@ export class CloudinaryClient {
   async uploadImage(imageData: ArrayBuffer, filename: string): Promise<CloudinaryUploadResponse> {
     const formData = new FormData();
     const blob = new Blob([imageData]);
+
+    // Extract public_id from filename (remove extension)
+    const publicId = filename.replace(/\.[^/.]+$/, '');
+
     formData.append('file', blob, filename);
+    formData.append('public_id', publicId);
     formData.append('upload_preset', this.uploadPreset);
     formData.append('resource_type', 'auto');
+
+    console.log(`[Cloudinary] Uploading image with public_id: ${publicId}`);
 
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`,
@@ -30,7 +37,10 @@ export class CloudinaryClient {
       throw new Error(`Cloudinary image upload failed: ${error}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log(`[Cloudinary] Image upload successful, returned public_id: ${result.public_id}`);
+
+    return result;
   }
 
   /**
@@ -39,14 +49,17 @@ export class CloudinaryClient {
   async uploadVideo(videoData: ArrayBuffer | string, filename: string): Promise<CloudinaryUploadResponse> {
     const formData = new FormData();
 
+    // Extract public_id from filename (remove extension)
+    const publicId = filename.replace(/\.[^/.]+$/, '');
+
     if (typeof videoData === 'string') {
       // If it's already a Cloudinary URL, don't re-upload; just return the details
       if (videoData.includes('cloudinary.com')) {
-        const publicId = this.extractPublicIdFromCloudinaryUrl(videoData);
-        console.log(`[Cloudinary] uploadVideo(url) short-circuit for Cloudinary asset: ${publicId}`);
+        const existingPublicId = this.extractPublicIdFromCloudinaryUrl(videoData);
+        console.log(`[Cloudinary] uploadVideo(url) short-circuit for Cloudinary asset: ${existingPublicId}`);
         return {
-          asset_id: publicId,
-          public_id: publicId,
+          asset_id: existingPublicId,
+          public_id: existingPublicId,
           secure_url: videoData,
           url: videoData,
           resource_type: 'video',
@@ -80,6 +93,10 @@ export class CloudinaryClient {
       formData.append('file', `data:${mimeType};base64,${base64}`);
     }
 
+    // Force Cloudinary to use our filename as public_id (without extension)
+    formData.append('public_id', publicId);
+    console.log(`[Cloudinary] Uploading with public_id: ${publicId}`);
+
     formData.append('upload_preset', this.uploadPreset);
     formData.append('resource_type', 'video');
 
@@ -96,7 +113,10 @@ export class CloudinaryClient {
       throw new Error(`Cloudinary video upload failed: ${error}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log(`[Cloudinary] Upload successful, returned public_id: ${result.public_id}`);
+
+    return result;
   }
 
   /**
@@ -162,7 +182,12 @@ export class CloudinaryClient {
   ): Promise<CloudinaryUploadResponse> {
     const formData = new FormData();
     const blob = new Blob([buffer]);
+
+    // Extract public_id from filename (remove extension)
+    const publicId = filename.replace(/\.[^/.]+$/, '');
+
     formData.append('file', blob, filename);
+    formData.append('public_id', publicId);
     formData.append('upload_preset', this.uploadPreset);
     formData.append('resource_type', resourceType);
 
@@ -180,7 +205,10 @@ export class CloudinaryClient {
       throw new Error(`Cloudinary ${resourceType} upload failed: ${error}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log(`[Cloudinary] ${resourceType} upload successful, returned public_id: ${result.public_id}`);
+
+    return result;
   }
 
   /**
@@ -218,6 +246,11 @@ export class CloudinaryClient {
     const voicePublicId = this.extractPublicId(voiceoverUrl);
     const musicPublicId = this.extractPublicId(musicUrl);
 
+    console.log(`[Cloudinary] Extracted public IDs:`);
+    console.log(`[Cloudinary]   Clips: ${clipPublicIds.join(', ')}`);
+    console.log(`[Cloudinary]   Voiceover: ${voicePublicId}`);
+    console.log(`[Cloudinary]   Music: ${musicPublicId}`);
+
     if (clipPublicIds.length === 0) {
       throw new Error('No clips provided for video assembly');
     }
@@ -239,23 +272,24 @@ export class CloudinaryClient {
       );
     }
 
-    // Add background music layer (loop as needed, apply volume before layer apply)
-    const musicVolumePercent = Math.max(1, Math.min(100, Math.round(Math.pow(10, musicVolume / 20) * 100)));
-    const musicLoopCount = Math.max(1, Math.ceil(totalDuration / 30));
+    // Add background music layer
+    // Use large loop count (999) to ensure music plays for entire duration
+    // Cloudinary accepts dB notation directly (e.g., -60) for volume
     transformations.push(
-      `l_audio:${musicPublicId},so_0,du_${totalDuration},e_loop:${musicLoopCount},e_volume:${musicVolumePercent}`,
+      `l_audio:${musicPublicId},so_0,du_${totalDuration},e_loop:999,e_volume:${musicVolume}`,
       'fl_layer_apply'
     );
 
-    // Add voiceover layer (full volume)
+    // Add voiceover layer (no volume adjustment - keep original level)
     transformations.push(
-      `l_audio:${voicePublicId},so_0,du_${totalDuration},e_volume:100`,
+      `l_audio:${voicePublicId},so_0,du_${totalDuration}`,
       'fl_layer_apply'
     );
 
     // Add logo overlay if provided
     if (logoUrl && logoUrl.includes('cloudinary.com')) {
       const logoPublicId = this.extractPublicId(logoUrl);
+
       console.log(`[Cloudinary] Adding logo overlay: ${logoPublicId}`);
       console.log(`[Cloudinary] Logo position: ${logoPosition}, size: ${logoSizePercent}%`);
 
@@ -288,11 +322,13 @@ export class CloudinaryClient {
       const logoWidth = Math.round(1080 * sizePercent / 100);
 
       // Add logo layer transformation
+      // Format: l_image:public_id,params (use slashes in public_id for folder paths)
       transformations.push(
         `l_image:${logoPublicId},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`,
         'fl_layer_apply'
       );
 
+      console.log(`[Cloudinary] Logo layer transformation: l_image:${logoPublicId},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`);
       console.log(`[Cloudinary] Logo layer added: ${logoWidth}px @ ${gravity}`);
     }
 
@@ -300,12 +336,16 @@ export class CloudinaryClient {
     // See caption-compositor.ts for the new caption compositing system
     // The old Cloudinary l_subtitles transformation had limited styling support
 
+    // Final volume adjustment (apply to combined audio)
+    // This boosts the overall audio level after mixing music and voiceover
+    transformations.push('e_volume:20');
+
     // Additional settings
     transformations.push(
       'f_mp4',           // Force MP4 format
       'vc_h264',         // Use H.264 codec for compatibility
-      'q_auto:good',     // Auto quality (good preset)
-      'ac_none'          // No audio codec changes
+      'q_auto:good'      // Auto quality (good preset)
+      // Note: ac_none removed from here - only use in splice operations
     );
 
     // Build final URL

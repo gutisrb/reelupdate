@@ -12,6 +12,7 @@ import { useWizard } from '@/contexts/WizardContext';
 import { compressMappedEntries } from '@/lib/compressWebhookImage';
 import { MAKE_VIDEO_URL } from '@/config/make';
 import { supabase } from '@/integrations/supabase/client';
+import { renderCaptionVideo, type CaptionSettings, type TranscriptSegment } from '@/lib/captionVideoRenderer';
 
 interface VideoWizardProps {
   user: User;
@@ -123,7 +124,108 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     try {
       // Call Supabase Edge Function instead of Make.com
       const { form: multipartData, originalCount, compressedCount } = await createMultipartFormData();
-      setProgress(40);
+      setProgress(30);
+
+      // Render caption video in browser if captions are enabled
+      let captionVideoUrl: string | null = null;
+
+      console.log('[Caption Video] DEBUG: profile =', profile);
+      console.log('[Caption Video] DEBUG: caption_enabled =', profile?.caption_enabled);
+
+      if (profile?.caption_enabled) {
+        console.log('[Caption Video] Captions enabled - rendering caption overlay video...');
+        setProgress(35);
+
+        try {
+          // Fetch caption settings from user profile
+          const captionSettings: CaptionSettings = {
+            fontFamily: profile.caption_font_family || 'Arial',
+            fontSize: profile.caption_font_size || 34,
+            fontColor: profile.caption_font_color || 'FFFFFF',
+            bgColor: profile.caption_bg_color || '000000',
+            bgOpacity: profile.caption_bg_opacity || 0,
+            fontWeight: profile.caption_font_weight || 'bold',
+            uppercase: profile.caption_uppercase || false,
+            strokeColor: profile.caption_stroke_color || '000000',
+            strokeWidth: profile.caption_stroke_width || 0,
+            shadowColor: profile.caption_shadow_color || '000000',
+            shadowBlur: profile.caption_shadow_blur || 4,
+            shadowX: profile.caption_shadow_x || 0,
+            shadowY: profile.caption_shadow_y || 2,
+            position: profile.caption_position || 'bottom',
+            animation: profile.caption_animation || 'fade',
+            maxLines: profile.caption_max_lines || 2,
+            emojis: profile.caption_emojis || false,
+            singleWord: profile.caption_single_word || false,
+          };
+
+          // Create placeholder transcript
+          // In the future, this will be the actual voiceover transcript from Whisper
+          const videoDuration = wizardData.clipCount * 5; // 5 seconds per clip
+          const placeholderTranscript: TranscriptSegment[] = [
+            { start: 0, end: videoDuration, text: wizardData.formData.title }
+          ];
+
+          console.log('[Caption Video] Rendering caption video...', {
+            duration: videoDuration,
+            segments: placeholderTranscript.length,
+            settings: captionSettings
+          });
+
+          // Render caption video in browser
+          const captionBlob = await renderCaptionVideo(
+            placeholderTranscript,
+            captionSettings,
+            videoDuration,
+            1080,
+            1920,
+            30
+          );
+
+          console.log(`[Caption Video] Rendered ${captionBlob.size} bytes`);
+          setProgress(37);
+
+          // Upload caption video to Cloudinary
+          const videoId = multipartData.get('video_id') as string;
+          const formData = new FormData();
+          formData.append('file', captionBlob, `caption_overlay_${videoId}.webm`);
+          formData.append('upload_preset', 'ml_default'); // Use your Cloudinary preset
+          formData.append('resource_type', 'video');
+
+          const cloudinaryCloudName = 'dyarnpqaq'; // Your Cloudinary cloud name
+          const cloudinaryUploadUrl = `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`;
+
+          console.log('[Caption Video] Uploading to Cloudinary...');
+          const uploadResponse = await fetch(cloudinaryUploadUrl, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error(`Cloudinary upload failed: ${uploadResponse.statusText}`);
+          }
+
+          const uploadResult = await uploadResponse.json();
+          captionVideoUrl = uploadResult.secure_url;
+
+          console.log('[Caption Video] Uploaded successfully:', captionVideoUrl);
+          setProgress(40);
+        } catch (captionError) {
+          console.error('[Caption Video] Failed to render/upload caption video:', captionError);
+          // Continue without captions
+          toast({
+            title: "Upozorenje",
+            description: "Naslovi nisu mogli biti dodati, ali video će biti generisan.",
+            variant: "default"
+          });
+        }
+      }
+
+      // Add caption video URL to FormData if it was generated
+      if (captionVideoUrl) {
+        multipartData.append('caption_video_url', captionVideoUrl);
+        console.log('[Caption Video] Added caption_video_url to FormData');
+      }
 
       // Get Supabase URL from environment or use default
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;

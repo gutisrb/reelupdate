@@ -272,7 +272,8 @@ export async function renderCueFrames(
   }
 
   // For animations, render multiple frames
-  const animationDuration = style.animation === 'pop' ? 0.2 : 0.3; // seconds
+  // Reduced from 0.2/0.3 to 0.1/0.15 to cut frame count in half (avoid timeout)
+  const animationDuration = style.animation === 'pop' ? 0.1 : 0.15; // seconds
   const animationFrames = Math.ceil(animationDuration * options.fps);
 
   // Render animation frames
@@ -316,7 +317,8 @@ export async function renderKaraokeFrames(
 
     // Render animation if enabled
     if (style.animation && style.animation !== 'none') {
-      const animationDuration = style.animation === 'pop' ? 0.15 : 0.2;
+      // Reduced from 0.15/0.2 to 0.08/0.1 for karaoke mode (snappier word animations)
+      const animationDuration = style.animation === 'pop' ? 0.08 : 0.1;
       const animationFrames = Math.ceil(animationDuration * options.fps);
 
       for (let i = 0; i < animationFrames; i++) {

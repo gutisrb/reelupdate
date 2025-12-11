@@ -25,6 +25,7 @@ export interface VideoGenerationRequest {
   grouping: string; // JSON string of slot metadata
   slot_mode_info: string;
   total_images: number;
+  caption_video_url?: string; // Browser-rendered caption overlay (optional)
 }
 
 export interface UserSettings {
