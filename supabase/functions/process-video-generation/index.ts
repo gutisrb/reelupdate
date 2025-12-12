@@ -500,12 +500,72 @@ async function processVideoAsync(
     // ============================================
     // 7. ADD CAPTIONS (Using Voiceover Script)
     // ============================================
-    // Note: Captions will be added via Cloudinary text overlay using the voiceover script
-    // This happens INSIDE assembleVideo() so captions are properly ordered
-    // TODO: Implement text overlay in assembleVideo method
-
     let finalVideoWithCaptions = assembledVideoUrl;
-    console.log(`[${data.video_id}] Video ready (captions will be added in future update)`);
+
+    if (userSettings.caption_enabled) {
+      console.log(`[${data.video_id}] Adding captions using voiceover script...`);
+
+      try {
+        // Split voiceover script into segments
+        // For now, split by sentences (periods, exclamation marks, question marks)
+        const sentences = voiceoverScript.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+        console.log(`[${data.video_id}] Split script into ${sentences.length} sentences`);
+
+        // Calculate timing for each sentence (evenly distributed across video duration)
+        const segmentDuration = totalDuration / sentences.length;
+
+        // Extract existing transformation and add text overlays before format flags
+        const cloudName = clients.cloudinary['cloudName'];
+        const urlParts = assembledVideoUrl.split('/upload/');
+        const transformationPart = urlParts[1].split(`/${baseClipPublicId}`)[0];
+
+        // Split transformation to insert captions before format flags (f_mp4, vc_h264, q_auto:good)
+        const transformations = transformationPart.split('/');
+        const formatFlagsIndex = transformations.findIndex((t: string) => t.startsWith('f_mp4') || t.startsWith('vc_h264') || t.startsWith('q_auto'));
+
+        // Build text overlay transformations
+        const textOverlays: string[] = [];
+        sentences.forEach((sentence, index) => {
+          const startTime = Math.floor(index * segmentDuration);
+          const endTime = Math.floor((index + 1) * segmentDuration);
+          const duration = endTime - startTime;
+
+          // Cloudinary text overlay format
+          // l_text:font_size_color_position:encoded_text,so_start,du_duration
+          const encodedText = encodeURIComponent(sentence.trim().substring(0, 100)); // Limit length
+          const fontSize = userSettings.caption_font_size || 34;
+          const fontColor = userSettings.caption_font_color || 'FFFFFF';
+          const fontFamily = (userSettings.caption_font_family || 'Arial').replace(/\s+/g, '%20');
+
+          // Cloudinary text overlay with timing
+          textOverlays.push(
+            `l_text:${fontFamily}_${fontSize}_bold:${encodedText},co_rgb:${fontColor},g_south,y_100,so_${startTime},du_${duration}`,
+            'fl_layer_apply'
+          );
+        });
+
+        console.log(`[${data.video_id}] Created ${sentences.length} text overlay segments`);
+
+        // Insert text overlays before format flags
+        if (formatFlagsIndex !== -1) {
+          transformations.splice(formatFlagsIndex, 0, ...textOverlays);
+        } else {
+          // If no format flags found, add at end
+          transformations.push(...textOverlays);
+        }
+
+        const newTransformation = transformations.join('/');
+        finalVideoWithCaptions = `https://res.cloudinary.com/${cloudName}/video/upload/${newTransformation}/${baseClipPublicId}.mp4`;
+
+        console.log(`[${data.video_id}] Captions added successfully`);
+      } catch (e) {
+        console.error(`[${data.video_id}] Failed to add captions:`, e);
+        console.log(`[${data.video_id}] Continuing without captions`);
+      }
+    } else {
+      console.log(`[${data.video_id}] Captions disabled in user settings`);
+    }
+
     console.log(`[${data.video_id}] Final video URL: ${finalVideoWithCaptions}`);
 
     // ============================================
