@@ -494,6 +494,8 @@ async function processVideoAsync(
     );
 
     console.log(`[${data.video_id}] Video assembly transformation URL: ${assembledVideoUrl}`);
+    console.log(`[${data.video_id}] DEBUG: Full assembled URL length: ${assembledVideoUrl.length} chars`);
+    console.log(`[${data.video_id}] DEBUG: Base clip public_id: ${baseClipPublicId}`);
 
     // ============================================
     // 7. ADD CAPTIONS (Browser-Rendered Caption Overlay)
@@ -512,10 +514,16 @@ async function processVideoAsync(
         // Extract existing transformation from assembled URL
         const cloudName = clients.cloudinary['cloudName'];
         const urlParts = assembledVideoUrl.split('/upload/');
+        console.log(`[${data.video_id}] DEBUG: URL parts after split: ${urlParts.length} parts`);
+        console.log(`[${data.video_id}] DEBUG: Part 0 (before /upload/): ${urlParts[0]}`);
+        console.log(`[${data.video_id}] DEBUG: Part 1 (after /upload/): ${urlParts[1].substring(0, 200)}...`);
+
         const existingTransformation = urlParts[1].split(`/${baseClipPublicId}`)[0];
+        console.log(`[${data.video_id}] DEBUG: Existing transformation: ${existingTransformation}`);
 
         // Add caption overlay to existing transformation
         const transformationWithCaptions = `${existingTransformation}/l_video:${captionPublicId},fl_layer_apply`;
+        console.log(`[${data.video_id}] DEBUG: Transformation with captions: ${transformationWithCaptions.substring(0, 200)}...`);
 
         finalVideoWithCaptions = `https://res.cloudinary.com/${cloudName}/video/upload/${transformationWithCaptions}/${baseClipPublicId}.mp4`;
 
