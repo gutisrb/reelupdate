@@ -338,7 +338,11 @@ export class CloudinaryClient {
     );
 
     // Build final URL
+    console.log(`[Cloudinary] DEBUG: Total transformations: ${transformations.length}`);
+    console.log(`[Cloudinary] DEBUG: Transformations array:`, JSON.stringify(transformations, null, 2));
     const transformationString = transformations.join('/');
+    console.log(`[Cloudinary] DEBUG: Transformation string length: ${transformationString.length} chars`);
+    console.log(`[Cloudinary] DEBUG: First 500 chars: ${transformationString.substring(0, 500)}`);
     return `https://res.cloudinary.com/${this.cloudName}/video/upload/${transformationString}/${baseClipId}.mp4`;
   }
 
