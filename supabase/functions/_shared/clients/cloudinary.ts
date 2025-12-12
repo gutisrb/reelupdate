@@ -309,16 +309,17 @@ export class CloudinaryClient {
       const logoWidth = Math.round(1080 * sizePercent / 100);
 
       // Add logo layer transformation
-      // Format: l_image:public_id,params
+      // Format: l_image:public_id,g_gravity,x_offset,y_offset,w_width,o_opacity
       // NOTE: Cloudinary transformation URLs use colons for folder separators, not slashes
+      // IMPORTANT: Gravity must come BEFORE other transformations for positioning to work
       const logoPublicIdForTransform = logoPublicId.replace(/\//g, ':');
       transformations.push(
-        `l_image:${logoPublicIdForTransform},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`,
+        `l_image:${logoPublicIdForTransform},g_${gravity},x_${xOffset},y_${yOffset},w_${logoWidth},o_80`,
         'fl_layer_apply'
       );
 
-      console.log(`[Cloudinary] Logo layer transformation: l_image:${logoPublicIdForTransform},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`);
-      console.log(`[Cloudinary] Logo layer added: ${logoWidth}px @ ${gravity} (with colons)`);
+      console.log(`[Cloudinary] Logo layer transformation: l_image:${logoPublicIdForTransform},g_${gravity},x_${xOffset},y_${yOffset},w_${logoWidth},o_80`);
+      console.log(`[Cloudinary] Logo layer added: ${logoWidth}px @ ${gravity} with offsets x=${xOffset},y=${yOffset}`);
     }
 
     // NOTE: Subtitle overlay code removed - now handled by in-house caption rendering
