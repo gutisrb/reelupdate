@@ -13,7 +13,6 @@ import { useWizard } from '@/contexts/WizardContext';
 import { compressMappedEntries } from '@/lib/compressWebhookImage';
 import { MAKE_VIDEO_URL } from '@/config/make';
 import { supabase } from '@/integrations/supabase/client';
-import { renderCaptionVideo, type CaptionSettings, type TranscriptSegment } from '@/lib/captionVideoRenderer';
 
 interface VideoWizardProps {
   user: User;
