@@ -42,8 +42,10 @@ const channelStatusColors = {
 };
 
 const optimizeCloudinaryUrl = (url: string): string => {
-  if (!url.includes('cloudinary.com')) return url;
-  return url.replace('/upload/', '/upload/q_auto:best,f_auto/');
+  // Our Edge Function already optimizes Cloudinary URLs with q_auto:good
+  // Adding transformations here breaks the carefully constructed transformation chain
+  // So we just return the URL as-is
+  return url;
 };
 
 export function GalerijaDetail() {

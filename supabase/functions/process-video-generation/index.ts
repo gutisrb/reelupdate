@@ -528,13 +528,10 @@ async function processVideoAsync(
       voiceoverUpload.secure_url,
       musicUrl,
       totalDuration,
-      userSettings.default_music_volume_db,
-      userSettings.logo_url || undefined,
-      userSettings.logo_position || 'corner_top_right',
-      userSettings.logo_size_percent || 15
+      userSettings.default_music_volume_db
     );
 
-    console.log(`[${data.video_id}] Video assembly transformation URL: ${assembledVideoUrl}`);
+    console.log(`[${data.video_id}] Video assembly transformation URL (without logo): ${assembledVideoUrl}`);
     console.log(`[${data.video_id}] DEBUG: Full assembled URL length: ${assembledVideoUrl.length} chars`);
     console.log(`[${data.video_id}] DEBUG: Base clip public_id: ${baseClipPublicId}`);
 
@@ -601,17 +598,37 @@ async function processVideoAsync(
       console.log(`[${data.video_id}] Captions disabled in user settings`);
     }
 
-    console.log(`[${data.video_id}] Final video URL: ${finalVideoWithCaptions}`);
+    console.log(`[${data.video_id}] Final video URL (before logo): ${finalVideoWithCaptions}`);
 
     // ============================================
-    // 8. UPDATE DATABASE
+    // 8. ADD LOGO OVERLAY (After assembly and captions)
+    // ============================================
+    let finalVideoWithLogo = finalVideoWithCaptions;
+
+    if (userSettings.logo_url) {
+      console.log(`[${data.video_id}] Adding logo overlay...`);
+      finalVideoWithLogo = clients.cloudinary.addLogoOverlay(
+        finalVideoWithCaptions,
+        userSettings.logo_url,
+        userSettings.logo_position || 'corner_top_right',
+        userSettings.logo_size_percent || 15
+      );
+      console.log(`[${data.video_id}] Logo overlay added successfully`);
+    } else {
+      console.log(`[${data.video_id}] No logo URL in settings, skipping logo overlay`);
+    }
+
+    console.log(`[${data.video_id}] Final video URL (complete): ${finalVideoWithLogo}`);
+
+    // ============================================
+    // 9. UPDATE DATABASE
     // ============================================
     const endTime = Date.now();
     const processingTime = Math.floor((endTime - startTime) / 1000);
 
     const { error: videoUpdateError } = await supabase.from('videos').update({
       status: 'ready',
-      video_url: finalVideoWithCaptions,
+      video_url: finalVideoWithLogo,
       thumbnail_url: clips[0]?.first_image_url || null,
       duration_seconds: totalDuration,
       updated_at: new Date().toISOString(),
