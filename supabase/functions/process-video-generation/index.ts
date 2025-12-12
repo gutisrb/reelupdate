@@ -391,10 +391,6 @@ async function processVideoAsync(
         public_id: 'cwl0mqzkwc3xf7iesmgl',
       };
 
-      // Placeholder transcription for TEST_MODE (simple SRT format)
-      srtTranscript = '1\n00:00:00,000 --> 00:00:25,000\nTEST MODE placeholder voiceover script\n';
-      correctedTranscript = 'TEST MODE placeholder voiceover script';
-
       musicUrl = 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765440325/music_1765440324652.mp3';
       musicSource = 'test_mode_placeholder';
 
@@ -426,16 +422,6 @@ async function processVideoAsync(
         voiceoverPCM,
         `voiceover_${data.video_id}.wav`
       );
-
-      console.log(`[${data.video_id}] Voiceover uploaded, starting transcription...`);
-
-      // Transcribe voiceover using Whisper (returns SRT format with timing)
-      srtTranscript = await clients.openai.createTranscription(voiceoverUpload.secure_url);
-      console.log(`[${data.video_id}] Whisper transcription complete, SRT length: ${srtTranscript.length} chars`);
-
-      // Correct transcription using GPT (compare to original script)
-      correctedTranscript = await clients.openai.correctTranscript(srtTranscript, voiceoverScript);
-      console.log(`[${data.video_id}] Transcript corrected using GPT`);
 
       // Generate or select music
       const musicDurationMs = data.image_slots.length * 5 * 1000; // Convert seconds to milliseconds
@@ -495,6 +481,19 @@ async function processVideoAsync(
     }
 
     console.log(`[${data.video_id}] Step 2 complete: Audio generated (source: ${musicSource})`);
+
+    // ============================================
+    // 5C. TRANSCRIBE VOICEOVER (runs for both TEST_MODE and regular mode)
+    // ============================================
+    console.log(`[${data.video_id}] Starting Whisper transcription of voiceover...`);
+
+    // Transcribe voiceover using Whisper (returns SRT format with timing)
+    srtTranscript = await clients.openai.createTranscription(voiceoverUpload.secure_url);
+    console.log(`[${data.video_id}] Whisper transcription complete, SRT length: ${srtTranscript.length} chars`);
+
+    // Correct transcription using GPT (compare to original script)
+    correctedTranscript = await clients.openai.correctTranscript(srtTranscript, voiceoverScript);
+    console.log(`[${data.video_id}] Transcript corrected using GPT`);
 
     // ============================================
     // 5B. WAIT FOR LUMA COMPLETIONS (if not TEST_MODE)
