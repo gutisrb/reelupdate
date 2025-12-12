@@ -14,6 +14,39 @@ import {
 import type { VideoGenerationRequest, UserSettings, ClipData } from '../_shared/types.ts';
 import { API_ENDPOINTS } from '../_shared/config.ts';
 
+// Helper function to parse SRT format into caption segments
+interface CaptionSegment {
+  start: number; // seconds
+  end: number;   // seconds
+  text: string;
+}
+
+function parseSRT(srt: string): CaptionSegment[] {
+  const segments: CaptionSegment[] = [];
+  const blocks = srt.trim().split('\n\n');
+
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    if (lines.length < 3) continue;
+
+    // Line 0: sequence number (ignore)
+    // Line 1: timestamp (00:00:00,000 --> 00:00:05,000)
+    // Line 2+: text
+    const timestampLine = lines[1];
+    const match = timestampLine.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+
+    if (match) {
+      const startSec = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseInt(match[3]) + parseInt(match[4]) / 1000;
+      const endSec = parseInt(match[5]) * 3600 + parseInt(match[6]) * 60 + parseInt(match[7]) + parseInt(match[8]) / 1000;
+      const text = lines.slice(2).join(' ').trim();
+
+      segments.push({ start: startSec, end: endSec, text });
+    }
+  }
+
+  return segments;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -27,15 +60,9 @@ serve(async (req) => {
     const videoId = formData.get('video_id') as string;
     const userId = formData.get('user_id') as string;
     const groupingStr = formData.get('grouping') as string;
-    const captionVideoUrl = formData.get('caption_video_url') as string | null;
 
     if (!videoId || !userId) {
       throw new Error('Missing required fields: video_id or user_id');
-    }
-
-    // Log caption video URL if provided
-    if (captionVideoUrl) {
-      console.log(`[${videoId}] Caption video URL provided from browser: ${captionVideoUrl}`);
     }
 
     // Build property_data from individual fields
@@ -97,7 +124,6 @@ serve(async (req) => {
       grouping: groupingStr,
       slot_mode_info: groupingStr, // Same as grouping for compatibility
       total_images: totalImages,
-      caption_video_url: captionVideoUrl || undefined, // Browser-rendered caption overlay
     };
 
     // Initialize Supabase client
@@ -352,6 +378,8 @@ async function processVideoAsync(
     let voiceoverUpload: any;
     let musicUrl: string;
     let musicSource: string;
+    let srtTranscript: string = ''; // Whisper transcription (SRT format)
+    let correctedTranscript: string = ''; // GPT-corrected transcript
 
     if (isTestMode) {
       // TEST_MODE: Use placeholder audio to save credits
@@ -362,6 +390,10 @@ async function processVideoAsync(
         secure_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765407043/cwl0mqzkwc3xf7iesmgl.wav',
         public_id: 'cwl0mqzkwc3xf7iesmgl',
       };
+
+      // Placeholder transcription for TEST_MODE (simple SRT format)
+      srtTranscript = '1\n00:00:00,000 --> 00:00:25,000\nTEST MODE placeholder voiceover script\n';
+      correctedTranscript = 'TEST MODE placeholder voiceover script';
 
       musicUrl = 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765440325/music_1765440324652.mp3';
       musicSource = 'test_mode_placeholder';
@@ -394,6 +426,16 @@ async function processVideoAsync(
         voiceoverPCM,
         `voiceover_${data.video_id}.wav`
       );
+
+      console.log(`[${data.video_id}] Voiceover uploaded, starting transcription...`);
+
+      // Transcribe voiceover using Whisper (returns SRT format with timing)
+      srtTranscript = await clients.openai.createTranscription(voiceoverUpload.secure_url);
+      console.log(`[${data.video_id}] Whisper transcription complete, SRT length: ${srtTranscript.length} chars`);
+
+      // Correct transcription using GPT (compare to original script)
+      correctedTranscript = await clients.openai.correctTranscript(srtTranscript, voiceoverScript);
+      console.log(`[${data.video_id}] Transcript corrected using GPT`);
 
       // Generate or select music
       const musicDurationMs = data.image_slots.length * 5 * 1000; // Convert seconds to milliseconds
@@ -498,21 +540,17 @@ async function processVideoAsync(
     console.log(`[${data.video_id}] DEBUG: Base clip public_id: ${baseClipPublicId}`);
 
     // ============================================
-    // 7. ADD CAPTIONS (Using Voiceover Script)
+    // 7. ADD CAPTIONS (Using Whisper Transcription)
     // ============================================
     let finalVideoWithCaptions = assembledVideoUrl;
 
     if (userSettings.caption_enabled) {
-      console.log(`[${data.video_id}] Adding captions using voiceover script...`);
+      console.log(`[${data.video_id}] Adding captions using Whisper transcription...`);
 
       try {
-        // Split voiceover script into segments
-        // For now, split by sentences (periods, exclamation marks, question marks)
-        const sentences = voiceoverScript.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-        console.log(`[${data.video_id}] Split script into ${sentences.length} sentences`);
-
-        // Calculate timing for each sentence (evenly distributed across video duration)
-        const segmentDuration = totalDuration / sentences.length;
+        // Parse SRT transcription to get segments with accurate timing
+        const captionSegments = parseSRT(srtTranscript);
+        console.log(`[${data.video_id}] Parsed ${captionSegments.length} caption segments from Whisper SRT`);
 
         // Extract existing transformation and add text overlays before format flags
         const cloudName = clients.cloudinary['cloudName'];
@@ -523,28 +561,26 @@ async function processVideoAsync(
         const transformations = transformationPart.split('/');
         const formatFlagsIndex = transformations.findIndex((t: string) => t.startsWith('f_mp4') || t.startsWith('vc_h264') || t.startsWith('q_auto'));
 
-        // Build text overlay transformations
+        // Build text overlay transformations from Whisper segments
         const textOverlays: string[] = [];
-        sentences.forEach((sentence, index) => {
-          const startTime = Math.floor(index * segmentDuration);
-          const endTime = Math.floor((index + 1) * segmentDuration);
-          const duration = endTime - startTime;
+        captionSegments.forEach((segment) => {
+          const startTime = Math.floor(segment.start);
+          const duration = Math.floor(segment.end - segment.start);
 
-          // Cloudinary text overlay format
-          // l_text:font_size_color_position:encoded_text,so_start,du_duration
-          const encodedText = encodeURIComponent(sentence.trim().substring(0, 100)); // Limit length
+          // Cloudinary text overlay format with accurate timing from Whisper
+          const encodedText = encodeURIComponent(segment.text.trim().substring(0, 100)); // Limit length
           const fontSize = userSettings.caption_font_size || 34;
           const fontColor = userSettings.caption_font_color || 'FFFFFF';
           const fontFamily = (userSettings.caption_font_family || 'Arial').replace(/\s+/g, '%20');
 
-          // Cloudinary text overlay with timing
+          // Cloudinary text overlay with Whisper timing
           textOverlays.push(
             `l_text:${fontFamily}_${fontSize}_bold:${encodedText},co_rgb:${fontColor},g_south,y_100,so_${startTime},du_${duration}`,
             'fl_layer_apply'
           );
         });
 
-        console.log(`[${data.video_id}] Created ${sentences.length} text overlay segments`);
+        console.log(`[${data.video_id}] Created ${captionSegments.length} text overlay segments from Whisper transcription`);
 
         // Insert text overlays before format flags
         if (formatFlagsIndex !== -1) {
@@ -596,7 +632,7 @@ async function processVideoAsync(
       music_source: musicSource,
       caption_data: {
         template_id: captionTemplateId,
-        transcript: voiceoverScript,
+        transcript: correctedTranscript, // Use GPT-corrected transcription, not voiceover script
       },
       settings_snapshot: userSettings,
       processing_started_at: new Date(startTime).toISOString(),
