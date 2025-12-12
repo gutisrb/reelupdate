@@ -498,45 +498,15 @@ async function processVideoAsync(
     console.log(`[${data.video_id}] DEBUG: Base clip public_id: ${baseClipPublicId}`);
 
     // ============================================
-    // 7. ADD CAPTIONS (Browser-Rendered Caption Overlay)
+    // 7. ADD CAPTIONS (Using Voiceover Script)
     // ============================================
+    // Note: Captions will be added via Cloudinary text overlay using the voiceover script
+    // This happens INSIDE assembleVideo() so captions are properly ordered
+    // TODO: Implement text overlay in assembleVideo method
+
     let finalVideoWithCaptions = assembledVideoUrl;
-
-    // Check if caption video was provided from browser
-    if (data.caption_video_url) {
-      console.log(`[${data.video_id}] Adding browser-rendered caption overlay...`);
-
-      try {
-        // Extract public_id from caption video URL
-        const captionPublicId = clients.cloudinary['extractPublicId'](data.caption_video_url);
-        console.log(`[${data.video_id}] Caption video public_id: ${captionPublicId}`);
-
-        // Extract existing transformation from assembled URL
-        const cloudName = clients.cloudinary['cloudName'];
-        const urlParts = assembledVideoUrl.split('/upload/');
-        console.log(`[${data.video_id}] DEBUG: URL parts after split: ${urlParts.length} parts`);
-        console.log(`[${data.video_id}] DEBUG: Part 0 (before /upload/): ${urlParts[0]}`);
-        console.log(`[${data.video_id}] DEBUG: Part 1 (after /upload/): ${urlParts[1].substring(0, 200)}...`);
-
-        const existingTransformation = urlParts[1].split(`/${baseClipPublicId}`)[0];
-        console.log(`[${data.video_id}] DEBUG: Existing transformation: ${existingTransformation}`);
-
-        // Add caption overlay to existing transformation
-        const transformationWithCaptions = `${existingTransformation}/l_video:${captionPublicId},fl_layer_apply`;
-        console.log(`[${data.video_id}] DEBUG: Transformation with captions: ${transformationWithCaptions.substring(0, 200)}...`);
-
-        finalVideoWithCaptions = `https://res.cloudinary.com/${cloudName}/video/upload/${transformationWithCaptions}/${baseClipPublicId}.mp4`;
-
-        console.log(`[${data.video_id}] Caption overlay added successfully`);
-        console.log(`[${data.video_id}] Final video URL: ${finalVideoWithCaptions}`);
-      } catch (e) {
-        console.error(`[${data.video_id}] Failed to add caption overlay:`, e);
-        // Continue without captions
-        console.log(`[${data.video_id}] Continuing with video without captions`);
-      }
-    } else {
-      console.log(`[${data.video_id}] No caption video provided, skipping captions`);
-    }
+    console.log(`[${data.video_id}] Video ready (captions will be added in future update)`);
+    console.log(`[${data.video_id}] Final video URL: ${finalVideoWithCaptions}`);
 
     // ============================================
     // 8. UPDATE DATABASE
