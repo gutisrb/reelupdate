@@ -131,8 +131,9 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
       // Render caption video in browser if captions are enabled
       let captionVideoUrl: string | null = null;
 
-      console.log('[Caption Video] DEBUG v2: userSettings =', userSettings);
-      console.log('[Caption Video] DEBUG v2: caption_enabled =', userSettings?.caption_enabled);
+      const timestamp = new Date().toISOString();
+      console.log(`[Caption Video] ${timestamp} - userSettings:`, userSettings);
+      console.log(`[Caption Video] ${timestamp} - caption_enabled:`, userSettings?.caption_enabled);
 
       if (userSettings?.caption_enabled) {
         console.log('[Caption Video] Captions enabled - rendering caption overlay video...');

@@ -317,8 +317,8 @@ export class CloudinaryClient {
         'fl_layer_apply'
       );
 
-      console.log(`[Cloudinary] Logo layer transformation: l_image:${logoPublicId},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`);
-      console.log(`[Cloudinary] Logo layer added: ${logoWidth}px @ ${gravity}`);
+      console.log(`[Cloudinary] Logo layer transformation: l_image:${logoPublicIdForTransform},w_${logoWidth},o_80,g_${gravity},x_${xOffset},y_${yOffset}`);
+      console.log(`[Cloudinary] Logo layer added: ${logoWidth}px @ ${gravity} (with colons)`);
     }
 
     // NOTE: Subtitle overlay code removed - now handled by in-house caption rendering
