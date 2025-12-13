@@ -427,56 +427,56 @@ async function processVideoAsync(
       const musicDurationMs = data.image_slots.length * 5 * 1000; // Convert seconds to milliseconds
 
       if (userSettings.music_preference === 'custom') {
-      // Use custom uploaded music
-      const { data: musicData } = await supabase
-        .from('custom_music_uploads')
-        .select('cloudinary_url, title')
-        .eq('id', userSettings.selected_custom_music_id)
-        .single();
+        // Use custom uploaded music
+        const { data: musicData } = await supabase
+          .from('custom_music_uploads')
+          .select('cloudinary_url, title')
+          .eq('id', userSettings.selected_custom_music_id)
+          .single();
 
-      if (musicData && musicData.cloudinary_url) {
-        musicUrl = musicData.cloudinary_url;
-        musicSource = 'custom_upload';
-        console.log(`[${data.video_id}] Using custom music: ${musicData.title || 'Untitled'}`);
+        if (musicData && musicData.cloudinary_url) {
+          musicUrl = musicData.cloudinary_url;
+          musicSource = 'custom_upload';
+          console.log(`[${data.video_id}] Using custom music: ${musicData.title || 'Untitled'}`);
+        } else {
+          // Fallback to generated if custom music not found
+          console.log(`[${data.video_id}] Custom music not found, falling back to generated`);
+          const musicPrompt = clients.elevenlabs.generateMusicPrompt(
+            clips[0]?.mood || 'modern',
+            clips[0]?.description || ''
+          );
+          musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
+          musicSource = 'auto_generated';
+        }
+      } else if (userSettings.music_preference === 'library_pick') {
+        // Get music from library
+        const { data: libraryMusic } = await supabase
+          .from('music_library')
+          .select('cloudinary_url')
+          .eq('active', true)
+          .limit(1)
+          .single();
+
+        if (libraryMusic) {
+          musicUrl = libraryMusic.cloudinary_url;
+          musicSource = 'library';
+        } else {
+          // Fallback to generated
+          const musicPrompt = clients.elevenlabs.generateMusicPrompt(
+            clips[0]?.mood || 'modern',
+            clips[0]?.description || ''
+          );
+          musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
+          musicSource = 'auto_generated';
+        }
       } else {
-        // Fallback to generated if custom music not found
-        console.log(`[${data.video_id}] Custom music not found, falling back to generated`);
+        // Auto-generate music (default)
         const musicPrompt = clients.elevenlabs.generateMusicPrompt(
           clips[0]?.mood || 'modern',
           clips[0]?.description || ''
         );
         musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
         musicSource = 'auto_generated';
-      }
-    } else if (userSettings.music_preference === 'library_pick') {
-      // Get music from library
-      const { data: libraryMusic } = await supabase
-        .from('music_library')
-        .select('cloudinary_url')
-        .eq('active', true)
-        .limit(1)
-        .single();
-
-      if (libraryMusic) {
-        musicUrl = libraryMusic.cloudinary_url;
-        musicSource = 'library';
-      } else {
-        // Fallback to generated
-        const musicPrompt = clients.elevenlabs.generateMusicPrompt(
-          clips[0]?.mood || 'modern',
-          clips[0]?.description || ''
-        );
-        musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
-        musicSource = 'auto_generated';
-      }
-    } else {
-      // Auto-generate music (default)
-      const musicPrompt = clients.elevenlabs.generateMusicPrompt(
-        clips[0]?.mood || 'modern',
-        clips[0]?.description || ''
-      );
-      musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, musicDurationMs);
-      musicSource = 'auto_generated';
       }
     }
 
@@ -566,12 +566,65 @@ async function processVideoAsync(
           // Cloudinary text overlay format with accurate timing from Whisper
           const encodedText = encodeURIComponent(segment.text.trim().substring(0, 100)); // Limit length
           const fontSize = userSettings.caption_font_size || 34;
+          // Use default white if not set
           const fontColor = userSettings.caption_font_color || 'FFFFFF';
           const fontFamily = (userSettings.caption_font_family || 'Arial').replace(/\s+/g, '%20');
 
-          // Cloudinary text overlay with Whisper timing
+          // Styling options from Brand Kit
+          const bgColor = userSettings.caption_bg_color || '000000';
+          // Convert 0-100 opacity to Cloudinary's 0-100 scale (default 100 which is opaque)
+          // Note: Cloudinary 'o' param is opacity in %, but for background in text_style it's usually 'b_rgb:RRGGBB'
+          // We can use 'b_rgb:RRGGBB' directly for solid background.
+          // For opacity, we need to apply it to the layer, but that affects text too.
+          // Cloudinary allows 4-byte hex: #RRGGBBAA for background.
+          // Mapping: opacity 100 -> FF (255), 50 -> 80 (128), 0 -> 00
+          // But 'b_rgb:HEX' usually doesn't take alpha efficiently in URL API.
+          // Workaround: Use 'b_rgb:RRGGBB' for solid, or simplified.
+          // Let's assume user wants box background.
+
+          let styleParams = `${fontFamily}_${fontSize}_bold`;
+
+          // Add stroke if requested
+          if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
+            const strokeColor = userSettings.caption_stroke_color || '000000';
+            // Cloudinary stroke syntax: underscore separated, e.g. bo_5px_solid_black
+            // However, l_text syntax combines font properties. stroke is strictly border 'bo'.
+          }
+
+          // Build transformation string
+          // l_text:style:text,co_color,b_background
+
+          let transformationStr = `l_text:${styleParams}:${encodedText},co_rgb:${fontColor}`;
+
+          // Background Color Logic
+          // We apply background using b_rgb:XXXXXX
+          // We handle opacity via 'o_opacity' on the layer, BUT that fades text too.
+          // Improved: If background is needed, use `b_rgb:${bgColor}`. 
+          // Cloudinary doesn't easily support "Text 100% opacity, Background 50%" in a single text layer URL without custom fonts or special handling.
+          // For now, we will apply the solid background color if opacity > 0.
+
+          const bgOpacity = userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0;
+
+          if (bgOpacity > 0) {
+            // Apply background color to the text bounding box
+            transformationStr += `,b_rgb:${bgColor}`;
+          }
+
+          // Stroke / Border
+          if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
+            const strokeColor = userSettings.caption_stroke_color || '000000';
+            const strokeWidth = userSettings.caption_stroke_width;
+            transformationStr += `,bo_${strokeWidth}px_solid_rgb:${strokeColor}`;
+          }
+
+          // Add timing
+          transformationStr += `,g_south,y_100,so_${startTime},du_${duration}`;
+
+          // If the User wanted overall opacity for the caption (e.g. ghost text), add o_param
+          // But usually they want solid text.
+
           textOverlays.push(
-            `l_text:${fontFamily}_${fontSize}_bold:${encodedText},co_rgb:${fontColor},g_south,y_100,so_${startTime},du_${duration}`,
+            transformationStr,
             'fl_layer_apply'
           );
         });

@@ -296,20 +296,22 @@ export class CloudinaryClient {
 
     // Determine gravity based on position setting
     let gravity = 'north_east'; // Default: top-right
-    let xOffset = 30;
-    let yOffset = 50;
+    let xOffset = 20; // Reduced from 30 for tighter corner
+    let yOffset = 20; // Reduced from 50 for tighter corner
 
-    const pos = logoPosition.toLowerCase();
+    const pos = String(logoPosition).toLowerCase(); // Ensure string comparison
+    console.log(`[Cloudinary] Debug: Parsing position '${pos}'`);
+
     if (pos.includes('top') && pos.includes('left')) {
       gravity = 'north_west';
     } else if (pos.includes('top') && pos.includes('right')) {
       gravity = 'north_east';
     } else if (pos.includes('bottom') && pos.includes('left')) {
       gravity = 'south_west';
-      yOffset = 100;
+      yOffset = 40; // Slightly higher from bottom for safe area
     } else if (pos.includes('bottom') && pos.includes('right')) {
       gravity = 'south_east';
-      yOffset = 100;
+      yOffset = 40; // Slightly higher from bottom for safe area
     } else if (pos.includes('center') || pos.includes('middle')) {
       gravity = 'center';
       xOffset = 0;
@@ -326,7 +328,7 @@ export class CloudinaryClient {
     // Format: l_image:public_id,g_gravity,x_offset,y_offset,w_width,o_opacity/fl_layer_apply
     const logoTransformation = `l_image:${logoPublicIdForTransform},g_${gravity},x_${xOffset},y_${yOffset},w_${logoWidth},o_80/fl_layer_apply`;
 
-    console.log(`[Cloudinary] Logo transformation: ${logoTransformation}`);
+    console.log(`[Cloudinary] Logo transformation final: ${logoTransformation}`);
 
     // Insert logo transformation BEFORE the final format flags (f_mp4/vc_h264/q_auto)
     // This ensures logo is added to the video content, not just the container
