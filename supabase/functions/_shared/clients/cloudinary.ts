@@ -378,7 +378,7 @@ export class CloudinaryClient {
    * Extract Cloudinary public ID from URL
    * Handles various Cloudinary URL formats
    */
-  private extractPublicId(url: string): string {
+  public extractPublicId(url: string): string {
     if (!url) return '';
 
     // If it's already just an ID (no URL), return as-is
@@ -425,7 +425,7 @@ export class CloudinaryClient {
    * - strips version and file extension
    * - ignores any transformation segments
    */
-  private extractPublicIdFromCloudinaryUrl(url: string): string {
+  public extractPublicIdFromCloudinaryUrl(url: string): string {
     try {
       const [, afterUpload] = url.split('/upload/');
       if (!afterUpload) return url;

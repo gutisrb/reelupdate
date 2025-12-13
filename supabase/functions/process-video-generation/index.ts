@@ -511,19 +511,15 @@ async function processVideoAsync(
     }
 
     // ============================================
-    // 6. ASSEMBLE VIDEO
+    // 6. VIDEO PIPELINE: STAGE 1 - ASSEMBLY & AUDIO
     // ============================================
-    console.log(`[${data.video_id}] Step 4: Assembling video...`);
+    console.log(`[${data.video_id}] PIPELINE STAGE 1: Assembling Base Video...`);
 
     const clipUrls = clips.map(c => c.clip_url);
     const totalDuration = clips.length * 5; // 5 seconds per clip
 
-    // Assemble video with Cloudinary transformations (returns transformation URL)
-    // NOTE: This returns a transformation URL, NOT an actual video file
-    // Cloudinary will process the transformation on-demand when the URL is accessed
-    const baseClipPublicId = clients.cloudinary['extractPublicId'](clipUrls[0]);
-
-    const assembledVideoUrl = clients.cloudinary.assembleVideo(
+    // Generate Assembly Transformation URL
+    const assemblyTransformationUrl = clients.cloudinary.assembleVideo(
       clipUrls,
       voiceoverUpload.secure_url,
       musicUrl,
@@ -531,180 +527,139 @@ async function processVideoAsync(
       userSettings.default_music_volume_db
     );
 
-    console.log(`[${data.video_id}] Video assembly transformation URL (without logo): ${assembledVideoUrl}`);
-    console.log(`[${data.video_id}] DEBUG: Full assembled URL length: ${assembledVideoUrl.length} chars`);
-    console.log(`[${data.video_id}] DEBUG: Base clip public_id: ${baseClipPublicId}`);
+    console.log(`[${data.video_id}] Assembly URL generated. Baking Stage 1...`);
+
+    // Bake Stage 1
+    const stage1PublicId = `stage1_assembly_${data.video_id}_${Date.now()}`;
+    let currentVideoUrl: string;
+
+    try {
+      const stage1Result = await clients.cloudinary.uploadVideoFromUrl(
+        assemblyTransformationUrl,
+        stage1PublicId
+      );
+      currentVideoUrl = stage1Result.secure_url;
+      console.log(`[${data.video_id}] STAGE 1 COMPLETE: ${currentVideoUrl}`);
+    } catch (error: any) {
+      console.error(`[${data.video_id}] STAGE 1 FAILED:`, error);
+      throw new Error(`Video Assembly Failed: ${error.message}`);
+    }
 
     // ============================================
-    // 7. ADD CAPTIONS (Using Whisper Transcription)
+    // 7. VIDEO PIPELINE: STAGE 2 - CAPTIONS
     // ============================================
-    let finalVideoWithCaptions = assembledVideoUrl;
+    let captionTranscriptForDb = '';
 
-    if (userSettings.caption_enabled) {
-      console.log(`[${data.video_id}] Adding captions using Whisper transcription...`);
+    if (userSettings.caption_enabled && srtTranscript) {
+      console.log(`[${data.video_id}] PIPELINE STAGE 2: Adding Captions...`);
 
       try {
-        // Parse SRT transcription to get segments with accurate timing
         const captionSegments = parseSRT(srtTranscript);
-        console.log(`[${data.video_id}] Parsed ${captionSegments.length} caption segments from Whisper SRT`);
+        captionTranscriptForDb = correctedTranscript || srtTranscript;
 
-        // Extract existing transformation and add text overlays before format flags
-        const cloudName = clients.cloudinary['cloudName'];
-        const urlParts = assembledVideoUrl.split('/upload/');
-        const transformationPart = urlParts[1].split(`/${baseClipPublicId}`)[0];
+        // Extract the base Public ID from the Stage 1 URL
+        const stage1Id = clients.cloudinary['extractPublicIdFromCloudinaryUrl'](currentVideoUrl);
 
-        // Split transformation to insert captions before format flags (f_mp4, vc_h264, q_auto:good)
-        const transformations = transformationPart.split('/');
-        const formatFlagsIndex = transformations.findIndex((t: string) => t.startsWith('f_mp4') || t.startsWith('vc_h264') || t.startsWith('q_auto'));
-
-        // Build text overlay transformations from Whisper segments
+        // Build Caption Transformations
         const textOverlays: string[] = [];
+
         captionSegments.forEach((segment) => {
           const startTime = Math.floor(segment.start);
           const duration = Math.floor(segment.end - segment.start);
-
-          // Cloudinary text overlay format with accurate timing from Whisper
           const encodedText = encodeURIComponent(segment.text.trim().substring(0, 100)); // Limit length
+
+          // Font & Style (Simplified for Robustness)
           const fontSize = userSettings.caption_font_size || 34;
-
-          // Safe Font Mapping
           const fontMap: Record<string, string> = {
-            'Inter': 'Arial',
-            'Roboto': 'Roboto',
-            'Open Sans': 'Arial',
-            'Montserrat': 'Arial',
-            'Lato': 'Arial',
-            'Poppins': 'Arial',
-            'Georgia': 'Times New Roman', // Georgia might not be present, map to reliable serif
-            'Times New Roman': 'Times New Roman',
-            'Courier New': 'Courier New',
-            'Arial': 'Arial',
-            'Verdana': 'Verdana',
-            'Impact': 'Impact',
+            'Inter': 'Arial', 'Georgia': 'Times New Roman', 'Times New Roman': 'Times New Roman', 'Arial': 'Arial'
           };
-
           const rawFont = userSettings.caption_font_family || 'Arial';
-          // Default to Arial if not found in map, unless it's a standard system font
           const safeFont = fontMap[rawFont] || 'Arial';
           const fontFamily = safeFont.replace(/\s+/g, '%20');
-
           const fontColor = userSettings.caption_font_color || 'FFFFFF';
-
-          // Styling options from Brand Kit
           const bgColor = userSettings.caption_bg_color || '000000';
-
-          let styleParams = `${fontFamily}_${fontSize}_bold`;
-
-          // Add stroke if requested
-          if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
-            const strokeColor = userSettings.caption_stroke_color || '000000';
-            // Cloudinary stroke syntax: underscore separated, e.g. bo_5px_solid_black
-            // However, l_text syntax for stroke is limited.
-            // We can use the 'bo' parameter on the LAYER, not the text style.
-            // border: 'bo_5px_solid_rgb:000000'
-          }
-
-          // Build transformation string
-          // NEW SYNTAX: l_text:style:text/co_color,b_background,g_pos...
-          // This separates the layer Creation from layer Transformation.
-
-          let layerCreation = `l_text:${styleParams}:${encodedText}`;
-          let layerTransform = `co_rgb:${fontColor}`;
-
           const bgOpacity = userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0;
 
-          if (bgOpacity > 0) {
-            // Apply background color to the text bounding box using b_rgb property
-            layerTransform += `,b_rgb:${bgColor}`;
-          }
+          // Construct Layer
+          // Syntax: l_text:Style:Text,Color,Bg,Position
+          const style = `${fontFamily}_${fontSize}_bold`;
+          let creation = `l_text:${style}:${encodedText}`;
+          let transform = `co_rgb:${fontColor}`;
 
-          // Stroke / Border logic (apply to the text layer)
+          if (bgOpacity > 0) transform += `,b_rgb:${bgColor}`;
           if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
-            const strokeColor = userSettings.caption_stroke_color || '000000';
-            const strokeWidth = userSettings.caption_stroke_width;
-            layerTransform += `,bo_${strokeWidth}px_solid_rgb:${strokeColor}`;
+            transform += `,bo_${userSettings.caption_stroke_width}px_solid_rgb:${userSettings.caption_stroke_color || '000000'}`;
           }
 
-          // Add timing and position to the transformation part
-          layerTransform += `,g_south,y_100,so_${startTime},du_${duration}`;
+          transform += `,g_south,y_100,so_${startTime},du_${duration}`;
 
-          // Combine with slash separator
-          textOverlays.push(
-            layerCreation,
-            layerTransform,
-            'fl_layer_apply'
-          );
+          textOverlays.push(`${creation}/${transform}/fl_layer_apply`);
         });
 
-        console.log(`[${data.video_id}] Created ${captionSegments.length} text overlay segments from Whisper transcription`);
+        if (textOverlays.length > 0) {
+          // Apply captions to the Stage 1 video
+          // We use the 'l_video' trick or just direct transformation on the public_id? 
+          // Better: Apply transforms to the Base Video directly.
+          // URL: .../video/upload/[text_overlays]/[stage1_public_id].mp4
 
-        // Insert text overlays before format flags
-        if (formatFlagsIndex !== -1) {
-          transformations.splice(formatFlagsIndex, 0, ...textOverlays);
+          const captionTransformString = textOverlays.join('/');
+          const captionUrl = `https://res.cloudinary.com/${clients.cloudinary['cloudName']}/video/upload/${captionTransformString}/f_mp4/vc_h264/q_auto:good/${stage1Id}.mp4`;
+
+          console.log(`[${data.video_id}] Captions URL generated. Baking Stage 2...`);
+
+          // Bake Stage 2
+          const stage2PublicId = `stage2_captions_${data.video_id}_${Date.now()}`;
+          const stage2Result = await clients.cloudinary.uploadVideoFromUrl(
+            captionUrl,
+            stage2PublicId
+          );
+          currentVideoUrl = stage2Result.secure_url;
+          console.log(`[${data.video_id}] STAGE 2 COMPLETE: ${currentVideoUrl}`);
         } else {
-          // If no format flags found, add at end
-          transformations.push(...textOverlays);
+          console.log(`[${data.video_id}] No caption segments found, skipping Stage 2.`);
         }
 
-        const newTransformation = transformations.join('/');
-        finalVideoWithCaptions = `https://res.cloudinary.com/${cloudName}/video/upload/${newTransformation}/${baseClipPublicId}.mp4`;
-
-        console.log(`[${data.video_id}] Captions added successfully`);
-      } catch (e) {
-        console.error(`[${data.video_id}] Failed to add captions:`, e);
-        console.log(`[${data.video_id}] Continuing without captions`);
+      } catch (e: any) {
+        console.error(`[${data.video_id}] STAGE 2 FAILED (Captions):`, e);
+        console.log(`[${data.video_id}] Continuing with Stage 1 result.`);
       }
-    } else {
-      console.log(`[${data.video_id}] Captions disabled in user settings`);
     }
 
-    console.log(`[${data.video_id}] Final video URL (before logo): ${finalVideoWithCaptions}`);
-
     // ============================================
-    // 8. ADD LOGO OVERLAY (After assembly and captions)
+    // 8. VIDEO PIPELINE: STAGE 3 - LOGO
     // ============================================
-    let finalVideoWithLogo = finalVideoWithCaptions;
+    let finalVideoWithLogo = currentVideoUrl;
 
     if (userSettings.logo_url) {
-      console.log(`[${data.video_id}] Adding logo overlay...`);
-      finalVideoWithLogo = clients.cloudinary.addLogoOverlay(
-        finalVideoWithCaptions,
-        userSettings.logo_url,
-        userSettings.logo_position || 'corner_top_right',
-        userSettings.logo_size_percent || 15
-      );
-      console.log(`[${data.video_id}] Logo overlay added successfully`);
+      console.log(`[${data.video_id}] PIPELINE STAGE 3: Adding Logo...`);
+
+      try {
+        // Use existing helper but now it operates on the Current Video URL
+        // It returns a transformation URL. We must BAKE it.
+        const logoTransformationUrl = clients.cloudinary.addLogoOverlay(
+          currentVideoUrl,
+          userSettings.logo_url,
+          userSettings.logo_position || 'corner_top_right',
+          userSettings.logo_size_percent || 15
+        );
+
+        if (logoTransformationUrl !== currentVideoUrl) {
+          console.log(`[${data.video_id}] Logo URL generated. Baking Stage 3...`);
+
+          const finalPublicId = `final_video_${data.video_id}_${Date.now()}`;
+          const stage3Result = await clients.cloudinary.uploadVideoFromUrl(
+            logoTransformationUrl,
+            finalPublicId
+          );
+          finalVideoWithLogo = stage3Result.secure_url;
+          console.log(`[${data.video_id}] STAGE 3 COMPLETE: ${finalVideoWithLogo}`);
+        }
+      } catch (e: any) {
+        console.error(`[${data.video_id}] STAGE 3 FAILED (Logo):`, e);
+        // Fallback to previous stage
+      }
     } else {
-      console.log(`[${data.video_id}] No logo URL in settings, skipping logo overlay`);
-    }
-
-    console.log(`[${data.video_id}] Final video URL (complete): ${finalVideoWithLogo}`);
-
-    // ============================================
-    // 8.5. BAKE VIDEO (Upload transformation URL to create static file)
-    // ============================================
-    console.log(`[${data.video_id}] Baking video (uploading to permanent file)...`);
-
-    // Create a deterministic public ID for the final video
-    const finalPublicId = `final_video_${data.video_id}_${Date.now()}`;
-
-    try {
-      const uploadResult = await clients.cloudinary.uploadVideoFromUrl(
-        finalVideoWithLogo,
-        finalPublicId
-      );
-
-      console.log(`[${data.video_id}] Video baked successfully!`);
-
-      // Update the URL to point to the secure, static file
-      // result.secure_url is usually http/https. We prefer https.
-      finalVideoWithLogo = uploadResult.secure_url;
-
-      console.log(`[${data.video_id}] New Baked URL: ${finalVideoWithLogo}`);
-
-    } catch (uploadError) {
-      console.error(`[${data.video_id}] Baking failed, falling back to dynamic URL:`, uploadError);
-      // Fallback is implicit: finalVideoWithLogo remains the dynamic URL
+      console.log(`[${data.video_id}] No logo requested, skipping Stage 3.`);
     }
 
     // ============================================
