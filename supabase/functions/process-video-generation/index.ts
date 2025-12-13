@@ -1,51 +1,50 @@
+```typescript
 // Main Video Generation Edge Function
 // Replaces Make.com workflow
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import {
-  CloudinaryClient,
-  LumaClient,
-  OpenAIClient,
-  GoogleAIClient,
-  ElevenLabsClient
-} from '../_shared/clients/index.ts';
+import { parseSRT, CaptionSegment } from '../_shared/srt-parser.ts';
+import { renderAndCompositeCaptionsStreaming } from '../_shared/clients/caption-compositor.ts';
+import { initClients } from '../_shared/clients/index.ts';
 import type { VideoGenerationRequest, UserSettings, ClipData } from '../_shared/types.ts';
 import { API_ENDPOINTS } from '../_shared/config.ts';
 
 // Helper function to parse SRT format into caption segments
-interface CaptionSegment {
-  start: number; // seconds
-  end: number;   // seconds
-  text: string;
-}
+// This interface is now imported from '../_shared/srt-parser.ts'
+// interface CaptionSegment {
+//   start: number; // seconds
+//   end: number;   // seconds
+//   text: string;
+// }
 
-function parseSRT(srt: string): CaptionSegment[] {
-  const segments: CaptionSegment[] = [];
-  const blocks = srt.trim().split('\n\n');
+// The parseSRT function is now imported from '../_shared/srt-parser.ts'
+// function parseSRT(srt: string): CaptionSegment[] {
+//   const segments: CaptionSegment[] = [];
+//   const blocks = srt.trim().split('\n\n');
 
-  for (const block of blocks) {
-    const lines = block.split('\n');
-    if (lines.length < 3) continue;
+//   for (const block of blocks) {
+//     const lines = block.split('\n');
+//     if (lines.length < 3) continue;
 
-    // Line 0: sequence number (ignore)
-    // Line 1: timestamp (00:00:00,000 --> 00:00:05,000)
-    // Line 2+: text
-    const timestampLine = lines[1];
-    const match = timestampLine.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+//     // Line 0: sequence number (ignore)
+//     // Line 1: timestamp (00:00:00,000 --> 00:00:05,000)
+//     // Line 2+: text
+//     const timestampLine = lines[1];
+//     const match = timestampLine.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
 
-    if (match) {
-      const startSec = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseInt(match[3]) + parseInt(match[4]) / 1000;
-      const endSec = parseInt(match[5]) * 3600 + parseInt(match[6]) * 60 + parseInt(match[7]) + parseInt(match[8]) / 1000;
-      const text = lines.slice(2).join(' ').trim();
+//     if (match) {
+//       const startSec = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseInt(match[3]) + parseInt(match[4]) / 1000;
+//       const endSec = parseInt(match[5]) * 3600 + parseInt(match[6]) * 60 + parseInt(match[7]) + parseInt(match[8]) / 1000;
+//       const text = lines.slice(2).join(' ').trim();
 
-      segments.push({ start: startSec, end: endSec, text });
-    }
-  }
+//       segments.push({ start: startSec, end: endSec, text });
+//     }
+//   }
 
-  return segments;
-}
+//   return segments;
+// }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -84,7 +83,7 @@ serve(async (req) => {
     const images: any[] = [];
 
     for (let i = 0; i < totalImages; i++) {
-      const imageFile = formData.get(`image_${i}`) as File;
+      const imageFile = formData.get(`image_${ i } `) as File;
       if (imageFile) {
         const arrayBuffer = await imageFile.arrayBuffer();
         images.push({
@@ -133,13 +132,9 @@ serve(async (req) => {
     );
 
     // Initialize API clients
-    const cloudinary = new CloudinaryClient();
-    const luma = new LumaClient();
-    const openai = new OpenAIClient();
-    const google = new GoogleAIClient();
-    const elevenlabs = new ElevenLabsClient();
+    const clients = initClients();
 
-    console.log(`[${data.video_id}] Starting video generation`);
+    console.log(`[${ data.video_id }] Starting video generation`);
 
     // ============================================
     // 1. CHECK USER CREDITS
@@ -172,7 +167,7 @@ serve(async (req) => {
     });
 
     if (creditError) {
-      throw new Error(`Failed to deduct credit: ${creditError.message}`);
+      throw new Error(`Failed to deduct credit: ${ creditError.message } `);
     }
 
     const { error: videoError } = await supabase
@@ -189,23 +184,23 @@ serve(async (req) => {
       });
 
     if (videoError) {
-      console.error(`Failed to create video record: ${videoError.message}`);
+      console.error(`Failed to create video record: ${ videoError.message } `);
     }
 
     // Process synchronously to avoid EarlyDrop (background tasks can be terminated)
-    console.log(`[${data.video_id}] DEBUG: About to call processVideoAsync`);
+    console.log(`[${ data.video_id }]DEBUG: About to call processVideoAsync`);
     try {
       await processVideoAsync(
         data,
         supabase,
-        { cloudinary, luma, openai, google, elevenlabs }
+        clients
       );
-      console.log(`[${data.video_id}] DEBUG: processVideoAsync completed successfully`);
+      console.log(`[${ data.video_id }]DEBUG: processVideoAsync completed successfully`);
     } catch (error) {
-      console.error(`[${data.video_id}] Processing failed:`, error);
-      console.error(`[${data.video_id}] ERROR stack:`, (error as any)?.stack);
-      console.error(`[${data.video_id}] ERROR name:`, (error as any)?.name);
-      console.error(`[${data.video_id}] ERROR message:`, (error as any)?.message);
+      console.error(`[${ data.video_id }] Processing failed: `, error);
+      console.error(`[${ data.video_id }] ERROR stack: `, (error as any)?.stack);
+      console.error(`[${ data.video_id }] ERROR name: `, (error as any)?.name);
+      console.error(`[${ data.video_id }] ERROR message: `, (error as any)?.message);
 
       // Update video status to error
       await supabase.from('videos').update({
@@ -247,26 +242,26 @@ async function processVideoAsync(
   clients: any
 ) {
   const startTime = Date.now();
-  console.log(`[${data.video_id}] Processing started`);
-  console.log(`[${data.video_id}] DEBUG: processVideoAsync called`);
-  console.log(`[${data.video_id}] DEBUG: data.video_id = ${data.video_id}`);
-  console.log(`[${data.video_id}] DEBUG: data.user_id = ${data.user_id}`);
-  console.log(`[${data.video_id}] DEBUG: data.property_data.title = ${data.property_data.title}`);
+  console.log(`[${ data.video_id }] Processing started`);
+  console.log(`[${ data.video_id }]DEBUG: processVideoAsync called`);
+  console.log(`[${ data.video_id }]DEBUG: data.video_id = ${ data.video_id } `);
+  console.log(`[${ data.video_id }]DEBUG: data.user_id = ${ data.user_id } `);
+  console.log(`[${ data.video_id }]DEBUG: data.property_data.title = ${ data.property_data.title } `);
 
   try {
-    console.log(`[${data.video_id}] DEBUG: Inside try block`);
+    console.log(`[${ data.video_id }]DEBUG: Inside try block`);
 
     // ============================================
     // 3. GET USER SETTINGS
     // ============================================
-    console.log(`[${data.video_id}] DEBUG: Fetching user settings...`);
+    console.log(`[${ data.video_id }]DEBUG: Fetching user settings...`);
     const { data: settings } = await supabase
       .from('user_settings')
       .select('*')
       .eq('user_id', data.user_id)
       .single();
 
-    console.log(`[${data.video_id}] DEBUG: User settings fetched:`, settings ? 'found' : 'not found');
+    console.log(`[${ data.video_id }]DEBUG: User settings fetched: `, settings ? 'found' : 'not found');
 
     const userSettings: UserSettings = settings || {
       voice_id: 'sr-RS-Standard-A',
@@ -306,11 +301,11 @@ async function processVideoAsync(
     // ============================================
     // 4. PROCESS CLIPS (with GPT-4o + Luma) or TEST_MODE
     // ============================================
-    console.log(`[${data.video_id}] DEBUG: About to check TEST_MODE`);
+    console.log(`[${ data.video_id }]DEBUG: About to check TEST_MODE`);
 
     // Check if TEST_MODE is enabled (title contains "TEST_MODE")
     const isTestMode = data.property_data.title.toUpperCase().includes('TEST_MODE');
-    console.log(`[${data.video_id}] DEBUG: isTestMode = ${isTestMode}`);
+    console.log(`[${ data.video_id }]DEBUG: isTestMode = ${ isTestMode } `);
 
     let clips: ClipData[];
 
@@ -318,7 +313,7 @@ async function processVideoAsync(
       // ============================================
       // TEST_MODE: Use placeholder clips to save AI costs
       // ============================================
-      console.log(`[${data.video_id}] ⚡ TEST_MODE ENABLED - Using placeholder clips`);
+      console.log(`[${ data.video_id }] ⚡ TEST_MODE ENABLED - Using placeholder clips`);
 
       // Placeholder clip URLs (no AI processing)
       const placeholderClips = [
@@ -341,8 +336,8 @@ async function processVideoAsync(
         mood: 'modern',
       }));
 
-      console.log(`[${data.video_id}] ⚡ Using ${clips.length} placeholder clips (saved AI costs)`);
-      console.log(`[${data.video_id}] TEST_MODE will continue through full pipeline (voiceover, music, assembly, captions)`);
+      console.log(`[${ data.video_id }] ⚡ Using ${ clips.length } placeholder clips(saved AI costs)`);
+      console.log(`[${ data.video_id }] TEST_MODE will continue through full pipeline(voiceover, music, assembly, captions)`);
 
     } else {
       // ============================================
@@ -352,7 +347,7 @@ async function processVideoAsync(
       // 3. Wait for all Luma completions
       // ============================================
 
-      console.log(`[${data.video_id}] Step 1: Preparing ${data.image_slots.length} clips (upload + GPT-4o + start Luma)...`);
+      console.log(`[${ data.video_id }] Step 1: Preparing ${ data.image_slots.length } clips(upload + GPT - 4o + start Luma)...`);
 
       // Step 1: Upload images, GPT-4o analysis, and START Luma generations (in parallel)
       const clipPreparations = data.image_slots.map((slot, index) =>
@@ -361,8 +356,8 @@ async function processVideoAsync(
 
       const preparedClips = await Promise.all(clipPreparations);
 
-      console.log(`[${data.video_id}] Step 1 complete: All Luma generations started (rendering in background)`);
-      console.log(`[${data.video_id}] Luma generation IDs:`, preparedClips.map(c => c.luma_generation_id).join(', '));
+      console.log(`[${ data.video_id }] Step 1 complete: All Luma generations started(rendering in background)`);
+      console.log(`[${ data.video_id }] Luma generation IDs: `, preparedClips.map(c => c.luma_generation_id).join(', '));
 
       // Store prepared clips for later completion
       clips = preparedClips;
@@ -371,8 +366,8 @@ async function processVideoAsync(
     // ============================================
     // 5. GENERATE AUDIO (Voiceover + Music) - IN PARALLEL WITH LUMA RENDERING
     // ============================================
-    console.log(`[${data.video_id}] Step 2: Generating audio (while Luma renders in background)...`);
-    console.log(`[${data.video_id}] DEBUG: clips.length = ${clips.length}`);
+    console.log(`[${ data.video_id }] Step 2: Generating audio(while Luma renders in background)...`);
+    console.log(`[${ data.video_id }]DEBUG: clips.length = ${ clips.length } `);
 
     let voiceoverScript: string;
     let voiceoverUpload: any;
@@ -383,7 +378,7 @@ async function processVideoAsync(
 
     if (isTestMode) {
       // TEST_MODE: Use placeholder audio to save credits
-      console.log(`[${data.video_id}] TEST_MODE: Using placeholder music and voiceover (saving AI credits)`);
+      console.log(`[${ data.video_id }]TEST_MODE: Using placeholder music and voiceover(saving AI credits)`);
 
       voiceoverScript = 'TEST_MODE placeholder voiceover script';
       voiceoverUpload = {
@@ -396,19 +391,19 @@ async function processVideoAsync(
 
     } else {
       // REGULAR MODE: Generate real audio
-      console.log(`[${data.video_id}] DEBUG: About to generate voiceover script`);
+      console.log(`[${ data.video_id }]DEBUG: About to generate voiceover script`);
 
       // Generate voiceover script
       const visualContext = clips.map(c => c.luma_prompt).join('; ');
       const videoLength = data.image_slots.length * 5; // 5 seconds per clip
-      console.log(`[${data.video_id}] DEBUG: videoLength = ${videoLength}s, visualContext length = ${visualContext.length} chars`);
+      console.log(`[${ data.video_id }]DEBUG: videoLength = ${ videoLength } s, visualContext length = ${ visualContext.length } chars`);
 
       voiceoverScript = await clients.google.generateVoiceoverScript(
         data.property_data,
         visualContext,
         videoLength
       );
-      console.log(`[${data.video_id}] DEBUG: Voiceover script generated: ${voiceoverScript.length} chars`);
+      console.log(`[${ data.video_id }]DEBUG: Voiceover script generated: ${ voiceoverScript.length } chars`);
 
       // Generate TTS audio
       const voiceoverPCM = await clients.google.generateTTS(
@@ -420,7 +415,7 @@ async function processVideoAsync(
       // Upload voiceover to Cloudinary (now in WAV format with proper headers)
       voiceoverUpload = await clients.cloudinary.uploadVideo(
         voiceoverPCM,
-        `voiceover_${data.video_id}.wav`
+        `voiceover_${ data.video_id }.wav`
       );
 
       // Generate or select music
@@ -437,10 +432,10 @@ async function processVideoAsync(
         if (musicData && musicData.cloudinary_url) {
           musicUrl = musicData.cloudinary_url;
           musicSource = 'custom_upload';
-          console.log(`[${data.video_id}] Using custom music: ${musicData.title || 'Untitled'}`);
+          console.log(`[${ data.video_id }] Using custom music: ${ musicData.title || 'Untitled' } `);
         } else {
           // Fallback to generated if custom music not found
-          console.log(`[${data.video_id}] Custom music not found, falling back to generated`);
+          console.log(`[${ data.video_id }] Custom music not found, falling back to generated`);
           const musicPrompt = clients.elevenlabs.generateMusicPrompt(
             clips[0]?.mood || 'modern',
             clips[0]?.description || ''
@@ -480,26 +475,26 @@ async function processVideoAsync(
       }
     }
 
-    console.log(`[${data.video_id}] Step 2 complete: Audio generated (source: ${musicSource})`);
+    console.log(`[${ data.video_id }] Step 2 complete: Audio generated(source: ${ musicSource })`);
 
     // ============================================
     // 5C. TRANSCRIBE VOICEOVER (runs for both TEST_MODE and regular mode)
     // ============================================
-    console.log(`[${data.video_id}] Starting Whisper transcription of voiceover...`);
+    console.log(`[${ data.video_id }] Starting Whisper transcription of voiceover...`);
 
     // Transcribe voiceover using Whisper (returns SRT format with timing)
     srtTranscript = await clients.openai.createTranscription(voiceoverUpload.secure_url);
-    console.log(`[${data.video_id}] Whisper transcription complete, SRT length: ${srtTranscript.length} chars`);
+    console.log(`[${ data.video_id }] Whisper transcription complete, SRT length: ${ srtTranscript.length } chars`);
 
     // Correct transcription using GPT (compare to original script)
     correctedTranscript = await clients.openai.correctTranscript(srtTranscript, voiceoverScript);
-    console.log(`[${data.video_id}] Transcript corrected using GPT`);
+    console.log(`[${ data.video_id }] Transcript corrected using GPT`);
 
     // ============================================
     // 5B. WAIT FOR LUMA COMPLETIONS (if not TEST_MODE)
     // ============================================
     if (!isTestMode) {
-      console.log(`[${data.video_id}] Step 3: Waiting for all Luma generations to complete...`);
+      console.log(`[${ data.video_id }] Step 3: Waiting for all Luma generations to complete...`);
 
       const completionPromises = clips.map((clip, index) =>
         finishClip(clip, index, data, clients)
@@ -507,13 +502,13 @@ async function processVideoAsync(
 
       clips = await Promise.all(completionPromises);
 
-      console.log(`[${data.video_id}] Step 3 complete: All ${clips.length} clips ready`);
+      console.log(`[${ data.video_id }] Step 3 complete: All ${ clips.length } clips ready`);
     }
 
     // ============================================
     // 6. VIDEO PIPELINE: STAGE 1 - ASSEMBLY & AUDIO
     // ============================================
-    console.log(`[${data.video_id}] PIPELINE STAGE 1: Assembling Base Video...`);
+    console.log(`[${ data.video_id }] PIPELINE STAGE 1: Assembling Base Video...`);
 
     const clipUrls = clips.map(c => c.clip_url);
     const totalDuration = clips.length * 5; // 5 seconds per clip
@@ -527,10 +522,10 @@ async function processVideoAsync(
       userSettings.default_music_volume_db
     );
 
-    console.log(`[${data.video_id}] Assembly URL generated. Baking Stage 1...`);
+    console.log(`[${ data.video_id }] Assembly URL generated.Baking Stage 1...`);
 
     // Bake Stage 1
-    const stage1PublicId = `stage1_assembly_${data.video_id}_${Date.now()}`;
+    const stage1PublicId = `stage1_assembly_${ data.video_id }_${ Date.now() } `;
     let currentVideoUrl: string;
 
     try {
@@ -539,10 +534,10 @@ async function processVideoAsync(
         stage1PublicId
       );
       currentVideoUrl = stage1Result.secure_url;
-      console.log(`[${data.video_id}] STAGE 1 COMPLETE: ${currentVideoUrl}`);
+      console.log(`[${ data.video_id }] STAGE 1 COMPLETE: ${ currentVideoUrl } `);
     } catch (error: any) {
-      console.error(`[${data.video_id}] STAGE 1 FAILED:`, error);
-      throw new Error(`Video Assembly Failed: ${error.message}`);
+      console.error(`[${ data.video_id }] STAGE 1 FAILED: `, error);
+      throw new Error(`Video Assembly Failed: ${ error.message } `);
     }
 
     // ============================================
@@ -551,7 +546,7 @@ async function processVideoAsync(
     let captionTranscriptForDb = '';
 
     if (userSettings.caption_enabled && srtTranscript) {
-      console.log(`[${data.video_id}] PIPELINE STAGE 2: Adding Captions...`);
+      console.log(`[${ data.video_id }] PIPELINE STAGE 2: Adding Captions...`);
 
       try {
         const captionSegments = parseSRT(srtTranscript);
@@ -560,68 +555,54 @@ async function processVideoAsync(
         // Extract the base Public ID from the Stage 1 URL
         const stage1Id = clients.cloudinary['extractPublicIdFromCloudinaryUrl'](currentVideoUrl);
 
-        // Build Caption Transformations
-        const textOverlays: string[] = [];
+        // Map UserSettings (Snake Case) to CaptionStyle (Camel Case)
+        const captionStyle = {
+           fontFamily: 'Arial', // Default, but renderer can support others if loaded
+           fontSize: userSettings.caption_font_size || 34,
+           fontWeight: 'bold',
+           fontColor: userSettings.caption_font_color || 'FFFFFF',
+           bgColor: userSettings.caption_bg_color || '000000',
+           bgOpacity: userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0,
+           strokeColor: userSettings.caption_stroke_color || '000000',
+           strokeWidth: userSettings.caption_stroke_width || 0,
+           position: (userSettings.caption_position as any) || 'bottom',
+           animation: (userSettings.caption_animation as any) || 'none',
+           uppercase: userSettings.caption_uppercase || false,
+           emojis: true // Default to true or add setting
+        };
 
-        captionSegments.forEach((segment) => {
-          const startTime = Math.floor(segment.start);
-          const duration = Math.floor(segment.end - segment.start);
-          const encodedText = encodeURIComponent(segment.text.trim().substring(0, 100)); // Limit length
+        const renderOptions = {
+           width: 1080,
+           height: 1920,
+           fps: 30
+        };
 
-          // Font & Style (Simplified for Robustness)
-          const fontSize = userSettings.caption_font_size || 34;
-          const fontMap: Record<string, string> = {
-            'Inter': 'Arial', 'Georgia': 'Times New Roman', 'Times New Roman': 'Times New Roman', 'Arial': 'Arial'
-          };
-          const rawFont = userSettings.caption_font_family || 'Arial';
-          const safeFont = fontMap[rawFont] || 'Arial';
-          const fontFamily = safeFont.replace(/\s+/g, '%20');
-          const fontColor = userSettings.caption_font_color || 'FFFFFF';
-          const bgColor = userSettings.caption_bg_color || '000000';
-          const bgOpacity = userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0;
+        console.log(`[${ data.video_id }] Starting High - Fidelity Caption Rendering(Canvas)...`);
 
-          // Construct Layer
-          // Syntax: l_text:Style:Text,Color,Bg,Position
-          const style = `${fontFamily}_${fontSize}_bold`;
-          let creation = `l_text:${style}:${encodedText}`;
-          let transform = `co_rgb:${fontColor}`;
+        // Use the Streaming Compositor to render and upload frames
+        // This handles animations, custom styles, and avoids memory limits
+        const compositeUrl = await renderAndCompositeCaptionsStreaming(
+           captionSegments,
+           captionStyle,
+           renderOptions,
+           stage1Id, // Base video ID
+           clients.cloudinary
+        );
 
-          if (bgOpacity > 0) transform += `,b_rgb:${bgColor}`;
-          if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
-            transform += `,bo_${userSettings.caption_stroke_width}px_solid_rgb:${userSettings.caption_stroke_color || '000000'}`;
-          }
+        console.log(`[${ data.video_id }]High - Fidelity Composition URL generated.Baking Stage 2...`);
 
-          transform += `,g_south,y_100,so_${startTime},du_${duration}`;
-
-          textOverlays.push(`${creation}/${transform}/fl_layer_apply`);
-        });
-
-        if (textOverlays.length > 0) {
-          // Apply captions to the Stage 1 video
-          // We use the 'l_video' trick or just direct transformation on the public_id? 
-          // Better: Apply transforms to the Base Video directly.
-          // URL: .../video/upload/[text_overlays]/[stage1_public_id].mp4
-
-          const captionTransformString = textOverlays.join('/');
-          const captionUrl = `https://res.cloudinary.com/${clients.cloudinary['cloudName']}/video/upload/${captionTransformString}/f_mp4/vc_h264/q_auto:good/${stage1Id}.mp4`;
-
-          console.log(`[${data.video_id}] Captions URL generated. Baking Stage 2...`);
-
-          // Bake Stage 2
-          const stage2PublicId = `stage2_captions_${data.video_id}_${Date.now()}`;
-          const stage2Result = await clients.cloudinary.uploadVideoFromUrl(
-            captionUrl,
-            stage2PublicId
-          );
-          currentVideoUrl = stage2Result.secure_url;
-          console.log(`[${data.video_id}] STAGE 2 COMPLETE: ${currentVideoUrl}`);
-        } else {
-          console.log(`[${data.video_id}] No caption segments found, skipping Stage 2.`);
-        }
+        // Bake Stage 2
+        const stage2PublicId = `stage2_captions_${ data.video_id }_${ Date.now() } `;
+        const stage2Result = await clients.cloudinary.uploadVideoFromUrl(
+          compositeUrl,
+          stage2PublicId
+        );
+        currentVideoUrl = stage2Result.secure_url;
+        console.log(`[${ data.video_id }] STAGE 2 COMPLETE: ${ currentVideoUrl } `);
 
       } catch (e: any) {
-        console.error(`[${data.video_id}] STAGE 2 FAILED (Captions):`, e);
-        console.log(`[${data.video_id}] Continuing with Stage 1 result.`);
+        console.error(`[${ data.video_id }] STAGE 2 FAILED(Captions): `, e);
+        console.log(`[${ data.video_id }] Continuing with Stage 1 result.`);
       }
     }
 
@@ -631,7 +612,7 @@ async function processVideoAsync(
     let finalVideoWithLogo = currentVideoUrl;
 
     if (userSettings.logo_url) {
-      console.log(`[${data.video_id}] PIPELINE STAGE 3: Adding Logo...`);
+      console.log(`[${ data.video_id }] PIPELINE STAGE 3: Adding Logo...`);
 
       try {
         // Use existing helper but now it operates on the Current Video URL
@@ -644,22 +625,22 @@ async function processVideoAsync(
         );
 
         if (logoTransformationUrl !== currentVideoUrl) {
-          console.log(`[${data.video_id}] Logo URL generated. Baking Stage 3...`);
+          console.log(`[${ data.video_id }] Logo URL generated.Baking Stage 3...`);
 
-          const finalPublicId = `final_video_${data.video_id}_${Date.now()}`;
+          const finalPublicId = `final_video_${ data.video_id }_${ Date.now() } `;
           const stage3Result = await clients.cloudinary.uploadVideoFromUrl(
             logoTransformationUrl,
             finalPublicId
           );
           finalVideoWithLogo = stage3Result.secure_url;
-          console.log(`[${data.video_id}] STAGE 3 COMPLETE: ${finalVideoWithLogo}`);
+          console.log(`[${ data.video_id }] STAGE 3 COMPLETE: ${ finalVideoWithLogo } `);
         }
       } catch (e: any) {
-        console.error(`[${data.video_id}] STAGE 3 FAILED (Logo):`, e);
+        console.error(`[${ data.video_id }] STAGE 3 FAILED(Logo): `, e);
         // Fallback to previous stage
       }
     } else {
-      console.log(`[${data.video_id}] No logo requested, skipping Stage 3.`);
+      console.log(`[${ data.video_id }] No logo requested, skipping Stage 3.`);
     }
 
     // ============================================
@@ -677,8 +658,8 @@ async function processVideoAsync(
     }).eq('id', data.video_id);
 
     if (videoUpdateError) {
-      console.error(`[${data.video_id}] Failed to update videos row: ${videoUpdateError.message}`);
-      throw new Error(`Failed to update videos row: ${videoUpdateError.message}`);
+      console.error(`[${ data.video_id }] Failed to update videos row: ${ videoUpdateError.message } `);
+      throw new Error(`Failed to update videos row: ${ videoUpdateError.message } `);
     }
 
     const { error: detailsError } = await supabase.from('video_generation_details').insert({
@@ -699,24 +680,24 @@ async function processVideoAsync(
     });
 
     if (detailsError) {
-      console.error(`[${data.video_id}] Failed to insert video_generation_details: ${detailsError.message}`);
-      throw new Error(`Failed to insert video_generation_details: ${detailsError.message}`);
+      console.error(`[${ data.video_id }] Failed to insert video_generation_details: ${ detailsError.message } `);
+      throw new Error(`Failed to insert video_generation_details: ${ detailsError.message } `);
     }
 
-    console.log(`[${data.video_id}] Processing completed in ${processingTime}s`);
+    console.log(`[${ data.video_id }] Processing completed in ${ processingTime } s`);
 
   } catch (error) {
-    console.error(`[${data.video_id}] Error:`, error);
-    console.error(`[${data.video_id}] Error stack:`, (error as any)?.stack);
+    console.error(`[${ data.video_id }]Error: `, error);
+    console.error(`[${ data.video_id }] Error stack: `, (error as any)?.stack);
 
     // Make sure error is recorded in database
     try {
       await supabase.from('videos').update({
         status: 'failed',
-        error_text: `${(error as any)?.message || 'Unknown error'}\n\nStack: ${(error as any)?.stack || 'No stack trace'}`
+        error_text: `${ (error as any)?.message || 'Unknown error' } \n\nStack: ${ (error as any)?.stack || 'No stack trace' } `
       }).eq('id', data.video_id);
     } catch (dbError) {
-      console.error(`[${data.video_id}] Failed to update error in database:`, dbError);
+      console.error(`[${ data.video_id }] Failed to update error in database: `, dbError);
     }
 
     throw error;
@@ -733,7 +714,7 @@ async function prepareClip(
   data: VideoGenerationRequest,
   clients: any
 ): Promise<ClipData> {
-  console.log(`[${data.video_id}] Preparing clip ${index + 1} (upload + GPT-4o + start Luma)...`);
+  console.log(`[${ data.video_id }] Preparing clip ${ index + 1 } (upload + GPT - 4o + start Luma)...`);
 
   const isKeyframe = slot.images.length > 1;
   const firstImage = slot.images[0];
@@ -767,7 +748,7 @@ async function prepareClip(
     secondImageUpload?.secure_url
   );
 
-  console.log(`[${data.video_id}] Clip ${index + 1} prepared - Luma ID: ${lumaGeneration.id}`);
+  console.log(`[${ data.video_id }] Clip ${ index + 1 } prepared - Luma ID: ${ lumaGeneration.id } `);
 
   // Return clip data WITHOUT clip_url (will be filled in finishClip)
   return {
@@ -792,21 +773,21 @@ async function finishClip(
   data: VideoGenerationRequest,
   clients: any
 ): Promise<ClipData> {
-  console.log(`[${data.video_id}] Waiting for clip ${index + 1} (Luma ID: ${clipData.luma_generation_id})...`);
+  console.log(`[${ data.video_id }] Waiting for clip ${ index + 1} (Luma ID: ${ clipData.luma_generation_id })...`);
 
   // Wait for Luma completion
   const clipUrl = await clients.luma.waitForCompletion(clipData.luma_generation_id);
 
-  console.log(`[${data.video_id}] Clip ${index + 1} ready from Luma: ${clipUrl}`);
+  console.log(`[${ data.video_id }] Clip ${ index + 1 } ready from Luma: ${ clipUrl } `);
 
   // Upload Luma clip to Cloudinary for permanent storage
   // (Luma URLs are temporary and expire - Cloudinary URLs are permanent)
-  console.log(`[${data.video_id}] Uploading clip ${index + 1} to Cloudinary...`);
+  console.log(`[${ data.video_id }] Uploading clip ${ index + 1 } to Cloudinary...`);
   const cloudinaryUpload = await clients.cloudinary.uploadVideo(
     clipUrl,
-    `clip_${data.video_id}_${index}.mp4`
+    `clip_${ data.video_id }_${ index }.mp4`
   );
-  console.log(`[${data.video_id}] Clip ${index + 1} uploaded to Cloudinary: ${cloudinaryUpload.secure_url}`);
+  console.log(`[${ data.video_id }] Clip ${ index + 1 } uploaded to Cloudinary: ${ cloudinaryUpload.secure_url } `);
 
   // Return updated clip data with Cloudinary URL (not Luma URL)
   return {
@@ -820,93 +801,93 @@ async function finishClip(
  * (Full prompt from Make.com blueprint)
  */
 function getGPT4VisionPrompt(): string {
-  return `You generate a compact control prompt for Luma Dream Machine from 1 or 2 property images (keyframes).
+  return `You generate a compact control prompt for Luma Dream Machine from 1 or 2 property images(keyframes).
 Return ONLY the JSON fields: is_keyframe, description, luma_prompt, mood.
 
-ALLOWED CAMERA MOTIONS (choose EXACTLY one token, verbatim)
+ALLOWED CAMERA MOTIONS(choose EXACTLY one token, verbatim)
 Static | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down
 
-1) ANALYZE IMAGES (do not output this analysis)
-- Room type & scale (tight / medium / wide). Lighting (bright daylight / warm indoor / mixed / evening).
+1) ANALYZE IMAGES(do not output this analysis)
+- Room type & scale(tight / medium / wide).Lighting(bright daylight / warm indoor / mixed / evening).
 - Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.
-- Edits/themes/hooks actually visible: balloons/confetti/seasonal decor; mascot/large toy; signage/text overlay; 3D room "cube on white"; added furniture; renovation deltas.
-- Actors/people: none | only frame 1 | only frame 2 | present in both (note if positions differ).
+- Edits / themes / hooks actually visible: balloons / confetti / seasonal decor; mascot / large toy; signage / text overlay; 3D room "cube on white"; added furniture; renovation deltas.
+- Actors / people: none | only frame 1 | only frame 2 | present in both(note if positions differ).
 - Frame relation: ONE_IMAGE | SAME_SPACE | ADJACENT_VIEW | DIFFERENT_ROOM | CUBE_START.
 
-2) CAMERA MOTION SELECTION (pick ONE from the list)
-- Prefer Push In / Move Left / Move Right / Pan Left / Pan Right for tight interiors.
-- Allow Orbit / Crane / Pull Out only in large/open spaces or exteriors.
-- If any actors visible, downshift to Push In / Move / Pan (avoid Orbit/Crane/Pull Out/Zoom).
+2) CAMERA MOTION SELECTION(pick ONE from the list)
+  - Prefer Push In / Move Left / Move Right / Pan Left / Pan Right for tight interiors.
+- Allow Orbit / Crane / Pull Out only in large / open spaces or exteriors.
+- If any actors visible, downshift to Push In / Move / Pan(avoid Orbit / Crane / Pull Out / Zoom).
 - Use Static only if artifacts demand it.
 
 PROFESSIONAL CAMERA LANGUAGE REQUIREMENT:
 When composing luma_prompt, ALWAYS use professional cinematography descriptors:
 - Movement quality: "glides smoothly", "sweeps gradually", "tracks steadily", "dollies fluidly", "pans gracefully"
-- Reveal verbs: "revealing", "showcasing", "highlighting", "unveiling" (NEVER "explore", "past" alone)
-- Motion quality: "with cinematic parallax", "with fluid motion", "with smooth acceleration"
-- Easing: "starts gently and accelerates" or "eases into motion" when space allows
+  - Reveal verbs: "revealing", "showcasing", "highlighting", "unveiling"(NEVER "explore", "past" alone)
+    - Motion quality: "with cinematic parallax", "with fluid motion", "with smooth acceleration"
+      - Easing: "starts gently and accelerates" or "eases into motion" when space allows
 
-3) COMPOSE luma_prompt AS TWO SHORT SENTENCES (total 20–30 words)
-Sentence A (professional cinematography + space):
-- Start with the chosen CAMERA MOTION token (exact text), followed by a colon.
+3) COMPOSE luma_prompt AS TWO SHORT SENTENCES(total 20–30 words)
+Sentence A(professional cinematography + space):
+- Start with the chosen CAMERA MOTION token(exact text), followed by a colon.
 - Add professional movement descriptor: "camera glides smoothly", "camera sweeps gradually", "camera tracks steadily", "camera dollies fluidly"
-- Add 1–2 spatial anchors using cinematic language:
-  - Use "gliding alongside" (NOT "past" or "along" alone)
-  - Use "sweeping across" or "tracking through" (NOT bare prepositions)
-  - Use "revealing [feature]" or "showcasing [detail]" (NOT "exploring")
-  - Examples: "camera glides smoothly alongside window wall, revealing dining area"
-              "camera tracks steadily from media wall, showcasing architectural flow"
-              "camera sweeps gradually across living space, highlighting natural light"
-- Add motion quality descriptor: "with cinematic parallax", "with fluid spatial flow", "with smooth acceleration"
-- Add ONE relation clause:
+  - Add 1–2 spatial anchors using cinematic language:
+  - Use "gliding alongside"(NOT "past" or "along" alone)
+  - Use "sweeping across" or "tracking through"(NOT bare prepositions)
+    - Use "revealing [feature]" or "showcasing [detail]"(NOT "exploring")
+      - Examples: "camera glides smoothly alongside window wall, revealing dining area"
+"camera tracks steadily from media wall, showcasing architectural flow"
+"camera sweeps gradually across living space, highlighting natural light"
+  - Add motion quality descriptor: "with cinematic parallax", "with fluid spatial flow", "with smooth acceleration"
+    - Add ONE relation clause:
   – ONE_IMAGE: "smoothly revealing [architectural feature]" or "gradually showcasing [spatial detail]"
   – SAME_SPACE: "fluid transition with cinematic parallax; seamless geometry preservation; avoid dissolve"
   – ADJACENT_VIEW: "professional camera movement connecting views; maintain spatial continuity; avoid dissolve"
   – DIFFERENT_ROOM: "smooth cinematic transition into second space; professional match-cut; no dissolve"
   – CUBE_START: "cinematic push from exterior into interior; smooth acceleration; maintain motion flow"
 
-Sentence B (include ONLY what applies; keep compact):
+Sentence B(include ONLY what applies; keep compact):
 - Actors:
   – only frame 1 → "character remains first frame only; exits naturally; no rapid motion."
   – only frame 2 → "character enters naturally in second frame; minimal motion."
   – in both → "characters hold still (blinks okay); no rapid movement; maintain identity."
   – none → "no people."
-- Hooks/themes/props (ONLY IF SALIENT): mention category-level only (e.g., "balloons", "seasonal decor", "signage") when visually central or ≳15% of frame; otherwise do NOT mention.
+  - Hooks / themes / props(ONLY IF SALIENT): mention category - level only(e.g., "balloons", "seasonal decor", "signage") when visually central or ≳15 % of frame; otherwise do NOT mention.
   – Use ONE simple verb: drift / settle / appear / clear / pop softly.
-- Small decor (frames, plants, small plush/toys, table items): remain static and SHOULD NOT be mentioned.
+- Small decor(frames, plants, small plush / toys, table items): remain static and SHOULD NOT be mentioned.
 - Furnishing change: choose ONE → "furniture appears naturally" OR "furniture clears naturally."
-- End Sentence B with lighting and ONE mood word (from the whitelist below).
+  - End Sentence B with lighting and ONE mood word(from the whitelist below).
 
-PROFESSIONAL CAMERA EXAMPLES (use this language style):
+PROFESSIONAL CAMERA EXAMPLES(use this language style):
 ✅ "Move Right: camera glides smoothly alongside media wall, revealing dining area with cinematic parallax; seamless spatial transition. No people. Bright daylight, cozy."
 ✅ "Push In: camera dollies forward steadily toward window, showcasing panoramic views with smooth acceleration. No people. Natural lighting, elegant."
 ✅ "Pan Left: camera sweeps gradually across living space, highlighting architectural features with fluid motion. No people. Warm lighting, sophisticated."
 ✅ "Static: camera holds steady at window wall, smoothly revealing seating arrangement in natural light. No people. Bright lighting, spacious."
 
-❌ AVOID these (sounds like walking/handheld):
+❌ AVOID these(sounds like walking / handheld):
 ❌ "Move Right past media wall and dining table"
 ❌ "explore seating arrangement"
-❌ "along window wall" (without "gliding" or "smoothly")
-❌ "over geometric floor" (without smooth descriptor)
+❌ "along window wall"(without "gliding" or "smoothly")
+❌ "over geometric floor"(without smooth descriptor)
 
-4) COMPOSE description (STRICT PROPERTY-ONLY, 12–18 words)
-- Include ONLY architectural/permanent features and natural lighting: layout & room type; windows/doors/balcony; beams/coffers/skylight; built-ins/cabinetry/media wall; fixed kitchen/bath items; flooring material/pattern; view; lighting as observed.
-- EXCLUDE everything movable or likely edited: people/actors; balloons/confetti/themes; loose furniture/decor; rugs; plants; tableware; toys; signage/text overlays; staged props.
+4) COMPOSE description(STRICT PROPERTY - ONLY, 12–18 words)
+  - Include ONLY architectural / permanent features and natural lighting: layout & room type; windows / doors / balcony; beams / coffers / skylight; built - ins / cabinetry / media wall; fixed kitchen / bath items; flooring material / pattern; view; lighting as observed.
+- EXCLUDE everything movable or likely edited: people / actors; balloons / confetti / themes; loose furniture / decor; rugs; plants; tableware; toys; signage / text overlays; staged props.
 - If two images, favor features present in BOTH; if unsure a feature is permanent, omit it.
 - Friendly marketing tone.
 
-5) FINAL SELF-CHECK BEFORE OUTPUT
-- luma_prompt begins with a valid motion token followed by colon; total ≤ 30 words.
+5) FINAL SELF - CHECK BEFORE OUTPUT
+  - luma_prompt begins with a valid motion token followed by colon; total ≤ 30 words.
 - luma_prompt includes PROFESSIONAL CAMERA LANGUAGE: "glides/sweeps/tracks/dollies/smoothly/gradually/fluidly"
-- luma_prompt uses CINEMATIC REVEAL VERBS: "revealing/showcasing/highlighting" (NOT "past/explore/along" alone)
-- Movement includes quality descriptor: "with cinematic parallax", "with fluid motion", "with smooth acceleration"
-- If is_keyframe = true and "avoid dissolve" is missing, add it to Sentence A.
-- If any actors detected and motion is Orbit/Crane/Pull Out/Zoom, downgrade to Push In.
-- luma_prompt contains no tiny-prop nouns; use category-level only when salient (≥15% frame).
-- description contains NO people/props/themes/staging words (property-only).
-- NO WALKING LANGUAGE: verify no "past", "explore", or bare "along"/"over" without smooth descriptors
+  - luma_prompt uses CINEMATIC REVEAL VERBS: "revealing/showcasing/highlighting"(NOT "past/explore/along" alone)
+    - Movement includes quality descriptor: "with cinematic parallax", "with fluid motion", "with smooth acceleration"
+      - If is_keyframe = true and "avoid dissolve" is missing, add it to Sentence A.
+- If any actors detected and motion is Orbit / Crane / Pull Out / Zoom, downgrade to Push In.
+- luma_prompt contains no tiny - prop nouns; use category - level only when salient(≥15 % frame).
+- description contains NO people / props / themes / staging words(property - only).
+- NO WALKING LANGUAGE: verify no "past", "explore", or bare "along" / "over" without smooth descriptors
 
-6) OUTPUT FORMAT ( Return ONLY a JSON object. No \`\`\`json blocks or additional text )
+6) OUTPUT FORMAT(Return ONLY a JSON object.No \`\`\`json blocks or additional text )
 {
   "is_keyframe": boolean,
   "description": "property-only, 12–18 words",

@@ -106,6 +106,8 @@ export class CloudinaryClient {
     return result;
   }
 
+
+
   /**
    * Upload video from a remote URL directly (Cloudinary fetches it).
    * This is efficient for "baking" transformation URLs into static assets.
@@ -358,8 +360,10 @@ export class CloudinaryClient {
     const logoPublicIdForTransform = logoPublicId.replace(/\//g, ':');
 
     // Build logo transformation (applied to base video)
-    // Format: l_image:public_id,g_gravity,x_offset,y_offset,w_width,o_opacity/fl_layer_apply
-    const logoTransformation = `l_image:${logoPublicIdForTransform},g_${gravity},x_${xOffset},y_${yOffset},w_${logoWidth},o_80/fl_layer_apply`;
+    // Build logo transformation (applied to base video)
+    // Format: l_image:public_id,w_width,o_opacity/fl_layer_apply,g_gravity,x_offset,y_offset
+    // Note: Gravity and offsets MUST be on the fl_layer_apply component for overlays to work correctly on base video
+    const logoTransformation = `l_image:${logoPublicIdForTransform},w_${logoWidth},o_80/fl_layer_apply,g_${gravity},x_${xOffset},y_${yOffset}`;
 
     console.log(`[Cloudinary] Logo transformation final: ${logoTransformation}`);
 
