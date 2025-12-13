@@ -605,27 +605,33 @@ async function processVideoAsync(
           }
 
           // Build transformation string
-          let transformationStr = `l_text:${styleParams}:${encodedText},co_rgb:${fontColor}`;
+          // NEW SYNTAX: l_text:style:text/co_color,b_background,g_pos...
+          // This separates the layer Creation from layer Transformation.
+
+          let layerCreation = `l_text:${styleParams}:${encodedText}`;
+          let layerTransform = `co_rgb:${fontColor}`;
 
           const bgOpacity = userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0;
 
           if (bgOpacity > 0) {
             // Apply background color to the text bounding box using b_rgb property
-            transformationStr += `,b_rgb:${bgColor}`;
+            layerTransform += `,b_rgb:${bgColor}`;
           }
 
           // Stroke / Border logic (apply to the text layer)
           if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
             const strokeColor = userSettings.caption_stroke_color || '000000';
             const strokeWidth = userSettings.caption_stroke_width;
-            transformationStr += `,bo_${strokeWidth}px_solid_rgb:${strokeColor}`;
+            layerTransform += `,bo_${strokeWidth}px_solid_rgb:${strokeColor}`;
           }
 
-          // Add timing and position
-          transformationStr += `,g_south,y_100,so_${startTime},du_${duration}`;
+          // Add timing and position to the transformation part
+          layerTransform += `,g_south,y_100,so_${startTime},du_${duration}`;
 
+          // Combine with slash separator
           textOverlays.push(
-            transformationStr,
+            layerCreation,
+            layerTransform,
             'fl_layer_apply'
           );
         });
