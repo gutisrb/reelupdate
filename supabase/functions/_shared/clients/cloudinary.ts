@@ -365,10 +365,22 @@ export class CloudinaryClient {
 
     // Insert logo transformation BEFORE the final format flags (f_mp4/vc_h264/q_auto)
     // This ensures logo is added to the video content, not just the container
-    const urlWithLogo = videoUrl.replace(
+    let urlWithLogo = videoUrl.replace(
       /\/(f_mp4|vc_h264|q_auto)/,
       `/${logoTransformation}/$1`
     );
+
+    // If no replacement happened (clean URL without format flags), we need to insert it differently
+    if (urlWithLogo === videoUrl) {
+      console.log('[Cloudinary] Clean URL detected (no format flags), appending logo transformation before ID');
+      // Clean URL format: .../upload/v1234/public_id.mp4 OR .../upload/public_id.mp4
+      // We want: .../upload/TRANSFORM/v1234/public_id.mp4
+
+      const parts = videoUrl.split('/upload/');
+      if (parts.length === 2) {
+        urlWithLogo = `${parts[0]}/upload/${logoTransformation}/${parts[1]}`;
+      }
+    }
 
     console.log(`[Cloudinary] Logo overlay added successfully`);
     return urlWithLogo;
