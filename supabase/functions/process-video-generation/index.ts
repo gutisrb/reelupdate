@@ -4,8 +4,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { parseSRT, CaptionSegment } from '../_shared/srt-parser.ts';
-import { renderAndCompositeCaptionsStreaming } from '../_shared/clients/caption-compositor.ts';
+// import { parseSRT, CaptionSegment } from '../_shared/srt-parser.ts'; // Unused - captions rendered in browser
+// import { renderAndCompositeCaptionsStreaming } from '../_shared/clients/caption-compositor.ts'; // Unused - captions rendered in browser
 import { initClients } from '../_shared/clients/index.ts';
 import type { VideoGenerationRequest, UserSettings, ClipData } from '../_shared/types.ts';
 import { API_ENDPOINTS } from '../_shared/config.ts';
@@ -58,9 +58,15 @@ serve(async (req) => {
     const videoId = formData.get('video_id') as string;
     const userId = formData.get('user_id') as string;
     const groupingStr = formData.get('grouping') as string;
+    const captionVideoUrl = formData.get('caption_video_url') as string | null;
 
     if (!videoId || !userId) {
       throw new Error('Missing required fields: video_id or user_id');
+    }
+
+    // Log caption video URL if provided
+    if (captionVideoUrl) {
+      console.log(`[${videoId}] Caption video URL provided from browser: ${captionVideoUrl}`);
     }
 
     // Build property_data from individual fields
@@ -122,6 +128,7 @@ serve(async (req) => {
       grouping: groupingStr,
       slot_mode_info: groupingStr, // Same as grouping for compatibility
       total_images: totalImages,
+      caption_video_url: captionVideoUrl || undefined, // Browser-rendered caption overlay
     };
 
     // Initialize Supabase client
@@ -282,10 +289,23 @@ async function processVideoAsync(
       caption_bg_opacity: 100,
     };
 
-    // Get caption template ID
-    let captionTemplateId = userSettings.caption_template_id;
+    // Get caption template ID (convert database UUID to ZapCap template ID)
+    let captionTemplateId: string | null = null;
+    
+    if (userSettings.caption_template_id) {
+      // User has selected a template - look up the ZapCap template ID
+      const { data: selectedTemplate } = await supabase
+        .from('caption_templates')
+        .select('zapcap_template_id')
+        .eq('id', userSettings.caption_template_id)
+        .eq('active', true)
+        .single();
+      
+      captionTemplateId = selectedTemplate?.zapcap_template_id || null;
+    }
+    
     if (!captionTemplateId) {
-      // Get default template
+      // Get default template if no user selection or lookup failed
       const { data: defaultTemplate } = await supabase
         .from('caption_templates')
         .select('zapcap_template_id')
@@ -296,6 +316,8 @@ async function processVideoAsync(
 
       captionTemplateId = defaultTemplate?.zapcap_template_id || '6255949c-4a52-4255-8a67-39ebccfaa3ef';
     }
+    
+    console.log(`[${data.video_id}] Using ZapCap template ID: ${captionTemplateId}`);
 
     // ============================================
     // 4. PROCESS CLIPS (with GPT-4o + Luma) or TEST_MODE
@@ -372,8 +394,6 @@ async function processVideoAsync(
     let voiceoverUpload: any;
     let musicUrl: string;
     let musicSource: string;
-    let srtTranscript: string = ''; // Whisper transcription (SRT format)
-    let correctedTranscript: string = ''; // GPT-corrected transcript
 
     if (isTestMode) {
       // TEST_MODE: Use placeholder audio to save credits
@@ -477,17 +497,9 @@ async function processVideoAsync(
     console.log(`[${data.video_id}] Step 2 complete: Audio generated(source: ${musicSource})`);
 
     // ============================================
-    // 5C. TRANSCRIBE VOICEOVER (runs for both TEST_MODE and regular mode)
+    // 5C. TRANSCRIBE VOICEOVER - DISABLED (Captions now rendered in browser)
     // ============================================
-    console.log(`[${data.video_id}] Starting Whisper transcription of voiceover...`);
-
-    // Transcribe voiceover using Whisper (returns SRT format with timing)
-    srtTranscript = await clients.openai.createTranscription(voiceoverUpload.secure_url);
-    console.log(`[${data.video_id}] Whisper transcription complete, SRT length: ${srtTranscript.length} chars`);
-
-    // Correct transcription using GPT (compare to original script)
-    correctedTranscript = await clients.openai.correctTranscript(srtTranscript, voiceoverScript);
-    console.log(`[${data.video_id}] Transcript corrected using GPT`);
+    console.log(`[${data.video_id}] Skipping Whisper transcription (captions rendered in browser)`);
 
     // ============================================
     // 5B. WAIT FOR LUMA COMPLETIONS (if not TEST_MODE)
@@ -524,7 +536,7 @@ async function processVideoAsync(
     console.log(`[${data.video_id}] Assembly URL generated.Baking Stage 1...`);
 
     // Bake Stage 1
-    const stage1PublicId = `stage1_assembly_${data.video_id}_${Date.now()} `;
+    const stage1PublicId = `stage1_assembly_${data.video_id}_${Date.now()}`;
     let currentVideoUrl: string;
 
     try {
@@ -542,67 +554,134 @@ async function processVideoAsync(
     // ============================================
     // 7. VIDEO PIPELINE: STAGE 2 - CAPTIONS
     // ============================================
-    let captionTranscriptForDb = '';
 
-    if (userSettings.caption_enabled && srtTranscript) {
-      console.log(`[${data.video_id}] PIPELINE STAGE 2: Adding Captions...`);
+    if (userSettings.caption_enabled) {
+      console.log(`[${data.video_id}] PIPELINE STAGE 2: Adding Captions (system: ${userSettings.caption_system})...`);
 
       try {
-        const captionSegments = parseSRT(srtTranscript);
-        captionTranscriptForDb = correctedTranscript || srtTranscript;
+        // Route to appropriate caption system
+        if (userSettings.caption_system === 'zapcap') {
+          // ============================================
+          // ZAPCAP INTEGRATION - Full Workflow
+          // ============================================
+          console.log(`[${data.video_id}] Using ZapCap for captions...`);
 
-        // Extract the base Public ID from the Stage 1 URL
-        const stage1Id = clients.cloudinary['extractPublicIdFromCloudinaryUrl'](currentVideoUrl);
+          // 1. Create ZapCap task with Stage 1 video URL
+          console.log(`[${data.video_id}] Creating ZapCap task with video: ${currentVideoUrl}`);
+          console.log(`[${data.video_id}] Using template ID: ${captionTemplateId}`);
 
-        // Map UserSettings (Snake Case) to CaptionStyle (Camel Case)
-        const captionStyle = {
-          fontFamily: 'Arial', // Default, but renderer can support others if loaded
-          fontSize: userSettings.caption_font_size || 34,
-          fontWeight: 'bold',
-          fontColor: userSettings.caption_font_color || 'FFFFFF',
-          bgColor: userSettings.caption_bg_color || '000000',
-          bgOpacity: userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0,
-          strokeColor: userSettings.caption_stroke_color || '000000',
-          strokeWidth: userSettings.caption_stroke_width || 0,
-          position: (userSettings.caption_position as any) || 'bottom',
-          animation: (userSettings.caption_animation as any) || 'none',
-          uppercase: userSettings.caption_uppercase || false,
-          emojis: true // Default to true or add setting
-        };
+          const { taskId, videoId: zapCapVideoId } = await clients.zapcap.createCaptionTask(
+            currentVideoUrl,  // Video URL to process
+            captionTemplateId
+          );
 
-        const renderOptions = {
-          width: 1080,
-          height: 1920,
-          fps: 30
-        };
+          console.log(`[${data.video_id}] ZapCap task created: ${taskId} (videoId: ${zapCapVideoId})`);
 
-        console.log(`[${data.video_id}] Starting High - Fidelity Caption Rendering(Canvas)...`);
+          // 2. Wait for ZapCap to generate initial transcript
+          console.log(`[${data.video_id}] Waiting for ZapCap transcription...`);
+          let attempts = 0;
+          let taskReady = false;
 
-        // Use the Streaming Compositor to render and upload frames
-        // This handles animations, custom styles, and avoids memory limits
-        const compositeUrl = await renderAndCompositeCaptionsStreaming(
-          captionSegments,
-          captionStyle,
-          renderOptions,
-          stage1Id, // Base video ID
-          clients.cloudinary
-        );
+          while (attempts < 20 && !taskReady) {
+            const status = await clients.zapcap.getTaskStatus(zapCapVideoId, taskId);
+            console.log(`[${data.video_id}] ZapCap task status: ${status.status}`);
 
-        console.log(`[${data.video_id}]High - Fidelity Composition URL generated.Baking Stage 2...`);
+            if (status.status === 'completed' || status.status === 'processing') {
+              taskReady = true;
+            } else if (status.status === 'failed') {
+              throw new Error('ZapCap task failed during transcription');
+            } else {
+              await new Promise(resolve => setTimeout(resolve, 5000)); // 5s interval
+              attempts++;
+            }
+          }
 
-        // Bake Stage 2
-        const stage2PublicId = `stage2_captions_${data.video_id}_${Date.now()} `;
-        const stage2Result = await clients.cloudinary.uploadVideoFromUrl(
-          compositeUrl,
-          stage2PublicId
-        );
-        currentVideoUrl = stage2Result.secure_url;
-        console.log(`[${data.video_id}] STAGE 2 COMPLETE: ${currentVideoUrl} `);
+          if (!taskReady) {
+            throw new Error('ZapCap transcription timed out');
+          }
+
+          // 3. Get transcript from ZapCap
+          console.log(`[${data.video_id}] Fetching ZapCap transcript...`);
+          const zapCapTranscript = await clients.zapcap.getTranscript(zapCapVideoId, taskId);
+          console.log(`[${data.video_id}] ZapCap transcript: ${zapCapTranscript.substring(0, 100)}...`);
+
+          // 4. Correct transcript using our voiceover script (via GPT)
+          console.log(`[${data.video_id}] Correcting transcript with our voiceover script...`);
+          const correctedTranscript = await clients.openai.correctTranscript(
+            zapCapTranscript,
+            voiceoverScript
+          );
+          console.log(`[${data.video_id}] Corrected transcript: ${correctedTranscript.substring(0, 100)}...`);
+
+          // 5. Update ZapCap with corrected transcript
+          console.log(`[${data.video_id}] Updating ZapCap with corrected transcript...`);
+          await clients.zapcap.updateTranscript(zapCapVideoId, taskId, correctedTranscript);
+
+          // 6. Approve transcript to generate final captioned video
+          console.log(`[${data.video_id}] Approving transcript and finalizing video...`);
+          const zapcapVideoUrl = await clients.zapcap.approveTranscript(zapCapVideoId, taskId);
+
+          console.log(`[${data.video_id}] ZapCap completed! Video URL: ${zapcapVideoUrl}`);
+
+          // 7. Download and re-upload ZapCap video to Cloudinary (since ZapCap URL is temporary)
+          console.log(`[${data.video_id}] ZapCap URL is temporary - re-uploading to Cloudinary for permanence...`);
+          const stage2PublicId = `stage2_zapcap_${data.video_id}_${Date.now()}`;
+          const stage2Result = await clients.cloudinary.uploadVideoFromUrl(
+            zapcapVideoUrl,
+            stage2PublicId
+          );
+          currentVideoUrl = stage2Result.secure_url;
+
+          console.log(`[${data.video_id}] STAGE 2 COMPLETE (ZapCap): ${currentVideoUrl}`);
+
+        } else if (data.caption_video_url) {
+          // ============================================
+          // BROWSER-RENDERED CAPTIONS
+          // ============================================
+          console.log(`[${data.video_id}] Using browser-rendered caption overlay...`);
+
+          // Extract public_id from caption video URL
+          const captionPublicId = clients.cloudinary['extractPublicIdFromCloudinaryUrl'](data.caption_video_url);
+          console.log(`[${data.video_id}] Caption video public_id: ${captionPublicId}`);
+
+          // Extract public_id from Stage 1 video
+          const stage1PublicId = clients.cloudinary['extractPublicIdFromCloudinaryUrl'](currentVideoUrl);
+
+          // Build Cloudinary transformation URL with caption overlay
+          const cloudName = clients.cloudinary['cloudName'];
+
+          // Simple overlay transformation
+          const transformation = [
+            'f_mp4',
+            'vc_h264',
+            'q_auto:good',
+            `l_video:${captionPublicId.replace(/\//g, ':')}`,  // Overlay caption video
+            'fl_layer_apply'
+          ].join('/');
+
+          const compositeUrl = `https://res.cloudinary.com/${cloudName}/video/upload/${transformation}/${stage1PublicId}.mp4`;
+
+          console.log(`[${data.video_id}] Caption overlay URL generated. Baking Stage 2...`);
+
+          // Bake Stage 2
+          const stage2PublicId = `stage2_browser_${data.video_id}_${Date.now()}`;
+          const stage2Result = await clients.cloudinary.uploadVideoFromUrl(
+            compositeUrl,
+            stage2PublicId
+          );
+          currentVideoUrl = stage2Result.secure_url;
+          console.log(`[${data.video_id}] STAGE 2 COMPLETE (Browser): ${currentVideoUrl}`);
+
+        } else {
+          console.log(`[${data.video_id}] No caption method available, skipping Stage 2`);
+        }
 
       } catch (e: any) {
         console.error(`[${data.video_id}] STAGE 2 FAILED(Captions): `, e);
         console.log(`[${data.video_id}] Continuing with Stage 1 result.`);
       }
+    } else {
+      console.log(`[${data.video_id}] Captions disabled, skipping Stage 2`);
     }
 
     // ============================================
@@ -626,7 +705,7 @@ async function processVideoAsync(
         if (logoTransformationUrl !== currentVideoUrl) {
           console.log(`[${data.video_id}] Logo URL generated.Baking Stage 3...`);
 
-          const finalPublicId = `final_video_${data.video_id}_${Date.now()} `;
+          const finalPublicId = `final_video_${data.video_id}_${Date.now()}`;
           const stage3Result = await clients.cloudinary.uploadVideoFromUrl(
             logoTransformationUrl,
             finalPublicId
@@ -670,7 +749,7 @@ async function processVideoAsync(
       music_source: musicSource,
       caption_data: {
         template_id: captionTemplateId,
-        transcript: correctedTranscript, // Use GPT-corrected transcription, not voiceover script
+        transcript: '', // Captions rendered in browser, no server-side transcript
       },
       settings_snapshot: userSettings,
       processing_started_at: new Date(startTime).toISOString(),
