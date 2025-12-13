@@ -11,6 +11,8 @@ export interface SRTCue {
   words?: SRTWord[]; // For karaoke mode
 }
 
+export type CaptionSegment = SRTCue;
+
 export interface SRTWord {
   word: string;
   startTime: number;

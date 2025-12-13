@@ -1,4 +1,3 @@
-```typescript
 // Main Video Generation Edge Function
 // Replaces Make.com workflow
 
@@ -83,7 +82,7 @@ serve(async (req) => {
     const images: any[] = [];
 
     for (let i = 0; i < totalImages; i++) {
-      const imageFile = formData.get(`image_${ i } `) as File;
+      const imageFile = formData.get('image_' + i) as File;
       if (imageFile) {
         const arrayBuffer = await imageFile.arrayBuffer();
         images.push({
@@ -134,7 +133,7 @@ serve(async (req) => {
     // Initialize API clients
     const clients = initClients();
 
-    console.log(`[${ data.video_id }] Starting video generation`);
+    console.log(`[${data.video_id}] Starting video generation`);
 
     // ============================================
     // 1. CHECK USER CREDITS
@@ -167,7 +166,7 @@ serve(async (req) => {
     });
 
     if (creditError) {
-      throw new Error(`Failed to deduct credit: ${ creditError.message } `);
+      throw new Error(`Failed to deduct credit: ${creditError.message} `);
     }
 
     const { error: videoError } = await supabase
@@ -184,23 +183,23 @@ serve(async (req) => {
       });
 
     if (videoError) {
-      console.error(`Failed to create video record: ${ videoError.message } `);
+      console.error(`Failed to create video record: ${videoError.message} `);
     }
 
     // Process synchronously to avoid EarlyDrop (background tasks can be terminated)
-    console.log(`[${ data.video_id }]DEBUG: About to call processVideoAsync`);
+    console.log(`[${data.video_id}]DEBUG: About to call processVideoAsync`);
     try {
       await processVideoAsync(
         data,
         supabase,
         clients
       );
-      console.log(`[${ data.video_id }]DEBUG: processVideoAsync completed successfully`);
+      console.log(`[${data.video_id}]DEBUG: processVideoAsync completed successfully`);
     } catch (error) {
-      console.error(`[${ data.video_id }] Processing failed: `, error);
-      console.error(`[${ data.video_id }] ERROR stack: `, (error as any)?.stack);
-      console.error(`[${ data.video_id }] ERROR name: `, (error as any)?.name);
-      console.error(`[${ data.video_id }] ERROR message: `, (error as any)?.message);
+      console.error(`[${data.video_id}] Processing failed: `, error);
+      console.error(`[${data.video_id}] ERROR stack: `, (error as any)?.stack);
+      console.error(`[${data.video_id}] ERROR name: `, (error as any)?.name);
+      console.error(`[${data.video_id}] ERROR message: `, (error as any)?.message);
 
       // Update video status to error
       await supabase.from('videos').update({
@@ -242,26 +241,26 @@ async function processVideoAsync(
   clients: any
 ) {
   const startTime = Date.now();
-  console.log(`[${ data.video_id }] Processing started`);
-  console.log(`[${ data.video_id }]DEBUG: processVideoAsync called`);
-  console.log(`[${ data.video_id }]DEBUG: data.video_id = ${ data.video_id } `);
-  console.log(`[${ data.video_id }]DEBUG: data.user_id = ${ data.user_id } `);
-  console.log(`[${ data.video_id }]DEBUG: data.property_data.title = ${ data.property_data.title } `);
+  console.log(`[${data.video_id}] Processing started`);
+  console.log(`[${data.video_id}]DEBUG: processVideoAsync called`);
+  console.log(`[${data.video_id}]DEBUG: data.video_id = ${data.video_id} `);
+  console.log(`[${data.video_id}]DEBUG: data.user_id = ${data.user_id} `);
+  console.log(`[${data.video_id}]DEBUG: data.property_data.title = ${data.property_data.title} `);
 
   try {
-    console.log(`[${ data.video_id }]DEBUG: Inside try block`);
+    console.log(`[${data.video_id}]DEBUG: Inside try block`);
 
     // ============================================
     // 3. GET USER SETTINGS
     // ============================================
-    console.log(`[${ data.video_id }]DEBUG: Fetching user settings...`);
+    console.log(`[${data.video_id}]DEBUG: Fetching user settings...`);
     const { data: settings } = await supabase
       .from('user_settings')
       .select('*')
       .eq('user_id', data.user_id)
       .single();
 
-    console.log(`[${ data.video_id }]DEBUG: User settings fetched: `, settings ? 'found' : 'not found');
+    console.log(`[${data.video_id}]DEBUG: User settings fetched: `, settings ? 'found' : 'not found');
 
     const userSettings: UserSettings = settings || {
       voice_id: 'sr-RS-Standard-A',
@@ -301,11 +300,11 @@ async function processVideoAsync(
     // ============================================
     // 4. PROCESS CLIPS (with GPT-4o + Luma) or TEST_MODE
     // ============================================
-    console.log(`[${ data.video_id }]DEBUG: About to check TEST_MODE`);
+    console.log(`[${data.video_id}]DEBUG: About to check TEST_MODE`);
 
     // Check if TEST_MODE is enabled (title contains "TEST_MODE")
     const isTestMode = data.property_data.title.toUpperCase().includes('TEST_MODE');
-    console.log(`[${ data.video_id }]DEBUG: isTestMode = ${ isTestMode } `);
+    console.log(`[${data.video_id}]DEBUG: isTestMode = ${isTestMode} `);
 
     let clips: ClipData[];
 
@@ -313,7 +312,7 @@ async function processVideoAsync(
       // ============================================
       // TEST_MODE: Use placeholder clips to save AI costs
       // ============================================
-      console.log(`[${ data.video_id }] ⚡ TEST_MODE ENABLED - Using placeholder clips`);
+      console.log(`[${data.video_id}] ⚡ TEST_MODE ENABLED - Using placeholder clips`);
 
       // Placeholder clip URLs (no AI processing)
       const placeholderClips = [
@@ -336,8 +335,8 @@ async function processVideoAsync(
         mood: 'modern',
       }));
 
-      console.log(`[${ data.video_id }] ⚡ Using ${ clips.length } placeholder clips(saved AI costs)`);
-      console.log(`[${ data.video_id }] TEST_MODE will continue through full pipeline(voiceover, music, assembly, captions)`);
+      console.log(`[${data.video_id}] ⚡ Using ${clips.length} placeholder clips(saved AI costs)`);
+      console.log(`[${data.video_id}] TEST_MODE will continue through full pipeline(voiceover, music, assembly, captions)`);
 
     } else {
       // ============================================
@@ -347,7 +346,7 @@ async function processVideoAsync(
       // 3. Wait for all Luma completions
       // ============================================
 
-      console.log(`[${ data.video_id }] Step 1: Preparing ${ data.image_slots.length } clips(upload + GPT - 4o + start Luma)...`);
+      console.log(`[${data.video_id}] Step 1: Preparing ${data.image_slots.length} clips(upload + GPT - 4o + start Luma)...`);
 
       // Step 1: Upload images, GPT-4o analysis, and START Luma generations (in parallel)
       const clipPreparations = data.image_slots.map((slot, index) =>
@@ -356,8 +355,8 @@ async function processVideoAsync(
 
       const preparedClips = await Promise.all(clipPreparations);
 
-      console.log(`[${ data.video_id }] Step 1 complete: All Luma generations started(rendering in background)`);
-      console.log(`[${ data.video_id }] Luma generation IDs: `, preparedClips.map(c => c.luma_generation_id).join(', '));
+      console.log(`[${data.video_id}] Step 1 complete: All Luma generations started(rendering in background)`);
+      console.log(`[${data.video_id}] Luma generation IDs: `, preparedClips.map(c => c.luma_generation_id).join(', '));
 
       // Store prepared clips for later completion
       clips = preparedClips;
@@ -366,8 +365,8 @@ async function processVideoAsync(
     // ============================================
     // 5. GENERATE AUDIO (Voiceover + Music) - IN PARALLEL WITH LUMA RENDERING
     // ============================================
-    console.log(`[${ data.video_id }] Step 2: Generating audio(while Luma renders in background)...`);
-    console.log(`[${ data.video_id }]DEBUG: clips.length = ${ clips.length } `);
+    console.log(`[${data.video_id}] Step 2: Generating audio(while Luma renders in background)...`);
+    console.log(`[${data.video_id}]DEBUG: clips.length = ${clips.length} `);
 
     let voiceoverScript: string;
     let voiceoverUpload: any;
@@ -378,7 +377,7 @@ async function processVideoAsync(
 
     if (isTestMode) {
       // TEST_MODE: Use placeholder audio to save credits
-      console.log(`[${ data.video_id }]TEST_MODE: Using placeholder music and voiceover(saving AI credits)`);
+      console.log(`[${data.video_id}]TEST_MODE: Using placeholder music and voiceover(saving AI credits)`);
 
       voiceoverScript = 'TEST_MODE placeholder voiceover script';
       voiceoverUpload = {
@@ -391,19 +390,19 @@ async function processVideoAsync(
 
     } else {
       // REGULAR MODE: Generate real audio
-      console.log(`[${ data.video_id }]DEBUG: About to generate voiceover script`);
+      console.log(`[${data.video_id}]DEBUG: About to generate voiceover script`);
 
       // Generate voiceover script
       const visualContext = clips.map(c => c.luma_prompt).join('; ');
       const videoLength = data.image_slots.length * 5; // 5 seconds per clip
-      console.log(`[${ data.video_id }]DEBUG: videoLength = ${ videoLength } s, visualContext length = ${ visualContext.length } chars`);
+      console.log(`[${data.video_id}]DEBUG: videoLength = ${videoLength} s, visualContext length = ${visualContext.length} chars`);
 
       voiceoverScript = await clients.google.generateVoiceoverScript(
         data.property_data,
         visualContext,
         videoLength
       );
-      console.log(`[${ data.video_id }]DEBUG: Voiceover script generated: ${ voiceoverScript.length } chars`);
+      console.log(`[${data.video_id}]DEBUG: Voiceover script generated: ${voiceoverScript.length} chars`);
 
       // Generate TTS audio
       const voiceoverPCM = await clients.google.generateTTS(
@@ -415,7 +414,7 @@ async function processVideoAsync(
       // Upload voiceover to Cloudinary (now in WAV format with proper headers)
       voiceoverUpload = await clients.cloudinary.uploadVideo(
         voiceoverPCM,
-        `voiceover_${ data.video_id }.wav`
+        `voiceover_${data.video_id}.wav`
       );
 
       // Generate or select music
@@ -432,10 +431,10 @@ async function processVideoAsync(
         if (musicData && musicData.cloudinary_url) {
           musicUrl = musicData.cloudinary_url;
           musicSource = 'custom_upload';
-          console.log(`[${ data.video_id }] Using custom music: ${ musicData.title || 'Untitled' } `);
+          console.log(`[${data.video_id}] Using custom music: ${musicData.title || 'Untitled'} `);
         } else {
           // Fallback to generated if custom music not found
-          console.log(`[${ data.video_id }] Custom music not found, falling back to generated`);
+          console.log(`[${data.video_id}] Custom music not found, falling back to generated`);
           const musicPrompt = clients.elevenlabs.generateMusicPrompt(
             clips[0]?.mood || 'modern',
             clips[0]?.description || ''
@@ -475,26 +474,26 @@ async function processVideoAsync(
       }
     }
 
-    console.log(`[${ data.video_id }] Step 2 complete: Audio generated(source: ${ musicSource })`);
+    console.log(`[${data.video_id}] Step 2 complete: Audio generated(source: ${musicSource})`);
 
     // ============================================
     // 5C. TRANSCRIBE VOICEOVER (runs for both TEST_MODE and regular mode)
     // ============================================
-    console.log(`[${ data.video_id }] Starting Whisper transcription of voiceover...`);
+    console.log(`[${data.video_id}] Starting Whisper transcription of voiceover...`);
 
     // Transcribe voiceover using Whisper (returns SRT format with timing)
     srtTranscript = await clients.openai.createTranscription(voiceoverUpload.secure_url);
-    console.log(`[${ data.video_id }] Whisper transcription complete, SRT length: ${ srtTranscript.length } chars`);
+    console.log(`[${data.video_id}] Whisper transcription complete, SRT length: ${srtTranscript.length} chars`);
 
     // Correct transcription using GPT (compare to original script)
     correctedTranscript = await clients.openai.correctTranscript(srtTranscript, voiceoverScript);
-    console.log(`[${ data.video_id }] Transcript corrected using GPT`);
+    console.log(`[${data.video_id}] Transcript corrected using GPT`);
 
     // ============================================
     // 5B. WAIT FOR LUMA COMPLETIONS (if not TEST_MODE)
     // ============================================
     if (!isTestMode) {
-      console.log(`[${ data.video_id }] Step 3: Waiting for all Luma generations to complete...`);
+      console.log(`[${data.video_id}] Step 3: Waiting for all Luma generations to complete...`);
 
       const completionPromises = clips.map((clip, index) =>
         finishClip(clip, index, data, clients)
@@ -502,13 +501,13 @@ async function processVideoAsync(
 
       clips = await Promise.all(completionPromises);
 
-      console.log(`[${ data.video_id }] Step 3 complete: All ${ clips.length } clips ready`);
+      console.log(`[${data.video_id}] Step 3 complete: All ${clips.length} clips ready`);
     }
 
     // ============================================
     // 6. VIDEO PIPELINE: STAGE 1 - ASSEMBLY & AUDIO
     // ============================================
-    console.log(`[${ data.video_id }] PIPELINE STAGE 1: Assembling Base Video...`);
+    console.log(`[${data.video_id}] PIPELINE STAGE 1: Assembling Base Video...`);
 
     const clipUrls = clips.map(c => c.clip_url);
     const totalDuration = clips.length * 5; // 5 seconds per clip
@@ -522,10 +521,10 @@ async function processVideoAsync(
       userSettings.default_music_volume_db
     );
 
-    console.log(`[${ data.video_id }] Assembly URL generated.Baking Stage 1...`);
+    console.log(`[${data.video_id}] Assembly URL generated.Baking Stage 1...`);
 
     // Bake Stage 1
-    const stage1PublicId = `stage1_assembly_${ data.video_id }_${ Date.now() } `;
+    const stage1PublicId = `stage1_assembly_${data.video_id}_${Date.now()} `;
     let currentVideoUrl: string;
 
     try {
@@ -534,10 +533,10 @@ async function processVideoAsync(
         stage1PublicId
       );
       currentVideoUrl = stage1Result.secure_url;
-      console.log(`[${ data.video_id }] STAGE 1 COMPLETE: ${ currentVideoUrl } `);
+      console.log(`[${data.video_id}] STAGE 1 COMPLETE: ${currentVideoUrl} `);
     } catch (error: any) {
-      console.error(`[${ data.video_id }] STAGE 1 FAILED: `, error);
-      throw new Error(`Video Assembly Failed: ${ error.message } `);
+      console.error(`[${data.video_id}] STAGE 1 FAILED: `, error);
+      throw new Error(`Video Assembly Failed: ${error.message} `);
     }
 
     // ============================================
@@ -546,7 +545,7 @@ async function processVideoAsync(
     let captionTranscriptForDb = '';
 
     if (userSettings.caption_enabled && srtTranscript) {
-      console.log(`[${ data.video_id }] PIPELINE STAGE 2: Adding Captions...`);
+      console.log(`[${data.video_id}] PIPELINE STAGE 2: Adding Captions...`);
 
       try {
         const captionSegments = parseSRT(srtTranscript);
@@ -557,52 +556,52 @@ async function processVideoAsync(
 
         // Map UserSettings (Snake Case) to CaptionStyle (Camel Case)
         const captionStyle = {
-           fontFamily: 'Arial', // Default, but renderer can support others if loaded
-           fontSize: userSettings.caption_font_size || 34,
-           fontWeight: 'bold',
-           fontColor: userSettings.caption_font_color || 'FFFFFF',
-           bgColor: userSettings.caption_bg_color || '000000',
-           bgOpacity: userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0,
-           strokeColor: userSettings.caption_stroke_color || '000000',
-           strokeWidth: userSettings.caption_stroke_width || 0,
-           position: (userSettings.caption_position as any) || 'bottom',
-           animation: (userSettings.caption_animation as any) || 'none',
-           uppercase: userSettings.caption_uppercase || false,
-           emojis: true // Default to true or add setting
+          fontFamily: 'Arial', // Default, but renderer can support others if loaded
+          fontSize: userSettings.caption_font_size || 34,
+          fontWeight: 'bold',
+          fontColor: userSettings.caption_font_color || 'FFFFFF',
+          bgColor: userSettings.caption_bg_color || '000000',
+          bgOpacity: userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0,
+          strokeColor: userSettings.caption_stroke_color || '000000',
+          strokeWidth: userSettings.caption_stroke_width || 0,
+          position: (userSettings.caption_position as any) || 'bottom',
+          animation: (userSettings.caption_animation as any) || 'none',
+          uppercase: userSettings.caption_uppercase || false,
+          emojis: true // Default to true or add setting
         };
 
         const renderOptions = {
-           width: 1080,
-           height: 1920,
-           fps: 30
+          width: 1080,
+          height: 1920,
+          fps: 30
         };
 
-        console.log(`[${ data.video_id }] Starting High - Fidelity Caption Rendering(Canvas)...`);
+        console.log(`[${data.video_id}] Starting High - Fidelity Caption Rendering(Canvas)...`);
 
         // Use the Streaming Compositor to render and upload frames
         // This handles animations, custom styles, and avoids memory limits
         const compositeUrl = await renderAndCompositeCaptionsStreaming(
-           captionSegments,
-           captionStyle,
-           renderOptions,
-           stage1Id, // Base video ID
-           clients.cloudinary
+          captionSegments,
+          captionStyle,
+          renderOptions,
+          stage1Id, // Base video ID
+          clients.cloudinary
         );
 
-        console.log(`[${ data.video_id }]High - Fidelity Composition URL generated.Baking Stage 2...`);
+        console.log(`[${data.video_id}]High - Fidelity Composition URL generated.Baking Stage 2...`);
 
         // Bake Stage 2
-        const stage2PublicId = `stage2_captions_${ data.video_id }_${ Date.now() } `;
+        const stage2PublicId = `stage2_captions_${data.video_id}_${Date.now()} `;
         const stage2Result = await clients.cloudinary.uploadVideoFromUrl(
           compositeUrl,
           stage2PublicId
         );
         currentVideoUrl = stage2Result.secure_url;
-        console.log(`[${ data.video_id }] STAGE 2 COMPLETE: ${ currentVideoUrl } `);
+        console.log(`[${data.video_id}] STAGE 2 COMPLETE: ${currentVideoUrl} `);
 
       } catch (e: any) {
-        console.error(`[${ data.video_id }] STAGE 2 FAILED(Captions): `, e);
-        console.log(`[${ data.video_id }] Continuing with Stage 1 result.`);
+        console.error(`[${data.video_id}] STAGE 2 FAILED(Captions): `, e);
+        console.log(`[${data.video_id}] Continuing with Stage 1 result.`);
       }
     }
 
@@ -612,7 +611,7 @@ async function processVideoAsync(
     let finalVideoWithLogo = currentVideoUrl;
 
     if (userSettings.logo_url) {
-      console.log(`[${ data.video_id }] PIPELINE STAGE 3: Adding Logo...`);
+      console.log(`[${data.video_id}] PIPELINE STAGE 3: Adding Logo...`);
 
       try {
         // Use existing helper but now it operates on the Current Video URL
@@ -625,22 +624,22 @@ async function processVideoAsync(
         );
 
         if (logoTransformationUrl !== currentVideoUrl) {
-          console.log(`[${ data.video_id }] Logo URL generated.Baking Stage 3...`);
+          console.log(`[${data.video_id}] Logo URL generated.Baking Stage 3...`);
 
-          const finalPublicId = `final_video_${ data.video_id }_${ Date.now() } `;
+          const finalPublicId = `final_video_${data.video_id}_${Date.now()} `;
           const stage3Result = await clients.cloudinary.uploadVideoFromUrl(
             logoTransformationUrl,
             finalPublicId
           );
           finalVideoWithLogo = stage3Result.secure_url;
-          console.log(`[${ data.video_id }] STAGE 3 COMPLETE: ${ finalVideoWithLogo } `);
+          console.log(`[${data.video_id}] STAGE 3 COMPLETE: ${finalVideoWithLogo} `);
         }
       } catch (e: any) {
-        console.error(`[${ data.video_id }] STAGE 3 FAILED(Logo): `, e);
+        console.error(`[${data.video_id}] STAGE 3 FAILED(Logo): `, e);
         // Fallback to previous stage
       }
     } else {
-      console.log(`[${ data.video_id }] No logo requested, skipping Stage 3.`);
+      console.log(`[${data.video_id}] No logo requested, skipping Stage 3.`);
     }
 
     // ============================================
@@ -658,8 +657,8 @@ async function processVideoAsync(
     }).eq('id', data.video_id);
 
     if (videoUpdateError) {
-      console.error(`[${ data.video_id }] Failed to update videos row: ${ videoUpdateError.message } `);
-      throw new Error(`Failed to update videos row: ${ videoUpdateError.message } `);
+      console.error(`[${data.video_id}] Failed to update videos row: ${videoUpdateError.message} `);
+      throw new Error(`Failed to update videos row: ${videoUpdateError.message} `);
     }
 
     const { error: detailsError } = await supabase.from('video_generation_details').insert({
@@ -680,24 +679,24 @@ async function processVideoAsync(
     });
 
     if (detailsError) {
-      console.error(`[${ data.video_id }] Failed to insert video_generation_details: ${ detailsError.message } `);
-      throw new Error(`Failed to insert video_generation_details: ${ detailsError.message } `);
+      console.error(`[${data.video_id}] Failed to insert video_generation_details: ${detailsError.message} `);
+      throw new Error(`Failed to insert video_generation_details: ${detailsError.message} `);
     }
 
-    console.log(`[${ data.video_id }] Processing completed in ${ processingTime } s`);
+    console.log(`[${data.video_id}] Processing completed in ${processingTime} s`);
 
   } catch (error) {
-    console.error(`[${ data.video_id }]Error: `, error);
-    console.error(`[${ data.video_id }] Error stack: `, (error as any)?.stack);
+    console.error(`[${data.video_id}]Error: `, error);
+    console.error(`[${data.video_id}] Error stack: `, (error as any)?.stack);
 
     // Make sure error is recorded in database
     try {
       await supabase.from('videos').update({
         status: 'failed',
-        error_text: `${ (error as any)?.message || 'Unknown error' } \n\nStack: ${ (error as any)?.stack || 'No stack trace' } `
+        error_text: `${(error as any)?.message || 'Unknown error'} \n\nStack: ${(error as any)?.stack || 'No stack trace'} `
       }).eq('id', data.video_id);
     } catch (dbError) {
-      console.error(`[${ data.video_id }] Failed to update error in database: `, dbError);
+      console.error(`[${data.video_id}] Failed to update error in database: `, dbError);
     }
 
     throw error;
@@ -714,7 +713,7 @@ async function prepareClip(
   data: VideoGenerationRequest,
   clients: any
 ): Promise<ClipData> {
-  console.log(`[${ data.video_id }] Preparing clip ${ index + 1 } (upload + GPT - 4o + start Luma)...`);
+  console.log(`[${data.video_id}] Preparing clip ${index + 1} (upload + GPT - 4o + start Luma)...`);
 
   const isKeyframe = slot.images.length > 1;
   const firstImage = slot.images[0];
@@ -748,7 +747,7 @@ async function prepareClip(
     secondImageUpload?.secure_url
   );
 
-  console.log(`[${ data.video_id }] Clip ${ index + 1 } prepared - Luma ID: ${ lumaGeneration.id } `);
+  console.log(`[${data.video_id}] Clip ${index + 1} prepared - Luma ID: ${lumaGeneration.id} `);
 
   // Return clip data WITHOUT clip_url (will be filled in finishClip)
   return {
@@ -773,21 +772,21 @@ async function finishClip(
   data: VideoGenerationRequest,
   clients: any
 ): Promise<ClipData> {
-  console.log(`[${ data.video_id }] Waiting for clip ${ index + 1} (Luma ID: ${ clipData.luma_generation_id })...`);
+  console.log(`[${data.video_id}] Waiting for clip ${index + 1} (Luma ID: ${clipData.luma_generation_id})...`);
 
   // Wait for Luma completion
   const clipUrl = await clients.luma.waitForCompletion(clipData.luma_generation_id);
 
-  console.log(`[${ data.video_id }] Clip ${ index + 1 } ready from Luma: ${ clipUrl } `);
+  console.log(`[${data.video_id}] Clip ${index + 1} ready from Luma: ${clipUrl} `);
 
   // Upload Luma clip to Cloudinary for permanent storage
   // (Luma URLs are temporary and expire - Cloudinary URLs are permanent)
-  console.log(`[${ data.video_id }] Uploading clip ${ index + 1 } to Cloudinary...`);
+  console.log(`[${data.video_id}] Uploading clip ${index + 1} to Cloudinary...`);
   const cloudinaryUpload = await clients.cloudinary.uploadVideo(
     clipUrl,
-    `clip_${ data.video_id }_${ index }.mp4`
+    `clip_${data.video_id}_${index}.mp4`
   );
-  console.log(`[${ data.video_id }] Clip ${ index + 1 } uploaded to Cloudinary: ${ cloudinaryUpload.secure_url } `);
+  console.log(`[${data.video_id}] Clip ${index + 1} uploaded to Cloudinary: ${cloudinaryUpload.secure_url} `);
 
   // Return updated clip data with Cloudinary URL (not Luma URL)
   return {
