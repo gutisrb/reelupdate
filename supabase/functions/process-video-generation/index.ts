@@ -566,21 +566,32 @@ async function processVideoAsync(
           // Cloudinary text overlay format with accurate timing from Whisper
           const encodedText = encodeURIComponent(segment.text.trim().substring(0, 100)); // Limit length
           const fontSize = userSettings.caption_font_size || 34;
-          // Use default white if not set
+
+          // Safe Font Mapping
+          const fontMap: Record<string, string> = {
+            'Inter': 'Arial',
+            'Roboto': 'Roboto',
+            'Open Sans': 'Arial',
+            'Montserrat': 'Arial',
+            'Lato': 'Arial',
+            'Poppins': 'Arial',
+            'Georgia': 'Times New Roman', // Georgia might not be present, map to reliable serif
+            'Times New Roman': 'Times New Roman',
+            'Courier New': 'Courier New',
+            'Arial': 'Arial',
+            'Verdana': 'Verdana',
+            'Impact': 'Impact',
+          };
+
+          const rawFont = userSettings.caption_font_family || 'Arial';
+          // Default to Arial if not found in map, unless it's a standard system font
+          const safeFont = fontMap[rawFont] || 'Arial';
+          const fontFamily = safeFont.replace(/\s+/g, '%20');
+
           const fontColor = userSettings.caption_font_color || 'FFFFFF';
-          const fontFamily = (userSettings.caption_font_family || 'Arial').replace(/\s+/g, '%20');
 
           // Styling options from Brand Kit
           const bgColor = userSettings.caption_bg_color || '000000';
-          // Convert 0-100 opacity to Cloudinary's 0-100 scale (default 100 which is opaque)
-          // Note: Cloudinary 'o' param is opacity in %, but for background in text_style it's usually 'b_rgb:RRGGBB'
-          // We can use 'b_rgb:RRGGBB' directly for solid background.
-          // For opacity, we need to apply it to the layer, but that affects text too.
-          // Cloudinary allows 4-byte hex: #RRGGBBAA for background.
-          // Mapping: opacity 100 -> FF (255), 50 -> 80 (128), 0 -> 00
-          // But 'b_rgb:HEX' usually doesn't take alpha efficiently in URL API.
-          // Workaround: Use 'b_rgb:RRGGBB' for solid, or simplified.
-          // Let's assume user wants box background.
 
           let styleParams = `${fontFamily}_${fontSize}_bold`;
 
@@ -588,40 +599,30 @@ async function processVideoAsync(
           if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
             const strokeColor = userSettings.caption_stroke_color || '000000';
             // Cloudinary stroke syntax: underscore separated, e.g. bo_5px_solid_black
-            // However, l_text syntax combines font properties. stroke is strictly border 'bo'.
+            // However, l_text syntax for stroke is limited.
+            // We can use the 'bo' parameter on the LAYER, not the text style.
+            // border: 'bo_5px_solid_rgb:000000'
           }
 
           // Build transformation string
-          // l_text:style:text,co_color,b_background
-
           let transformationStr = `l_text:${styleParams}:${encodedText},co_rgb:${fontColor}`;
-
-          // Background Color Logic
-          // We apply background using b_rgb:XXXXXX
-          // We handle opacity via 'o_opacity' on the layer, BUT that fades text too.
-          // Improved: If background is needed, use `b_rgb:${bgColor}`. 
-          // Cloudinary doesn't easily support "Text 100% opacity, Background 50%" in a single text layer URL without custom fonts or special handling.
-          // For now, we will apply the solid background color if opacity > 0.
 
           const bgOpacity = userSettings.caption_bg_opacity !== undefined ? userSettings.caption_bg_opacity : 0;
 
           if (bgOpacity > 0) {
-            // Apply background color to the text bounding box
+            // Apply background color to the text bounding box using b_rgb property
             transformationStr += `,b_rgb:${bgColor}`;
           }
 
-          // Stroke / Border
+          // Stroke / Border logic (apply to the text layer)
           if (userSettings.caption_stroke_width && userSettings.caption_stroke_width > 0) {
             const strokeColor = userSettings.caption_stroke_color || '000000';
             const strokeWidth = userSettings.caption_stroke_width;
             transformationStr += `,bo_${strokeWidth}px_solid_rgb:${strokeColor}`;
           }
 
-          // Add timing
+          // Add timing and position
           transformationStr += `,g_south,y_100,so_${startTime},du_${duration}`;
-
-          // If the User wanted overall opacity for the caption (e.g. ghost text), add o_param
-          // But usually they want solid text.
 
           textOverlays.push(
             transformationStr,
