@@ -107,6 +107,39 @@ export class CloudinaryClient {
   }
 
   /**
+   * Upload video from a remote URL directly (Cloudinary fetches it).
+   * This is efficient for "baking" transformation URLs into static assets.
+   */
+  async uploadVideoFromUrl(videoUrl: string, publicId: string): Promise<CloudinaryUploadResponse> {
+    const formData = new FormData();
+
+    formData.append('file', videoUrl);
+    formData.append('public_id', publicId);
+    formData.append('upload_preset', this.uploadPreset);
+    formData.append('resource_type', 'video');
+
+    console.log(`[Cloudinary] Triggering remote upload (baking) for public_id: ${publicId}`);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${this.cloudName}/video/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Cloudinary remote video upload failed: ${error}`);
+    }
+
+    const result = await response.json();
+    console.log(`[Cloudinary] Remote upload successful, new public_id: ${result.public_id}`);
+
+    return result;
+  }
+
+  /**
    * Convert ArrayBuffer/Uint8Array to base64 string
    */
   private arrayBufferToBase64(buffer: Uint8Array): string {

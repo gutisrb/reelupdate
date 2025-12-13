@@ -681,6 +681,33 @@ async function processVideoAsync(
     console.log(`[${data.video_id}] Final video URL (complete): ${finalVideoWithLogo}`);
 
     // ============================================
+    // 8.5. BAKE VIDEO (Upload transformation URL to create static file)
+    // ============================================
+    console.log(`[${data.video_id}] Baking video (uploading to permanent file)...`);
+
+    // Create a deterministic public ID for the final video
+    const finalPublicId = `final_video_${data.video_id}_${Date.now()}`;
+
+    try {
+      const uploadResult = await clients.cloudinary.uploadVideoFromUrl(
+        finalVideoWithLogo,
+        finalPublicId
+      );
+
+      console.log(`[${data.video_id}] Video baked successfully!`);
+
+      // Update the URL to point to the secure, static file
+      // result.secure_url is usually http/https. We prefer https.
+      finalVideoWithLogo = uploadResult.secure_url;
+
+      console.log(`[${data.video_id}] New Baked URL: ${finalVideoWithLogo}`);
+
+    } catch (uploadError) {
+      console.error(`[${data.video_id}] Baking failed, falling back to dynamic URL:`, uploadError);
+      // Fallback is implicit: finalVideoWithLogo remains the dynamic URL
+    }
+
+    // ============================================
     // 9. UPDATE DATABASE
     // ============================================
     const endTime = Date.now();
