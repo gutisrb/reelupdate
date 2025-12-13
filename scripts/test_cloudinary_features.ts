@@ -124,6 +124,33 @@ async function runTests() {
 
     const url11 = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/${BASE_TRANSFORM}/${specialLayer}/f_mp4/vc_h264/q_auto:good/${BASE_VIDEO}`;
     await checkUrl('Special Char (š)', url11);
+    // 12. Font Test: Times New Roman
+    // Testing if "Times New Roman" is actually supported
+    // If this fails, we must map to "Times" or "Arial"
+    const fontText = encodeURIComponent("Testing Font");
+    const fontLayer = `l_text:Times%20New%20Roman_34_bold:${fontText},co_rgb:FFFFFF/fl_layer_apply`;
+    const url12 = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/${BASE_TRANSFORM}/${fontLayer}/f_mp4/vc_h264/q_auto:good/${BASE_VIDEO}`;
+    await checkUrl('Font: Times New Roman', url12);
+
+    // 13. Font Test: Times (Alternative)
+    const timesLayer = `l_text:Times_34_bold:${fontText},co_rgb:FFFFFF/fl_layer_apply`;
+    const url13 = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/${BASE_TRANSFORM}/${timesLayer}/f_mp4/vc_h264/q_auto:good/${BASE_VIDEO}`;
+    await checkUrl('Font: Times', url13);
+
+    // 14. Punctuation Test (Period)
+    // Testing "evra." ending with period
+    const periodText = encodeURIComponent("evra.");
+    // periodText is "evra." because encodeURIComponent doesn't encode dots
+    const periodLayer = `l_text:Arial_34_bold:${periodText},co_rgb:FFFFFF/fl_layer_apply`;
+    const url14 = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/${BASE_TRANSFORM}/${periodLayer}/f_mp4/vc_h264/q_auto:good/${BASE_VIDEO}`;
+    await checkUrl('Punctuation: Period (.)', url14);
+
+    // 15. Punctuation Test (Encoded Period %2E)
+    // Manually encoding dot
+    const safePeriodText = "evra%2E";
+    const safePeriodLayer = `l_text:Arial_34_bold:${safePeriodText},co_rgb:FFFFFF/fl_layer_apply`;
+    const url15 = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/${BASE_TRANSFORM}/${safePeriodLayer}/f_mp4/vc_h264/q_auto:good/${BASE_VIDEO}`;
+    await checkUrl('Punctuation: Safe Period (%2E)', url15);
 }
 
 runTests();
