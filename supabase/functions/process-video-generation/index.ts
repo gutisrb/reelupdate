@@ -8,7 +8,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 // import { renderAndCompositeCaptionsStreaming } from '../_shared/clients/caption-compositor.ts'; // Unused - captions rendered in browser
 import { initClients } from '../_shared/clients/index.ts';
 import type { VideoGenerationRequest, UserSettings, ClipData } from '../_shared/types.ts';
-import { API_ENDPOINTS } from '../_shared/config.ts';
+import { API_ENDPOINTS, VIDEO_GENERATION_CONFIG } from '../_shared/config.ts';
 
 // Helper function to parse SRT format into caption segments
 // This interface is now imported from '../_shared/srt-parser.ts'
@@ -579,30 +579,48 @@ async function processVideoAsync(
 
           // 2. Wait for ZapCap to generate initial transcript
           console.log(`[${data.video_id}] Waiting for ZapCap transcription...`);
+          const maxAttempts = VIDEO_GENERATION_CONFIG.captions.max_poll_attempts;
+          const pollInterval = VIDEO_GENERATION_CONFIG.captions.poll_interval_ms;
           let attempts = 0;
-          let taskReady = false;
+          let zapCapTranscript: string | null = null;
 
-          while (attempts < 20 && !taskReady) {
+          while (attempts < maxAttempts && !zapCapTranscript) {
             const status = await clients.zapcap.getTaskStatus(zapCapVideoId, taskId);
-            console.log(`[${data.video_id}] ZapCap task status: ${status.status}`);
+            console.log(`[${data.video_id}] ZapCap task status: ${status.status} (attempt ${attempts + 1}/${maxAttempts})`);
 
-            if (status.status === 'completed' || status.status === 'processing') {
-              taskReady = true;
-            } else if (status.status === 'failed') {
+            if (status.status === 'failed') {
               throw new Error('ZapCap task failed during transcription');
-            } else {
-              await new Promise(resolve => setTimeout(resolve, 5000)); // 5s interval
-              attempts++;
             }
+
+            // Try to fetch transcript to see if it's ready
+            // If it succeeds, transcript is ready; if it fails with 404, it's not ready yet
+            try {
+              const testTranscript = await clients.zapcap.getTranscript(zapCapVideoId, taskId);
+              if (testTranscript && testTranscript.length > 0) {
+                zapCapTranscript = testTranscript;
+                console.log(`[${data.video_id}] Transcript is ready!`);
+                break;
+              }
+            } catch (error: any) {
+              // Transcript not ready yet (likely 404), continue polling
+              if (error.message?.includes('404') || error.message?.includes('not found')) {
+                // Transcript not ready, continue waiting
+              } else {
+                // Some other error, log it but continue
+                console.log(`[${data.video_id}] Error checking transcript (will retry): ${error.message}`);
+              }
+            }
+
+            // Wait before next poll
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+            attempts++;
           }
 
-          if (!taskReady) {
-            throw new Error('ZapCap transcription timed out');
+          if (!zapCapTranscript) {
+            throw new Error(`ZapCap transcription timed out after ${maxAttempts} attempts (${Math.floor(maxAttempts * pollInterval / 1000)}s)`);
           }
 
-          // 3. Get transcript from ZapCap
-          console.log(`[${data.video_id}] Fetching ZapCap transcript...`);
-          const zapCapTranscript = await clients.zapcap.getTranscript(zapCapVideoId, taskId);
+          // 3. Transcript is ready (already fetched during polling)
           console.log(`[${data.video_id}] ZapCap transcript: ${zapCapTranscript.substring(0, 100)}...`);
 
           // 4. Correct transcript using our voiceover script (via GPT)
