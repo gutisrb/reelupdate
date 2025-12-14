@@ -8,35 +8,57 @@ export class ZapCapClient {
   private config = VIDEO_GENERATION_CONFIG.captions;
 
   /**
-   * Create caption task for a video
+   * Create caption task for a video (2-step process)
    */
   async createCaptionTask(
-    videoId: string,
+    videoUrl: string,
     templateId: string
-  ): Promise<string> {
-    const body = {
+  ): Promise<{ taskId: string; videoId: string }> {
+    // Step 1: Create video in ZapCap from URL
+    const createVideoResponse = await fetch(API_ENDPOINTS.zapcap.createVideo, {
+      method: 'POST',
+      headers: {
+        'x-api-key': this.apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url: videoUrl }),  // ✅ Correct format: {"url": "..."}
+    });
+
+    if (!createVideoResponse.ok) {
+      const error = await createVideoResponse.text();
+      throw new Error(`ZapCap video creation failed: ${error}`);
+    }
+
+    const videoData = await createVideoResponse.json();
+    const zapCapVideoId = videoData.id;  // Get video ID from ZapCap
+
+    // Step 2: Create caption task for the video
+    const createTaskBody = {
       templateId,
       autoApprove: this.config.autoApprove,
       language: this.config.language,
       renderOptions: this.config.renderOptions,
     };
 
-    const response = await fetch(API_ENDPOINTS.zapcap.createTask(videoId), {
+    const createTaskResponse = await fetch(API_ENDPOINTS.zapcap.createTask(zapCapVideoId), {
       method: 'POST',
       headers: {
         'x-api-key': this.apiKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(createTaskBody),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
+    if (!createTaskResponse.ok) {
+      const error = await createTaskResponse.text();
       throw new Error(`ZapCap task creation failed: ${error}`);
     }
 
-    const data: ZapCapTaskResponse = await response.json();
-    return data.taskId;
+    const taskData: ZapCapTaskResponse = await createTaskResponse.json();
+    return {
+      taskId: taskData.taskId,
+      videoId: zapCapVideoId
+    };
   }
 
   /**

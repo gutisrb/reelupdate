@@ -56,7 +56,8 @@ export const API_ENDPOINTS = {
     videoUpload: `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloud_name}/video/upload`,
   },
   zapcap: {
-    createTask: (videoId: string) => `https://api.zapcap.ai/videos/${videoId}/task`,
+    createVideo: 'https://api.zapcap.ai/videos/url',  // Step 1: Create video from URL
+    createTask: (videoId: string) => `https://api.zapcap.ai/videos/${videoId}/task`,  // Step 2: Create caption task
     getTask: (videoId: string, taskId: string) => `https://api.zapcap.ai/videos/${videoId}/task/${taskId}`,
     getTranscript: (videoId: string, taskId: string) => `https://api.zapcap.ai/videos/${videoId}/task/${taskId}/transcript`,
     updateTranscript: (videoId: string, taskId: string) => `https://api.zapcap.ai/videos/${videoId}/task/${taskId}/transcript`,

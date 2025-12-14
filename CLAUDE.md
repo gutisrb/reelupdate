@@ -61,6 +61,12 @@ npx tsx scripts/check-environment.ts
 
 # Generate voice previews (one-time setup)
 npx tsx scripts/generate-voice-previews.ts
+
+# Update caption templates in database
+npx tsx scripts/update-caption-templates.ts
+
+# Test Cloudinary URL features (text overlays, transformations)
+npx tsx scripts/test_cloudinary_features.ts
 ```
 
 ### Working with Supabase
@@ -94,14 +100,15 @@ The app uses React Router with conditional layout rendering based on path (src/A
    - `/app/library` redirects to `/app/galerija`
    - AppShell provides top navigation (AppNavigation) and main content area via Outlet
 
-### Global Providers (src/App.tsx:80-92)
+### Global Providers (src/App.tsx:80-95)
 
 Applied to all routes in this order (outermost to innermost):
 1. `QueryClientProvider` - React Query (@tanstack/react-query) for server state management
-2. `TooltipProvider` - shadcn/ui tooltips (radix-ui)
-3. `Toaster` & `Sonner` - Dual toast notification systems (use via `useToast` hook)
-4. `ProgressProvider` - Global progress state (0-100) for video processing feedback
-5. `WizardProvider` - Multi-step wizard state with IndexedDB persistence (auto-saves every 2s)
+2. `LanguageProvider` - i18n support for Serbian ('sr') and English ('en'), persisted to localStorage
+3. `TooltipProvider` - shadcn/ui tooltips (radix-ui)
+4. `Toaster` & `Sonner` - Dual toast notification systems (use via `useToast` hook)
+5. `ProgressProvider` - Global progress state (0-100) for video processing feedback
+6. `WizardProvider` - Multi-step wizard state with IndexedDB persistence (auto-saves every 2s)
 
 ### State Management
 
@@ -114,6 +121,12 @@ Applied to all routes in this order (outermost to innermost):
 
 **ProgressContext** (src/contexts/ProgressContext.tsx):
 - Simple global progress state (0-100) for video processing feedback
+
+**LanguageContext** (src/contexts/LanguageContext.tsx):
+- Manages app language state: Serbian ('sr') or English ('en')
+- Persists language preference to localStorage
+- Provides `useLanguage` hook with `language`, `setLanguage`, and `t` function
+- Default language is Serbian ('sr')
 
 ### Data Persistence
 
@@ -162,15 +175,24 @@ Applied to all routes in this order (outermost to innermost):
   - Creates video record with status 'processing'
   - Returns immediately to frontend (200 OK with video_id)
   - Continues processing asynchronously in background
-  - Workflow: Upload images to Cloudinary → Generate clips with Luma → Create voiceover → Add captions → Finalize video
+  - **3-Stage Iterative Baking Pipeline**:
+    1. **Assembly Stage**: Generate clips with Luma → Create voiceover → Assemble base video
+    2. **Captions Stage**: Transcribe with Whisper → Correct with GPT → Bake captions as Cloudinary text overlays
+    3. **Logo Stage**: Add logo overlay → Upload final baked video to Cloudinary as static asset
+  - Each stage "bakes" (uploads) the video to Cloudinary, then the next stage uses that URL
   - Updates video status in database throughout pipeline
+- `social-auth/index.ts`: OAuth authentication for social media platforms
+- `social-callback/index.ts`: OAuth callback handler
+- `post-social-content/index.ts`: Posts generated videos to social media
+- `transcribe-preview/index.ts`: Preview transcription for testing
+- `upload-custom-music/index.ts`: Handles custom music uploads
 - Shared clients in `_shared/clients/`:
-  - `cloudinary.ts`: Image/video storage
+  - `cloudinary.ts`: Image/video storage and transformations
   - `luma.ts`: AI video generation
-  - `openai.ts`: GPT for script generation
+  - `openai.ts`: GPT for script generation and caption correction
   - `google.ts`: Google AI (Gemini) for prompts/TTS
   - `elevenlabs.ts`: Voice synthesis
-  - `zapcap.ts`: Caption generation
+  - `zapcap.ts`: Caption generation (legacy)
 
 **Environment Variables** (.env.example):
 - Supabase: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
@@ -284,6 +306,25 @@ import { useWizard } from '@/contexts/WizardContext';
 const { wizardData, updateSlots, resetWizard } = useWizard();
 ```
 
+### Using Language/i18n
+
+```typescript
+import { useLanguage } from '@/contexts/LanguageContext';
+
+const { language, setLanguage } = useLanguage();
+// language is 'sr' (Serbian) or 'en' (English)
+// setLanguage('en') to switch languages
+```
+
+Components typically store translations as objects and select based on `language`:
+```typescript
+const translations = {
+  sr: { title: "Naslov", submit: "Pošalji" },
+  en: { title: "Title", submit: "Submit" }
+};
+const text = translations[language];
+```
+
 ### Working with Supabase Edge Functions
 
 **Calling Edge Functions from Frontend**:
@@ -351,6 +392,14 @@ supabase functions deploy process-video-generation
 - JPEG quality 0.72 balances quality vs file size
 - Budget enforcement prevents webhook failures from oversized payloads
 
+**3-Stage Video Baking Pipeline**:
+- Each stage uploads ("bakes") its output to Cloudinary as a static video
+- Enables iterative transformations without complex URL chaining
+- **Assembly → Captions → Logo** ensures proper layer ordering
+- Captions use Cloudinary text overlays (not burned-in video rendering)
+- Whisper transcription + GPT correction for high-quality captions
+- Final video is a static Cloudinary asset (no on-the-fly transformations)
+
 ## Quick Reference
 
 ### Key Files to Know
@@ -371,3 +420,6 @@ supabase functions deploy process-video-generation
 - IndexedDB auto-save has 50MB limit to prevent browser crashes
 - User credits are deducted atomically via RPC function, not direct updates
 - Auth state is checked on mount and via subscription in AuthWrapper
+- Video generation uses 3-stage baking pipeline - each stage produces a static Cloudinary URL
+- Captions are Cloudinary text overlays, not burned-in video frames
+- Default app language is Serbian ('sr'), switchable to English ('en')
