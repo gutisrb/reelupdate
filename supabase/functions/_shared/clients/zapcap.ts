@@ -99,11 +99,17 @@ export class ZapCapClient {
     const data = await response.json();
     console.log(`[ZapCap] convertTranscript response for ${videoId}:`, JSON.stringify(data));
 
-    if (!data || !data.transcript || !Array.isArray(data.transcript)) {
-      throw new Error(`Invalid ZapCap transcript response: ${JSON.stringify(data)}`);
+    // Handle direct array response (Primary case based on logs)
+    if (Array.isArray(data)) {
+      return data.map((w: any) => w.text || w.word).join(' ');
     }
 
-    return data.transcript.map((w: any) => w.word).join(' ');
+    // Handle object response (Legacy/Fallback)
+    if (data && data.transcript && Array.isArray(data.transcript)) {
+      return data.transcript.map((w: any) => w.text || w.word).join(' ');
+    }
+
+    throw new Error(`Invalid ZapCap transcript response: ${JSON.stringify(data)}`);
   }
 
   /**
