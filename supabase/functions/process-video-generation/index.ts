@@ -193,39 +193,24 @@ serve(async (req) => {
       console.error(`Failed to create video record: ${videoError.message} `);
     }
 
-    // Process synchronously to avoid EarlyDrop (background tasks can be terminated)
-    console.log(`[${data.video_id}]DEBUG: About to call processVideoAsync`);
-    try {
-      await processVideoAsync(
+    // Process asynchronously (background) to avoid HTTP timeout
+    console.log(`[${data.video_id}]DEBUG: Starting background processing via EdgeRuntime.waitUntil`);
+
+    // @ts-ignore
+    EdgeRuntime.waitUntil(
+      processVideoAsync(
         data,
         supabase,
         clients
-      );
-      console.log(`[${data.video_id}]DEBUG: processVideoAsync completed successfully`);
-    } catch (error) {
-      console.error(`[${data.video_id}] Processing failed: `, error);
-      console.error(`[${data.video_id}] ERROR stack: `, (error as any)?.stack);
-      console.error(`[${data.video_id}] ERROR name: `, (error as any)?.name);
-      console.error(`[${data.video_id}] ERROR message: `, (error as any)?.message);
+      )
+    );
 
-      // Update video status to error
-      await supabase.from('videos').update({
-        status: 'error',
-        error_text: (error as any)?.message || 'Unknown error'
-      }).eq('id', data.video_id);
-
-      return new Response(
-        JSON.stringify({ ok: false, error: (error as any)?.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Completed
+    // Return immediate success response
     return new Response(
       JSON.stringify({
         ok: true,
         video_id: data.video_id,
-        message: 'Generation completed',
+        message: 'Video generation started in background',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
