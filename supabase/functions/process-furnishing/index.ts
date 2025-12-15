@@ -215,14 +215,10 @@ serve(async (req: Request) => {
             }
 
             const kieData = await kieResponse.json();
-            const jobId = kieData.data?.id; // Check actual response structure if possible. Assuming standard.
-
-            // Blueprint "Parse JSON" step 5 implies `resultJson` is available *after* status check. 
-            // The create response usually just gives an ID.
-            // Kie.ai Create Task response: {"data": {"id": "..."}}
+            const jobId = kieData.data?.taskId || kieData.data?.id;
 
             if (!jobId) {
-                throw new Error(`Kie.ai did not return a Job ID. Response: ${JSON.stringify(kieData)}`);
+                throw new Error(`Kie.ai did not return a Job ID (taskId). Response: ${JSON.stringify(kieData)}`);
             }
 
             // 5. Deduct Credit
