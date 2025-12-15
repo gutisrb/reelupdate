@@ -122,61 +122,73 @@ export class ZapCapClient {
         'x-api-key': this.apiKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ transcript: correctedTranscript }),
-    });
+      // Convert string transcript to array of word objects
+      const words = correctedTranscript.split(/\s+/).filter(w => w.length > 0);
+      const body = words.map(word => ({ text: word }));
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to update transcript: ${error}`);
-    }
+      console.log(`[ZapCap] Updating transcript with ${body.length} words`);
+
+      const response = await fetch(API_ENDPOINTS.zapcap.updateTranscript(videoId, taskId), {
+        method: 'PUT',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if(!response.ok) {
+        const error = await response.text();
+    throw new Error(`Failed to update transcript: ${error}`);
   }
+}
 
   /**
    * Approve transcript and finalize video
    */
-  async approveTranscript(videoId: string, taskId: string): Promise<string> {
-    const response = await fetch(API_ENDPOINTS.zapcap.approveTranscript(videoId, taskId), {
-      method: 'POST',
-      headers: {
-        'x-api-key': this.apiKey,
-      },
-    });
+  async approveTranscript(videoId: string, taskId: string): Promise < string > {
+  const response = await fetch(API_ENDPOINTS.zapcap.approveTranscript(videoId, taskId), {
+    method: 'POST',
+    headers: {
+      'x-api-key': this.apiKey,
+    },
+  });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to approve transcript: ${error}`);
-    }
+  if(!response.ok) {
+  const error = await response.text();
+  throw new Error(`Failed to approve transcript: ${error}`);
+}
 
-    const data: ZapCapTaskResponse = await response.json();
+const data: ZapCapTaskResponse = await response.json();
 
-    if (!data.video_url) {
-      throw new Error('No video URL returned after approval');
-    }
+if (!data.video_url) {
+  throw new Error('No video URL returned after approval');
+}
 
-    return data.video_url;
+return data.video_url;
   }
 
   /**
    * Poll until captions are complete
    */
-  async waitForCompletion(videoId: string, taskId: string): Promise<string> {
-    let attempts = 0;
+  async waitForCompletion(videoId: string, taskId: string): Promise < string > {
+  let attempts = 0;
 
-    while (attempts < this.config.max_poll_attempts) {
-      const task = await this.getTaskStatus(videoId, taskId);
+  while(attempts <this.config.max_poll_attempts) {
+  const task = await this.getTaskStatus(videoId, taskId);
 
-      if (task.status === 'completed' && task.video_url) {
-        return task.video_url;
-      }
+  if (task.status === 'completed' && task.video_url) {
+    return task.video_url;
+  }
 
-      if (task.status === 'failed') {
-        throw new Error('ZapCap task failed');
-      }
+  if (task.status === 'failed') {
+    throw new Error('ZapCap task failed');
+  }
 
-      await new Promise(resolve => setTimeout(resolve, this.config.poll_interval_ms));
-      attempts++;
-    }
+  await new Promise(resolve => setTimeout(resolve, this.config.poll_interval_ms));
+  attempts++;
+}
 
-    throw new Error(`ZapCap task timed out after ${this.config.max_poll_attempts} attempts`);
+throw new Error(`ZapCap task timed out after ${this.config.max_poll_attempts} attempts`);
   }
 }
