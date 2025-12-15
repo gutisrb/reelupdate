@@ -76,14 +76,31 @@ serve(async (req: Request) => {
             const status = data.data?.state; // 'waiting', 'processing', 'success', 'failed'
 
             if (status === 'success') {
-                const resultUrl = data.data?.resultUrls?.[0];
-                if (!resultUrl) throw new Error('Success status but no resultUrl found');
+                // Kie.ai returns 'resultJson' as a JSON string inside the data object
+                let resultUrl = null;
+                try {
+                    // Try direct access first 
+                    if (data.data?.resultUrls && Array.isArray(data.data.resultUrls)) {
+                        resultUrl = data.data.resultUrls[0];
+                    }
+                    // Fallback to parsing resultJson string
+                    else if (data.data?.resultJson) {
+                        const parsedResult = JSON.parse(data.data.resultJson);
+                        if (parsedResult?.resultUrls && parsedResult.resultUrls.length > 0) {
+                            resultUrl = parsedResult.resultUrls[0];
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to parse resultJson:', e);
+                }
+
+                if (!resultUrl) throw new Error(`Success status but no resultUrl found. Data: ${JSON.stringify(data.data)}`);
 
                 // Optimization: Upload result to Cloudinary for permanent storage/size opt
                 console.log(`[Status] Job done. Uploading to Cloudinary: ${resultUrl}`);
                 const upload = await clients.cloudinary.uploadVideoFromUrl(resultUrl, `furnisher_result_${jobId}`);
 
-                // Update Asset Record (Mirroring Make.com logic)
+                // Update Asset Record
                 console.log(`[Status] Updating asset record for job: ${jobId}`);
                 await adminSupabase.from('assets')
                     .update({
