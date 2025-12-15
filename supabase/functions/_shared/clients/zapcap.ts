@@ -83,7 +83,7 @@ export class ZapCapClient {
   /**
    * Get transcript
    */
-  async getTranscript(videoId: string, taskId: string): Promise<string> {
+  async getTranscript(videoId: string, taskId: string): Promise<{ text: string; raw: any[] }> {
     const response = await fetch(API_ENDPOINTS.zapcap.getTranscript(videoId, taskId), {
       method: 'GET',
       headers: {
@@ -101,12 +101,18 @@ export class ZapCapClient {
 
     // Handle direct array response (Primary case based on logs)
     if (Array.isArray(data)) {
-      return data.map((w: any) => w.text || w.word).join(' ');
+      return {
+        text: data.map((w: any) => w.text || w.word).join(' '),
+        raw: data
+      };
     }
 
     // Handle object response (Legacy/Fallback)
     if (data && data.transcript && Array.isArray(data.transcript)) {
-      return data.transcript.map((w: any) => w.text || w.word).join(' ');
+      return {
+        text: data.transcript.map((w: any) => w.text || w.word).join(' '),
+        raw: data.transcript
+      };
     }
 
     throw new Error(`Invalid ZapCap transcript response: ${JSON.stringify(data)}`);
@@ -115,80 +121,109 @@ export class ZapCapClient {
   /**
    * Update transcript with corrections
    */
-  async updateTranscript(videoId: string, taskId: string, correctedTranscript: string): Promise<void> {
+  async updateTranscript(
+    videoId: string,
+    taskId: string,
+    correctedTranscript: string,
+    originalItems: any[] = []
+  ): Promise<void> {
+
+    // 1. Calculate time boundaries from original items if available
+    let startTime = 0;
+    let endTime = 0;
+
+    if (originalItems && originalItems.length > 0) {
+      startTime = originalItems[0].start_time || 0;
+      endTime = originalItems[originalItems.length - 1].end_time || 0;
+    }
+
+    // prevent invalid duration
+    if (endTime <= startTime) {
+      endTime = startTime + 5; // Fallback 5s duration
+    }
+
+    const totalDuration = endTime - startTime;
+
+    // 2. Prepare new words
+    const words = correctedTranscript.split(/\s+/).filter(w => w.length > 0);
+    const durationPerWord = totalDuration / words.length;
+
+    // 3. Generate new items with interpolated timestamps
+    const body = words.map((word, index) => {
+      const wordStart = startTime + (index * durationPerWord);
+      const wordEnd = wordStart + durationPerWord;
+
+      return {
+        type: 'word',
+        text: word,
+        start_time: Number(wordStart.toFixed(3)),
+        end_time: Number(wordEnd.toFixed(3)),
+      };
+    });
+
+    console.log(`[ZapCap] Updating transcript with ${body.length} words (Time: ${startTime.toFixed(2)} -> ${endTime.toFixed(2)})`);
+
     const response = await fetch(API_ENDPOINTS.zapcap.updateTranscript(videoId, taskId), {
       method: 'PUT',
       headers: {
         'x-api-key': this.apiKey,
         'Content-Type': 'application/json',
       },
-      // Convert string transcript to array of word objects
-      const words = correctedTranscript.split(/\s+/).filter(w => w.length > 0);
-      const body = words.map(word => ({ text: word }));
+      body: JSON.stringify(body),
+    });
 
-      console.log(`[ZapCap] Updating transcript with ${body.length} words`);
-
-      const response = await fetch(API_ENDPOINTS.zapcap.updateTranscript(videoId, taskId), {
-        method: 'PUT',
-        headers: {
-          'x-api-key': this.apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if(!response.ok) {
-        const error = await response.text();
-    throw new Error(`Failed to update transcript: ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to update transcript: ${error}`);
+    }
   }
-}
 
   /**
    * Approve transcript and finalize video
    */
-  async approveTranscript(videoId: string, taskId: string): Promise < string > {
-  const response = await fetch(API_ENDPOINTS.zapcap.approveTranscript(videoId, taskId), {
-    method: 'POST',
-    headers: {
-      'x-api-key': this.apiKey,
-    },
-  });
+  async approveTranscript(videoId: string, taskId: string): Promise<string> {
+    const response = await fetch(API_ENDPOINTS.zapcap.approveTranscript(videoId, taskId), {
+      method: 'POST',
+      headers: {
+        'x-api-key': this.apiKey,
+      },
+    });
 
-  if(!response.ok) {
-  const error = await response.text();
-  throw new Error(`Failed to approve transcript: ${error}`);
-}
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to approve transcript: ${error}`);
+    }
 
-const data: ZapCapTaskResponse = await response.json();
+    const data: ZapCapTaskResponse = await response.json();
 
-if (!data.video_url) {
-  throw new Error('No video URL returned after approval');
-}
+    if (!data.video_url) {
+      throw new Error('No video URL returned after approval');
+    }
 
-return data.video_url;
+    return data.video_url;
   }
 
   /**
    * Poll until captions are complete
    */
-  async waitForCompletion(videoId: string, taskId: string): Promise < string > {
-  let attempts = 0;
+  async waitForCompletion(videoId: string, taskId: string): Promise<string> {
+    let attempts = 0;
 
-  while(attempts <this.config.max_poll_attempts) {
-  const task = await this.getTaskStatus(videoId, taskId);
+    while (attempts < this.config.max_poll_attempts) {
+      const task = await this.getTaskStatus(videoId, taskId);
 
-  if (task.status === 'completed' && task.video_url) {
-    return task.video_url;
-  }
+      if (task.status === 'completed' && task.video_url) {
+        return task.video_url;
+      }
 
-  if (task.status === 'failed') {
-    throw new Error('ZapCap task failed');
-  }
+      if (task.status === 'failed') {
+        throw new Error('ZapCap task failed');
+      }
 
-  await new Promise(resolve => setTimeout(resolve, this.config.poll_interval_ms));
-  attempts++;
-}
+      await new Promise(resolve => setTimeout(resolve, this.config.poll_interval_ms));
+      attempts++;
+    }
 
-throw new Error(`ZapCap task timed out after ${this.config.max_poll_attempts} attempts`);
+    throw new Error(`ZapCap task timed out after ${this.config.max_poll_attempts} attempts`);
   }
 }

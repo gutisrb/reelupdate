@@ -291,7 +291,7 @@ async function processVideoAsync(
 
     // Get caption template ID (convert database UUID to ZapCap template ID)
     let captionTemplateId: string | null = null;
-    
+
     if (userSettings.caption_template_id) {
       // User has selected a template - look up the ZapCap template ID
       const { data: selectedTemplate } = await supabase
@@ -300,10 +300,10 @@ async function processVideoAsync(
         .eq('id', userSettings.caption_template_id)
         .eq('active', true)
         .single();
-      
+
       captionTemplateId = selectedTemplate?.zapcap_template_id || null;
     }
-    
+
     if (!captionTemplateId) {
       // Get default template if no user selection or lookup failed
       const { data: defaultTemplate } = await supabase
@@ -316,7 +316,7 @@ async function processVideoAsync(
 
       captionTemplateId = defaultTemplate?.zapcap_template_id || '6255949c-4a52-4255-8a67-39ebccfaa3ef';
     }
-    
+
     console.log(`[${data.video_id}] Using ZapCap template ID: ${captionTemplateId}`);
 
     // ============================================
@@ -583,6 +583,7 @@ async function processVideoAsync(
           const pollInterval = VIDEO_GENERATION_CONFIG.captions.poll_interval_ms;
           let attempts = 0;
           let zapCapTranscript: string | null = null;
+          let rawTranscriptItems: any[] = [];
 
           while (attempts < maxAttempts && !zapCapTranscript) {
             const status = await clients.zapcap.getTaskStatus(zapCapVideoId, taskId);
@@ -593,11 +594,11 @@ async function processVideoAsync(
             }
 
             // Try to fetch transcript to see if it's ready
-            // If it succeeds, transcript is ready; if it fails with 404, it's not ready yet
             try {
-              const testTranscript = await clients.zapcap.getTranscript(zapCapVideoId, taskId);
-              if (testTranscript && testTranscript.length > 0) {
-                zapCapTranscript = testTranscript;
+              const result = await clients.zapcap.getTranscript(zapCapVideoId, taskId);
+              if (result && result.text && result.text.length > 0) {
+                zapCapTranscript = result.text;
+                rawTranscriptItems = result.raw;
                 console.log(`[${data.video_id}] Transcript is ready!`);
                 break;
               }
@@ -606,7 +607,6 @@ async function processVideoAsync(
               if (error.message?.includes('404') || error.message?.includes('not found')) {
                 // Transcript not ready, continue waiting
               } else {
-                // Some other error, log it but continue
                 console.log(`[${data.video_id}] Error checking transcript (will retry): ${error.message}`);
               }
             }
@@ -620,10 +620,10 @@ async function processVideoAsync(
             throw new Error(`ZapCap transcription timed out after ${maxAttempts} attempts (${Math.floor(maxAttempts * pollInterval / 1000)}s)`);
           }
 
-          // 3. Transcript is ready (already fetched during polling)
+          // 3. Transcript is ready
           console.log(`[${data.video_id}] ZapCap transcript: ${zapCapTranscript.substring(0, 100)}...`);
 
-          // 4. Correct transcript using our voiceover script (via GPT)
+          // 4. Correct transcript
           console.log(`[${data.video_id}] Correcting transcript with our voiceover script...`);
           const correctedTranscript = await clients.openai.correctTranscript(
             zapCapTranscript,
@@ -631,9 +631,9 @@ async function processVideoAsync(
           );
           console.log(`[${data.video_id}] Corrected transcript: ${correctedTranscript.substring(0, 100)}...`);
 
-          // 5. Update ZapCap with corrected transcript
+          // 5. Update ZapCap with corrected transcript (and interpolate timestamps)
           console.log(`[${data.video_id}] Updating ZapCap with corrected transcript...`);
-          await clients.zapcap.updateTranscript(zapCapVideoId, taskId, correctedTranscript);
+          await clients.zapcap.updateTranscript(zapCapVideoId, taskId, correctedTranscript, rawTranscriptItems);
 
           // 6. Approve transcript to generate final captioned video
           console.log(`[${data.video_id}] Approving transcript and finalizing video...`);
