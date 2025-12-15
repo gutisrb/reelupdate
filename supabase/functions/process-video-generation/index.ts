@@ -637,7 +637,10 @@ async function processVideoAsync(
 
           // 6. Approve transcript to generate final captioned video
           console.log(`[${data.video_id}] Approving transcript and finalizing video...`);
-          const zapcapVideoUrl = await clients.zapcap.approveTranscript(zapCapVideoId, taskId);
+          await clients.zapcap.approveTranscript(zapCapVideoId, taskId);
+
+          console.log(`[${data.video_id}] Transcript approved. Waiting for video generation to complete...`);
+          const zapcapVideoUrl = await clients.zapcap.waitForCompletion(zapCapVideoId, taskId);
 
           console.log(`[${data.video_id}] ZapCap completed! Video URL: ${zapcapVideoUrl}`);
 

@@ -181,7 +181,7 @@ export class ZapCapClient {
   /**
    * Approve transcript and finalize video
    */
-  async approveTranscript(videoId: string, taskId: string): Promise<string> {
+  async approveTranscript(videoId: string, taskId: string): Promise<void> {
     const response = await fetch(API_ENDPOINTS.zapcap.approveTranscript(videoId, taskId), {
       method: 'POST',
       headers: {
@@ -194,13 +194,8 @@ export class ZapCapClient {
       throw new Error(`Failed to approve transcript: ${error}`);
     }
 
-    const data: ZapCapTaskResponse = await response.json();
-
-    if (!data.video_url) {
-      throw new Error('No video URL returned after approval');
-    }
-
-    return data.video_url;
+    // Approval triggers rendering, but returns no data (204 or empty info).
+    // We must poll for completion separately.
   }
 
   /**
