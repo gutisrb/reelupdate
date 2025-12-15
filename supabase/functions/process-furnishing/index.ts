@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { CreateClient } from "../_shared/clients/index.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0"; // Pin version for stability
+import { initClients } from "../_shared/clients/index.ts";
 import { API_KEYS, API_ENDPOINTS } from "../_shared/config.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -18,13 +19,37 @@ Rules:
 - If the instruction is empty/unclear, default to:
   “Insert the main subject from image 2 into image 1 so it looks native; match perspective, lens, scale, shadows and lighting; keep the scene unchanged; no extra objects.”`;
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
     try {
-        const clients = CreateClient();
+        const clients = initClients();
+
+        // 1. Initialize Admin Client (for privileged DB ops like credit deduction)
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+        const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+        (clients as any).supabase = adminSupabase;
+
+        // 2. Verify User Identity via Token
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            throw new Error('Missing Authorization header');
+        }
+
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+        const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        });
+
+        const { data: { user }, error: userError } = await userSupabase.auth.getUser();
+        if (userError || !user) {
+            throw new Error('Invalid or expired token');
+        }
+        const userId = user.id; // Trusted User ID
+
         const url = new URL(req.url);
 
         // ------------------------------------------------------------------
@@ -36,7 +61,10 @@ serve(async (req) => {
                 throw new Error('Missing jobId');
             }
 
-            console.log(`[Status] Checking job: ${jobId}`);
+            // Optional: In a future iteration, check if 'jobId' belongs to 'userId' via DB.
+            // For now, we at least ensure the caller is a valid user.
+
+            console.log(`[Status] User ${userId} checking job: ${jobId}`);
 
             const response = await fetch(API_ENDPOINTS.kie.getTask(jobId), {
                 headers: { 'Authorization': `Bearer ${API_KEYS.KIE_AI}` }
@@ -56,6 +84,16 @@ serve(async (req) => {
                 // Optimization: Upload result to Cloudinary for permanent storage/size opt
                 console.log(`[Status] Job done. Uploading to Cloudinary: ${resultUrl}`);
                 const upload = await clients.cloudinary.uploadVideoFromUrl(resultUrl, `furnisher_result_${jobId}`);
+
+                // Update Asset Record (Mirroring Make.com logic)
+                console.log(`[Status] Updating asset record for job: ${jobId}`);
+                await adminSupabase.from('assets')
+                    .update({
+                        status: 'ready',
+                        src_url: upload.secure_url,
+                        thumb_url: upload.secure_url
+                    })
+                    .eq('job_id', jobId);
 
                 return new Response(JSON.stringify({
                     status: 'done',
@@ -80,19 +118,19 @@ serve(async (req) => {
         // ------------------------------------------------------------------
         if (req.method === 'POST') {
             const formData = await req.formData();
-            const userId = formData.get('user_id') as string;
+            // const userId = formData.get('user_id') as string; // INSECURE: Ignored in favor of auth user
             const image1 = formData.get('image1') as File;
-            const image2 = formData.get('image2') as File | string; // Optional
+            const image2 = formData.get('image2'); // File or string or null
             const instructions = formData.get('instructions') as string;
             const style = formData.get('style') as string; // Legacy param, usually empty or part of instructions
 
-            if (!userId || !image1) {
-                throw new Error('Missing required fields (user_id, image1)');
+            if (!image1) {
+                throw new Error('Missing required field: image1');
             }
 
             // 1. Auth & Credit Check
             console.log(`[Create] User: ${userId}`);
-            const { data: profile, error: profileError } = await clients.supabase
+            const { data: profile, error: profileError } = await adminSupabase
                 .from('profiles')
                 .select('tier, image_credits_remaining')
                 .eq('id', userId)
@@ -111,12 +149,14 @@ serve(async (req) => {
 
             // 2. Upload Inputs to Cloudinary
             console.log(`[Create] Uploading Input Image 1...`);
-            const upload1 = await clients.cloudinary.uploadImage(image1, `furnisher_input_1_${Date.now()}`);
+            const image1Buf = await image1.arrayBuffer();
+            const upload1 = await clients.cloudinary.uploadImage(image1Buf, `furnisher_input_1_${Date.now()}`);
 
             let upload2Url = null;
             if (image2 && image2 instanceof File) {
                 console.log(`[Create] Uploading Input Image 2...`);
-                const upload2 = await clients.cloudinary.uploadImage(image2, `furnisher_input_2_${Date.now()}`);
+                const image2Buf = await image2.arrayBuffer();
+                const upload2 = await clients.cloudinary.uploadImage(image2Buf, `furnisher_input_2_${Date.now()}`);
                 upload2Url = upload2.secure_url;
             }
 
@@ -187,18 +227,37 @@ serve(async (req) => {
                 throw new Error(`Kie.ai did not return a Job ID. Response: ${JSON.stringify(kieData)}`);
             }
 
-            // 5. Deduct Credit (if not scale tier?) - The blueprint checked credits but didn't explicitly DEDUCT them? 
-            // Make.com usually does DB updates separately. 
-            // User policy says "NO_IMAGE_CREDITS" error if 0. 
-            // We should probably deduct 1 credit here.
+            // 5. Deduct Credit
             if (profile.tier !== 'scale') {
-                await clients.supabase.rpc('decrement_image_credit', { row_id: userId });
-                // Assuming this RPC exists, if not we do standard update.
-                // Let's do standard update to be safe for now.
-                await clients.supabase
-                    .from('profiles')
-                    .update({ image_credits_remaining: profile.image_credits_remaining - 1 })
-                    .eq('id', userId);
+                // Try RPC first if exists, else direct update
+                const { error: rpcError } = await adminSupabase.rpc('decrement_image_credit', { row_id: userId });
+                if (rpcError) {
+                    console.log('RPC failed, falling back to manual update:', rpcError.message);
+                    await adminSupabase
+                        .from('profiles')
+                        .update({ image_credits_remaining: profile.image_credits_remaining - 1 })
+                        .eq('id', userId);
+                }
+            }
+
+            // 6. Create Asset Record (Mirroring Make.com logic)
+            console.log(`[Create] Creating asset record for job: ${jobId}`);
+            const { error: assetError } = await adminSupabase.from('assets').insert({
+                user_id: userId,
+                kind: 'image',
+                source: 'furnisher',
+                status: 'processing',
+                job_id: jobId,
+                prompt: instructions,
+                inputs: {
+                    instructions: instructions,
+                    image_urls: inputPayload.image_urls
+                }
+            });
+
+            if (assetError) {
+                console.error('[Create] Failed to create asset record:', assetError);
+                // We don't fail the request here, as the job is already running
             }
 
             console.log(`[Create] Success! Job ID: ${jobId}`);

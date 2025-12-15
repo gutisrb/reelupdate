@@ -68,6 +68,37 @@ export class OpenAIClient {
   }
 
   /**
+   * General purpose chat completion
+   */
+  async chat(params: {
+    messages: { role: string; content: string }[];
+    model?: string;
+    temperature?: number;
+  }): Promise<any> {
+    const body = {
+      model: params.model || 'gpt-4o',
+      messages: params.messages,
+      temperature: params.temperature ?? 1.0,
+    };
+
+    const response = await fetch(API_ENDPOINTS.openai.chatCompletions, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenAI chat failed: ${error}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
    * Correct transcript using GPT
    */
   async correctTranscript(

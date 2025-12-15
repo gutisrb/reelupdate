@@ -20,7 +20,7 @@ export default function Furnisher() {
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
-  const [slotContext, setSlotContext] = useState<{slotIndex: number, imageIndex: number} | null>(null);
+  const [slotContext, setSlotContext] = useState<{ slotIndex: number, imageIndex: number } | null>(null);
 
   // Auto-load image from localStorage when component mounts
   useEffect(() => {
@@ -65,8 +65,20 @@ export default function Furnisher() {
   const checkStatus = async (jobId: string) => {
     try {
       // Your Make "status" scenario accepts GET with ?jobId=
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        console.error('No access token for status check');
+        return true; // stop polling
+      }
+
+      // Your Make "status" scenario accepts GET with ?jobId=
       const response = await fetch(`${MAKE_STATUS_URL}?jobId=${encodeURIComponent(jobId)}`, {
         method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         cache: 'no-store',
       });
 
@@ -151,8 +163,23 @@ export default function Furnisher() {
       const cleanedInstructions = instructions.trim().replace(/\n+/g, ' ');
       formData.append('instructions', cleanedInstructions);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        console.error('No access token found in session');
+        toast.error('Sesija je istekla. Molimo osvežite stranicu ili se prijavite ponovo.');
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log('Sending request to:', MAKE_CREATE_URL);
+
       const response = await fetch(MAKE_CREATE_URL, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
 
@@ -420,7 +447,7 @@ export default function Furnisher() {
                       alt="Generated result"
                       className="w-full h-full object-cover reveal-animation"
                     />
-                    
+
                     {/* Before/After comparison overlay */}
                     {showComparison && images[0] && (
                       <div className="absolute inset-0">
