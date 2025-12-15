@@ -397,14 +397,47 @@ async function handleZapCapPoll(payload: any, functionUrl: string, authToken: st
         console.log(`[${video_id}] 🎉 ZapCap Render Complete: ${status.video_url}`);
 
         // Finalize!
-        // Upload to Cloudinary
+        // Upload to Cloudinary (ZapCap -> Cloudinary)
         const stage2Result = await clients.cloudinary.uploadVideoFromUrl(status.video_url, `stage2_zapcap_${video_id}_${Date.now()}`);
-        const finalVideoUrl = stage2Result.secure_url; // Assuming no Logo stage for now or add it here
+        let currentVideoUrl = stage2Result.secure_url;
+
+        console.log(`[${video_id}] STAGE 2 COMPLETE (ZapCap): ${currentVideoUrl}`);
+
+        // ============================================
+        // 8. VIDEO PIPELINE: STAGE 3 - LOGO (Restored for Recursive Path)
+        // ============================================
+        let finalVideoWithLogo = currentVideoUrl;
+        const userSettings = details.settings_snapshot;
+
+        if (userSettings && userSettings.logo_url) {
+          console.log(`[${video_id}] PIPELINE STAGE 3: Adding Logo...`);
+          try {
+            const logoTransformationUrl = clients.cloudinary.addLogoOverlay(
+              currentVideoUrl,
+              userSettings.logo_url,
+              userSettings.logo_position || 'corner_top_right',
+              userSettings.logo_size_percent || 15
+            );
+
+            if (logoTransformationUrl !== currentVideoUrl) {
+              console.log(`[${video_id}] Logo URL generated. Baking Stage 3...`);
+              const finalPublicId = `final_video_${video_id}_${Date.now()}`;
+              const stage3Result = await clients.cloudinary.uploadVideoFromUrl(logoTransformationUrl, finalPublicId);
+              finalVideoWithLogo = stage3Result.secure_url;
+              console.log(`[${video_id}] STAGE 3 COMPLETE: ${finalVideoWithLogo} `);
+            }
+          } catch (e: any) {
+            console.error(`[${video_id}] STAGE 3 FAILED(Logo): `, e);
+            // Fallback to previous stage
+          }
+        } else {
+          console.log(`[${video_id}] No logo requested, skipping Stage 3.`);
+        }
 
         // Update Video Status
         await supabase.from('videos').update({
           status: 'ready',
-          video_url: finalVideoUrl,
+          video_url: finalVideoWithLogo,
           updated_at: new Date().toISOString()
         }).eq('id', video_id);
 
