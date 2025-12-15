@@ -253,17 +253,11 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
     // Start ZapCap if enabled
     // Start ZapCap if enabled
     if (userSettings.caption_enabled && userSettings.caption_system === 'zapcap') {
-      if (isTestMode) {
-        console.log(`[${data.video_id}] TEST MODE: Skipping ZapCap task creation (saving credits). Using placeholder ID.`);
-        zapCapTaskId = 'test_zapcap_task_id';
-        zapCapVideoId = 'test_zapcap_video_id';
-      } else {
-        console.log(`[${data.video_id}] Starting ZapCap task...`);
-        const zc = await clients.zapcap.createCaptionTask(currentVideoUrl, captionTemplateId);
-        zapCapTaskId = zc.taskId;
-        zapCapVideoId = zc.videoId;
-        console.log(`[${data.video_id}] ZapCap Task Started: ${zapCapTaskId}`);
-      }
+      console.log(`[${data.video_id}] Starting ZapCap task...`);
+      const zc = await clients.zapcap.createCaptionTask(currentVideoUrl, captionTemplateId);
+      zapCapTaskId = zc.taskId;
+      zapCapVideoId = zc.videoId;
+      console.log(`[${data.video_id}] ZapCap Task Started: ${zapCapTaskId}`);
     } else {
       // If browser captions or no captions, we might finish here or in next block
       // For now, let's treat browser captions as "Done" effectively
@@ -346,7 +340,6 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
 // ==========================================
 async function handleZapCapPoll(payload: any, functionUrl: string, authToken: string) {
   const { video_id, zapcap_task_id, zapcap_video_id } = payload;
-  const isTestMode = zapcap_task_id === 'test_zapcap_task_id';
   const supabase = createClient(API_ENDPOINTS.supabase.url, API_ENDPOINTS.supabase.serviceRoleKey);
   const clients = initClients();
 
@@ -367,16 +360,8 @@ async function handleZapCapPoll(payload: any, functionUrl: string, authToken: st
 
   while (Date.now() - START_TIME < MAX_TIME_MS) {
     try {
-      const status = isTestMode ? { status: 'completed', video_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765407043/cwl0mqzkwc3xf7iesmgl.wav' } : await clients.zapcap.getTaskStatus(zapcap_video_id, zapcap_task_id);
-      if (isTestMode) {
-        console.log(`[${video_id}] TEST MODE: Simulating ZapCap poll...`);
-        // Fake delay
-        await new Promise(r => setTimeout(r, 2000));
-        status.video_url = payload.stage1_url; // Just reuse the input video for test
-        status.status = 'completed';
-      } else {
-        console.log(`[${video_id}] ZapCap Status: ${status.status}`);
-      }
+      const status = await clients.zapcap.getTaskStatus(zapcap_video_id, zapcap_task_id);
+      console.log(`[${video_id}] ZapCap Status: ${status.status}`);
 
       if (status.status === 'failed') throw new Error('ZapCap task failed');
 
