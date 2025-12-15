@@ -39,14 +39,12 @@ serve(async (req: Request) => {
             throw new Error('Missing Authorization header');
         }
 
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-        const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: authHeader } }
-        });
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await adminSupabase.auth.getUser(token);
 
-        const { data: { user }, error: userError } = await userSupabase.auth.getUser();
         if (userError || !user) {
-            throw new Error('Invalid or expired token');
+            console.error('[Auth Error]', userError);
+            throw new Error(`Invalid or expired token: ${userError?.message || 'No user found'}`);
         }
         const userId = user.id; // Trusted User ID
 
