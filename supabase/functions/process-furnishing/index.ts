@@ -98,7 +98,7 @@ serve(async (req: Request) => {
 
                 // Optimization: Upload result to Cloudinary for permanent storage/size opt
                 console.log(`[Status] Job done. Uploading to Cloudinary: ${resultUrl}`);
-                const upload = await clients.cloudinary.uploadVideoFromUrl(resultUrl, `furnisher_result_${jobId}`);
+                const upload = await clients.cloudinary.uploadImageFromUrl(resultUrl, `furnisher_result_${jobId}`);
 
                 // Update Asset Record
                 console.log(`[Status] Updating asset record for job: ${jobId}`);

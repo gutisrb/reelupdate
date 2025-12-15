@@ -142,6 +142,39 @@ export class CloudinaryClient {
   }
 
   /**
+   * Upload image from a remote URL directly (Cloudinary fetches it).
+   * This is efficient and keeps the original image format (or auto-converts).
+   */
+  async uploadImageFromUrl(imageUrl: string, publicId: string): Promise<CloudinaryUploadResponse> {
+    const formData = new FormData();
+
+    formData.append('file', imageUrl);
+    formData.append('public_id', publicId);
+    formData.append('upload_preset', this.uploadPreset);
+    formData.append('resource_type', 'image'); // Explicitly image
+
+    console.log(`[Cloudinary] Triggering remote image upload for public_id: ${publicId}`);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Cloudinary remote image upload failed: ${error}`);
+    }
+
+    const result = await response.json();
+    console.log(`[Cloudinary] Remote image upload successful, new public_id: ${result.public_id}`);
+
+    return result;
+  }
+
+  /**
    * Convert ArrayBuffer/Uint8Array to base64 string
    */
   private arrayBufferToBase64(buffer: Uint8Array): string {
