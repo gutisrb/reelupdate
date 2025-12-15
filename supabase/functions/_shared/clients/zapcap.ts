@@ -96,8 +96,14 @@ export class ZapCapClient {
       throw new Error(`Failed to get transcript: ${error}`);
     }
 
-    const data: ZapCapTranscriptResponse = await response.json();
-    return data.transcript.map(w => w.word).join(' ');
+    const data = await response.json();
+    console.log(`[ZapCap] convertTranscript response for ${videoId}:`, JSON.stringify(data));
+
+    if (!data || !data.transcript || !Array.isArray(data.transcript)) {
+      throw new Error(`Invalid ZapCap transcript response: ${JSON.stringify(data)}`);
+    }
+
+    return data.transcript.map((w: any) => w.word).join(' ');
   }
 
   /**
