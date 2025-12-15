@@ -140,6 +140,7 @@ export interface ZapCapTaskResponse {
   taskId: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   video_url?: string;
+  downloadUrl?: string;
 }
 
 export interface ZapCapTranscriptResponse {

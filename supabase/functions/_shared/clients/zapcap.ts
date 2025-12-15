@@ -207,8 +207,8 @@ export class ZapCapClient {
     while (attempts < this.config.max_poll_attempts) {
       const task = await this.getTaskStatus(videoId, taskId);
 
-      if (task.status === 'completed' && task.video_url) {
-        return task.video_url;
+      if (task.status === 'completed' && (task.downloadUrl || task.video_url)) {
+        return task.downloadUrl || task.video_url || '';
       }
 
       if (task.status === 'failed') {

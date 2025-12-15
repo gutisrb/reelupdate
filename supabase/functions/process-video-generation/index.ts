@@ -394,12 +394,13 @@ async function handleZapCapPoll(payload: any, functionUrl: string, authToken: st
       }
 
       // 2. Check for Final Video
-      if (status.status === 'completed' && status.video_url) {
-        console.log(`[${video_id}] 🎉 ZapCap Render Complete: ${status.video_url}`);
+      const finalUrl = status.downloadUrl || status.video_url;
+      if (status.status === 'completed' && finalUrl) {
+        console.log(`[${video_id}] 🎉 ZapCap Render Complete: ${finalUrl}`);
 
         // Finalize!
         // Upload to Cloudinary (ZapCap -> Cloudinary)
-        const stage2Result = await clients.cloudinary.uploadVideoFromUrl(status.video_url, `stage2_zapcap_${video_id}_${Date.now()}`);
+        const stage2Result = await clients.cloudinary.uploadVideoFromUrl(finalUrl, `stage2_zapcap_${video_id}_${Date.now()}`);
         let currentVideoUrl = stage2Result.secure_url;
 
         console.log(`[${video_id}] STAGE 2 COMPLETE (ZapCap): ${currentVideoUrl}`);

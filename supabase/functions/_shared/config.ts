@@ -6,6 +6,7 @@ export const API_KEYS = {
   ELEVENLABS: Deno.env.get('ELEVENLABS_API_KEY') || '',
   ZAPCAP: Deno.env.get('ZAPCAP_API_KEY') || '',
   GOOGLE_AI: Deno.env.get('GOOGLE_AI_API_KEY') || '',
+  KIE_AI: '1a9ac7af8d3d9708427172af4d187038', // Hardcoded from user blueprint as per instructions
   CLOUDINARY_API_KEY: Deno.env.get('CLOUDINARY_API_KEY') || '',
   CLOUDINARY_API_SECRET: Deno.env.get('CLOUDINARY_API_SECRET') || '',
 };
@@ -62,6 +63,10 @@ export const API_ENDPOINTS = {
     getTranscript: (videoId: string, taskId: string) => `https://api.zapcap.ai/videos/${videoId}/task/${taskId}/transcript`,
     updateTranscript: (videoId: string, taskId: string) => `https://api.zapcap.ai/videos/${videoId}/task/${taskId}/transcript`,
     approveTranscript: (videoId: string, taskId: string) => `https://api.zapcap.ai/videos/${videoId}/task/${taskId}/approve-transcript`,
+  },
+  kie: {
+    createTask: 'https://api.kie.ai/api/v1/jobs/createTask',
+    getTask: (taskId: string) => `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
   },
   google: {
     geminiVision: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
