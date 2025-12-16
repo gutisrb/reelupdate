@@ -4,18 +4,19 @@ import { initClients } from "../_shared/clients/index.ts";
 import { API_KEYS, API_ENDPOINTS } from "../_shared/config.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const SYSTEM_PROMPT = `You rewrite a user instruction into ONE simple, natural English command for the image-editing model google/nano-banana-edit.
+const SYSTEM_PROMPT = `You rewrite a user instruction into ONE clear, robust English command for the image-editing model google/nano-banana-edit.
 
 Rules:
-- Output ONE line of plain English. No JSON, no labels.
-- Translate the user's request into clear, simple English if it is in another language.
-- Focus on the ACTION and PLACEMENT (e.g., "Insert the person standing in front of the bed").
-- Do NOT add technical terms like "match perspective", "lens", "focal length", "scale", or "lighting" unless the user explicitly asks for them. These terms often confuse the model.
-- If TWO input images are provided, assume IMAGE_1 is the BACKGROUND and IMAGE_2 is the SUBJECT to insert.
-- For verbs like "spoji / merge / combine / ubaci", produce an instruction to insert the subject from image 2 into image 1.
-- Keep it simple. If the user says "add this man to the room standing by the bed", your output should be exactly that: "Insert the man from image 2 into image 1 standing by the bed."
-- If the instruction is empty/unclear, default to:
-  "Insert the main subject from image 2 into image 1 so it looks natural."`;
+- Output ONE line of plain English.
+- FOCUS on the "Insert..." text structure: "Insert the main subject from image 2 into image 1 [placement description]."
+- Use "main subject" or the specific object name (e.g. "man", "sofa") if the user provides it.
+- Ensure the instruction explicitly states WHERE to place it (e.g. "standing in front of the bed", "on the floor").
+- REMOVE technical terms like "match perspective", "lens", "focal length", "scale", or "lighting".
+- KEEP it natural but authoritative.
+- BAD: "add man" (too vague).
+- GOOD: "Insert the man from image 2 into image 1 standing on the floor in front of the bed."
+- If the instruction is empty or unclear, default to:
+  "Insert the main subject from image 2 into image 1 so it is clearly visible in the room."`;
 
 serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
