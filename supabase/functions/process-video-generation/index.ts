@@ -123,6 +123,7 @@ serve(async (req) => {
       slot_mode_info: groupingStr,
       total_images: totalImages,
       caption_video_url: captionVideoUrl || undefined,
+      logo_size_percent: formData.get('logo_size') ? parseInt(formData.get('logo_size') as string) : undefined
     };
 
     // Initialize Supabase client
@@ -178,6 +179,12 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       caption_style_type: 'template', caption_font_family: 'Arial', caption_font_size: 34, caption_font_color: 'FFFFFF', caption_bg_color: '000000', caption_bg_opacity: 100
     };
 
+    // Override logo size if provided in request
+    if (data.logo_size_percent) {
+      console.log(`[${data.video_id}] Overriding logo size to ${data.logo_size_percent}%`);
+      userSettings.logo_size_percent = data.logo_size_percent;
+    }
+
     // Determine Template ID
     let captionTemplateId = null;
     if (userSettings.caption_template_id) {
@@ -208,6 +215,8 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
     }
 
     // 5. AUDIO
+    await supabase.from('videos').update({ processing_status_text: 'Generating voiceover & music...' }).eq('id', data.video_id);
+
     let voiceoverScript = 'Test Script';
     let voiceoverUpload: any = { secure_url: '' };
     let musicUrl = '';
@@ -219,22 +228,31 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       musicUrl = 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765440325/music_1765440324652.mp3';
     } else {
       const visualContext = clips.map(c => c.luma_prompt).join('; ');
+
+      // Update status for script
+      await supabase.from('videos').update({ processing_status_text: 'Writing script...' }).eq('id', data.video_id);
       voiceoverScript = await clients.google.generateVoiceoverScript(data.property_data, visualContext, clips.length * 5);
+
+      // Update status for TTS
+      await supabase.from('videos').update({ processing_status_text: 'Generating voiceover...' }).eq('id', data.video_id);
       const voiceoverPCM = await clients.google.generateTTS(voiceoverScript, userSettings.voice_id, userSettings.voice_style_instructions);
       voiceoverUpload = await clients.cloudinary.uploadVideo(voiceoverPCM, `voiceover_${data.video_id}.wav`);
 
-      // Music Logic (Simplified for brevity, assuming auto/library works similar to original)
+      // Music Logic
+      await supabase.from('videos').update({ processing_status_text: 'Composing music...' }).eq('id', data.video_id);
       const musicPrompt = clients.elevenlabs.generateMusicPrompt(clips[0]?.mood || 'modern', clips[0]?.description || '');
       musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, clips.length * 5 * 1000);
     }
 
     // Wait for Luma (if real)
     if (!isTestMode) {
+      await supabase.from('videos').update({ processing_status_text: 'Animating scenes...' }).eq('id', data.video_id);
       const completionPromises = clips.map((clip, index) => finishClip(clip, index, data, clients));
       clips = await Promise.all(completionPromises);
     }
 
     // 6. STAGE 1 ASSEMBLY
+    await supabase.from('videos').update({ processing_status_text: 'Assembling video...' }).eq('id', data.video_id);
     const assemblyTransformationUrl = clients.cloudinary.assembleVideo(
       clips.map(c => c.clip_url), voiceoverUpload.secure_url, musicUrl, clips.length * 5, userSettings.default_music_volume_db
     );
@@ -254,6 +272,11 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
     // Start ZapCap if enabled
     if (userSettings.caption_enabled && userSettings.caption_system === 'zapcap') {
       console.log(`[${data.video_id}] Starting ZapCap task...`);
+      await supabase.from('videos').update({
+        processing_status_text: 'Generating captions...',
+        video_url: currentVideoUrl // Expose Stage 1 video immediately
+      }).eq('id', data.video_id);
+
       const zc = await clients.zapcap.createCaptionTask(currentVideoUrl, captionTemplateId);
       zapCapTaskId = zc.taskId;
       zapCapVideoId = zc.videoId;

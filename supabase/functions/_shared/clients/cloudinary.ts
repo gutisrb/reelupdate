@@ -317,8 +317,10 @@ export class CloudinaryClient {
     );
 
     // Add voiceover layer (no volume adjustment - keep original level)
+    // Removed du_ limitation to prevent premature cutoff if VO is slightly longer/shorter (let it play naturally)
+    // But we usually want it to stop if it exceeds video? No, usually video is sized to fit content.
     transformations.push(
-      `l_audio:${voicePublicId},so_0,du_${totalDuration}`,
+      `l_audio:${voicePublicId},so_0`,
       'fl_layer_apply'
     );
 

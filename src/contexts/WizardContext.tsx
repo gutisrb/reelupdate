@@ -11,6 +11,7 @@ export interface FormData {
   baths?: string;
   sprat?: string;
   extras?: string;
+  logo_size?: number;
 }
 
 export interface WizardData {
@@ -69,10 +70,10 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     const saveData = async () => {
       try {
         // Calculate total size of images
-        const totalSize = wizardData.slots.reduce((sum, slot) => 
+        const totalSize = wizardData.slots.reduce((sum, slot) =>
           sum + slot.images.reduce((imgSum, img) => imgSum + img.size, 0), 0
         );
-        
+
         // Only save if total size is under 50MB to prevent crashes
         if (totalSize < 50 * 1024 * 1024) {
           await saveWizardDraft(wizardData);
@@ -106,9 +107,9 @@ export function WizardProvider({ children }: { children: ReactNode }) {
           images: []
         };
       });
-      
-      return { 
-        ...prev, 
+
+      return {
+        ...prev,
         clipCount: count,
         slots: newSlots
       };
