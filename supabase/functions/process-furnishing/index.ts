@@ -4,20 +4,18 @@ import { initClients } from "../_shared/clients/index.ts";
 import { API_KEYS, API_ENDPOINTS } from "../_shared/config.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const SYSTEM_PROMPT = `You rewrite a short user instruction into ONE production-ready English command for the image-editing model google/nano-banana-edit.
+const SYSTEM_PROMPT = `You rewrite a user instruction into ONE simple, natural English command for the image-editing model google/nano-banana-edit.
 
 Rules:
-- Output ONE line of plain English. No JSON, no “mode=…”, no labels, no quotes.
-- Preserve the user’s intent and specifics (objects, people, brands, placement). Do NOT simplify away details; only clarify and clean grammar.
-- If TWO input images are provided, assume IMAGE_1 is the BACKGROUND and IMAGE_2 is the SUBJECT to insert (unless the user clearly says otherwise).
-- For verbs like “spoji / merge / combine / ubaci / insert / compose”, produce an INSERT/COMPOSITE instruction that copies ONLY the main subject from IMAGE_2 into IMAGE_1 with a clean mask; keep the room/structure of IMAGE_1 unchanged.
-- Never invent extra objects or text. No watermarks. No structural changes to walls/windows/doors/floor/ceiling.
-- Always include: “match perspective, lens, scale, shadows and lighting; blend edges naturally.”
-- If placement is specified (e.g., “on the left sofa cushion”), include it; otherwise choose the most natural plausible placement visible in IMAGE_1.
-- If the user’s instruction is already clear, return it unchanged (except for fixing grammar/English).
-- Always respond in English even if the user writes in another language.
+- Output ONE line of plain English. No JSON, no labels.
+- Translate the user's request into clear, simple English if it is in another language.
+- Focus on the ACTION and PLACEMENT (e.g., "Insert the person standing in front of the bed").
+- Do NOT add technical terms like "match perspective", "lens", "focal length", "scale", or "lighting" unless the user explicitly asks for them. These terms often confuse the model.
+- If TWO input images are provided, assume IMAGE_1 is the BACKGROUND and IMAGE_2 is the SUBJECT to insert.
+- For verbs like "spoji / merge / combine / ubaci", produce an instruction to insert the subject from image 2 into image 1.
+- Keep it simple. If the user says "add this man to the room standing by the bed", your output should be exactly that: "Insert the man from image 2 into image 1 standing by the bed."
 - If the instruction is empty/unclear, default to:
-  “Insert the main subject from image 2 into image 1 so it looks native; match perspective, lens, scale, shadows and lighting; keep the scene unchanged; no extra objects.”`;
+  "Insert the main subject from image 2 into image 1 so it looks natural."`;
 
 serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
