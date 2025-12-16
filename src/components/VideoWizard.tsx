@@ -179,10 +179,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     form.append("sprat", wizardData.formData.sprat || "");
     form.append("extras", wizardData.formData.extras || "");
 
-    // Pass logo size if present
-    if (wizardData.formData.logo_size) {
-      form.append("logo_size", String(wizardData.formData.logo_size));
-    }
+
 
     // Append compressed images
     let totalSize = 0;

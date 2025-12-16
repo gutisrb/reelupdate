@@ -323,25 +323,7 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
           <p className="text-13 text-muted-foreground/70 mt-1">Garaža, terasa, lift ili druge značajne karakteristike</p>
         </div>
 
-        <div className="md:col-span-2 border-t border-border/30 pt-6">
-          <Label htmlFor="logo_size" className="text-13 text-muted-foreground mb-4 block">
-            Veličina Logotipa: {formData.logo_size || 15}%
-          </Label>
-          <div className="px-2">
-            <input
-              type="range"
-              id="logo_size"
-              name="logo_size"
-              min="5"
-              max="50"
-              step="1"
-              value={formData.logo_size || 15}
-              onChange={handleChange}
-              className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-          </div>
-          <p className="text-13 text-muted-foreground/70 mt-2">Podesite veličinu logotipa na videu.</p>
-        </div>
+
       </form>
     </div>
   );
