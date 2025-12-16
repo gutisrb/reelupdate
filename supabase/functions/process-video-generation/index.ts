@@ -214,6 +214,15 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       clips = await Promise.all(clipPreparations);
     }
 
+    // UPDATE THUMBNAIL EARLY
+    // We update the thumbnail as soon as the first image is uploaded so it appears in the gallery
+    if (clips.length > 0 && clips[0].first_image_url) {
+      console.log(`[${data.video_id}] Saving thumbnail URL...`);
+      await supabase.from('videos').update({
+        thumbnail_url: clips[0].first_image_url
+      }).eq('id', data.video_id);
+    }
+
     // 5. AUDIO
     await supabase.from('videos').update({ processing_status_text: 'Generating voiceover & music...' }).eq('id', data.video_id);
 
