@@ -227,24 +227,12 @@ serve(async (req: Request) => {
                 body: JSON.stringify({
                     model: 'nano-banana-pro',
                     input: {
-                        ...inputPayload,
-                        // nano-banana-pro expects 'image_input', not 'image_urls'
-                        // we map the first image to image_input
-                        // The API documentation suggests it might only take ONE image or handle multiple differently.
-                        // Assuming prompt handles the second image context if passed separately?
-                        // Wait, user says "neither image was uploaded".
-                        // If documentation says `image_input` (singular), it might treat composition differently.
-                        // For now, let's map the primary image to `image_input`.
-                        // If we have 2 images, the second one (subject) usually goes to `image_input` (or maybe `mask_image`?)
-                        // Correction: Standard Gemini editing usually takes ONE image + prompt.
-                        // BUT for composition ("insert from image 2"), many endpoints take `images` array.
-                        // However, user specifically linked to `nano-banana-pro` docs.
-                        // Let's assume inputPayload properties need to be at top level of `input`.
-                        image_input: inputPayload.image_urls[0], // Pass the main room as input
-                        // If there is a second image (subject), where does it go?
-                        // If PRO model doesn't support 2-image input natively for insertion, we have a problem.
-                        // But let's try passing the second URL in the prompt? No, that's unreliable.
-                        // Let's follow the user's specific hint about "image_input".
+                        prompt: optimizedPrompt,
+                        // Documentation says image_input can be a list of up to 8 URLs.
+                        // So we pass our image_urls array directly to image_input.
+                        image_input: inputPayload.image_urls,
+                        output_format: "png",
+                        image_size: "9:16"
                     }
                 })
             });
