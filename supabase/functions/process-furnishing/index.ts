@@ -225,7 +225,7 @@ serve(async (req: Request) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'google/nano-banana-edit',
+                    model: 'nano-banana-pro',
                     input: inputPayload
                 })
             });
