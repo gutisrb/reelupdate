@@ -53,7 +53,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
         try {
           const { data, error } = await supabase
             .from('videos')
-            .select('status, processing_status_text, video_url')
+            .select('status, video_url')
             .eq('id', currentVideoId)
             .single();
 
@@ -64,20 +64,16 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
 
           if (data) {
             console.log('Poll update:', data);
-
-            // Update status text
-            if (data.processing_status_text) {
-              setProcessingStatus(data.processing_status_text);
-            }
+            const videoData = data as any;
 
             // Check for interim video (Stage 1)
-            if (data.video_url && data.status === 'processing') {
-              setInterimVideoUrl(data.video_url);
+            if (videoData.video_url && videoData.status === 'processing') {
+              setInterimVideoUrl(videoData.video_url);
             }
 
             // Check for completion
-            if (data.status === 'ready' && data.video_url) {
-              setFinalVideoUrl(data.video_url);
+            if (videoData.status === 'ready' && videoData.video_url) {
+              setFinalVideoUrl(videoData.video_url);
               setGenerationState('complete');
               setProcessingStatus('Gotovo!');
               setProgress(100);
@@ -88,7 +84,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
                 description: "Vaš video je uspešno generisan.",
                 duration: 5000
               });
-            } else if (data.status === 'failed') {
+            } else if (videoData.status === 'failed') {
               setGenerationState('idle'); // Or error state
               toast({
                 title: "Greška",
