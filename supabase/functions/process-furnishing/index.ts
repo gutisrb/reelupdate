@@ -162,16 +162,21 @@ serve(async (req: Request) => {
             }
 
             // 2. Upload Inputs to Cloudinary
-            console.log(`[Create] Uploading Input Image 1...`);
+            console.log(`[Create] Uploading Input Image 1... Type: ${image1?.constructor?.name}`);
             const image1Buf = await image1.arrayBuffer();
             const upload1 = await clients.cloudinary.uploadImage(image1Buf, `furnisher_input_1_${Date.now()}`);
 
             let upload2Url = null;
+            console.log(`[Create] Inspecting Image 2. Value: ${image2}, Type: ${image2?.constructor?.name}, IsFile: ${image2 instanceof File}`);
+
             if (image2 && image2 instanceof File) {
-                console.log(`[Create] Uploading Input Image 2...`);
+                console.log(`[Create] Uploading Input Image 2 (Size: ${image2.size})...`);
                 const image2Buf = await image2.arrayBuffer();
                 const upload2 = await clients.cloudinary.uploadImage(image2Buf, `furnisher_input_2_${Date.now()}`);
                 upload2Url = upload2.secure_url;
+                console.log(`[Create] Image 2 Uploaded: ${upload2Url}`);
+            } else {
+                console.log(`[Create] Image 2 skipped. Reason: Not a valid File object.`);
             }
 
             // 3. Generate Prompt (OpenAI)
