@@ -137,7 +137,7 @@ serve(async (req) => {
         return new Response(
             `<html>
         <script>
-          window.location.href = "${Deno.env.get('APP_URL') || 'http://localhost:5173'}/brand-kit";
+          window.location.href = "${Deno.env.get('APP_URL') || 'http://localhost:5173'}/app/settings?tab=social";
         </script>
         <body>Authentication successful! Redirecting...</body>
       </html>`,
