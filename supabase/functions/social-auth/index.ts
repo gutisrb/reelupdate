@@ -42,7 +42,8 @@ serve(async (req) => {
                 // Trim key just in case
                 const cleanKey = clientKey.trim();
 
-                const scopes = 'user.info.basic,video.publish,video.upload'
+                // Sandbox often has limited scopes enabled by default. Start with basic to verify connection.
+                const scopes = 'user.info.basic'
 
                 url = `https://www.tiktok.com/v2/auth/authorize?client_key=${cleanKey}&scope=${scopes}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
                 console.log(`[TikTok Auth] Generated URL: ${url}`)
