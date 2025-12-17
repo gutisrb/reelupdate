@@ -43,7 +43,8 @@ serve(async (req) => {
                 const cleanKey = clientKey.trim();
 
                 // Sandbox often has limited scopes enabled by default. Start with basic to verify connection.
-                const scopes = 'user.info.basic'
+                // UPDATED: Requesting full publishing scopes for App Review screencast / functionality.
+                const scopes = 'user.info.basic,video.publish,video.upload'
 
                 url = `https://www.tiktok.com/v2/auth/authorize?client_key=${cleanKey}&scope=${scopes}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
                 console.log(`[TikTok Auth] Generated URL: ${url}`)
@@ -56,7 +57,12 @@ serve(async (req) => {
                 // Trim ID
                 const cleanId = clientId.trim();
 
-                // FB Login scopes for Instagram Business
+                // FB Login scopes for Instagram Business:
+                // instagram_basic: read account info
+                // instagram_content_publish: post content
+                // pages_show_list: find connected pages
+                // pages_read_engagement: often needed for insights/validation
+                // business_management: often needed for token management
                 const scopes = 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management'
 
                 // Use Facebook Login endpoint

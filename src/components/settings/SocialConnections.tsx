@@ -134,131 +134,187 @@ export function SocialConnections({ userId }: SocialConnectionsProps) {
                 variant: "destructive",
             });
         }
-    };
 
-    const isConnected = (platform: string) => {
-        return connections.find(c => c.platform === platform);
-    };
+        const handleTestPost = async (platform: string, connectionId: string | undefined) => {
+            if (!connectionId) return;
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Social Accounts</CardTitle>
-                <CardDescription>
-                    Connect your accounts to enable auto-posting.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {/* TikTok */}
-                <div className="flex flex-col gap-4 p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">
-                                TT
+            try {
+                toast({
+                    title: "Initiating Test Post",
+                    description: `Attempting to post a sample video to ${platform}...`,
+                });
+
+                // Use a sample video for testing
+                const videoUrl = "https://res.cloudinary.com/demo/video/upload/dog.mp4";
+                const caption = "Hello from ReelUpdate! #test #reelupdate";
+
+                const { data, error } = await supabase.functions.invoke('social-post', {
+                    body: {
+                        connection_id: connectionId,
+                        video_url: videoUrl,
+                        caption,
+                        platform
+                    },
+                });
+
+                if (error) throw error;
+                if (data?.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+                toast({
+                    title: "Test Post Successful!",
+                    description: `Check your ${platform} account. Response: ${JSON.stringify(data.data || data)}`,
+                });
+
+            } catch (error: any) {
+                console.error('Test post error:', error);
+                toast({
+                    title: "Test Post Failed",
+                    description: error.message || "Unknown error occurred",
+                    variant: "destructive",
+                });
+            }
+        };
+
+        const isConnected = (platform: string) => {
+            return connections.find(c => c.platform === platform);
+        };
+
+        // Helper to get connection ID safely
+        const getConnectionId = (platform: string) => isConnected(platform)?.id; // Need to ensure 'id' is in the interface
+
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Social Accounts</CardTitle>
+                    <CardDescription>
+                        Connect your accounts to enable auto-posting.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* TikTok */}
+                    <div className="flex flex-col gap-4 p-4 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">
+                                    TT
+                                </div>
+                                <div>
+                                    <h3 className="font-medium">TikTok</h3>
+                                    {isConnected('tiktok') ? (
+                                        <p className="text-sm text-green-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            Connected as @{isConnected('tiktok')?.platform_username}
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">Not connected</p>
+                                    )}
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-medium">TikTok</h3>
+                            <div className="flex items-center gap-2">
+                                {isConnected('tiktok') && (
+                                    <Button variant="secondary" size="sm" onClick={() => handleTestPost('tiktok', (isConnected('tiktok') as any)?.id)}>
+                                        Test Post
+                                    </Button>
+                                )}
                                 {isConnected('tiktok') ? (
-                                    <p className="text-sm text-green-600 flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        Connected as @{isConnected('tiktok')?.platform_username}
-                                    </p>
+                                    <Button variant="outline" size="sm" onClick={() => handleDisconnect('tiktok')}>
+                                        Disconnect
+                                    </Button>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">Not connected</p>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => handleConnect('tiktok')}
+                                        disabled={!!connecting}
+                                    >
+                                        {connecting === 'tiktok' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                        Connect
+                                    </Button>
                                 )}
                             </div>
                         </div>
-                        {isConnected('tiktok') ? (
-                            <Button variant="outline" size="sm" onClick={() => handleDisconnect('tiktok')}>
-                                Disconnect
-                            </Button>
-                        ) : (
-                            <Button
-                                size="sm"
-                                onClick={() => handleConnect('tiktok')}
-                                disabled={!!connecting}
-                            >
-                                {connecting === 'tiktok' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                Connect
-                            </Button>
+
+                        {isConnected('tiktok') && (
+                            <div className="flex items-center space-x-2 pt-2 border-t">
+                                <Switch
+                                    id="tiktok-autopost"
+                                    checked={isConnected('tiktok')?.auto_post_enabled}
+                                    onCheckedChange={(checked) => handleToggleAutoPost('tiktok', checked)}
+                                />
+                                <Label htmlFor="tiktok-autopost">Enable Auto-Posting</Label>
+                            </div>
                         )}
                     </div>
 
-                    {isConnected('tiktok') && (
-                        <div className="flex items-center space-x-2 pt-2 border-t">
-                            <Switch
-                                id="tiktok-autopost"
-                                checked={isConnected('tiktok')?.auto_post_enabled}
-                                onCheckedChange={(checked) => handleToggleAutoPost('tiktok', checked)}
-                            />
-                            <Label htmlFor="tiktok-autopost">Enable Auto-Posting</Label>
+                    {/* Instagram */}
+                    <div className="flex flex-col gap-4 p-4 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                                    IG
+                                </div>
+                                <div>
+                                    <h3 className="font-medium">Instagram</h3>
+                                    {isConnected('instagram') ? (
+                                        <p className="text-sm text-green-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            Connected as @{isConnected('instagram')?.platform_username}
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">Not connected</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {isConnected('instagram') && (
+                                    <Button variant="secondary" size="sm" onClick={() => handleTestPost('instagram', (isConnected('instagram') as any)?.id)}>
+                                        Test Post
+                                    </Button>
+                                )}
+                                {isConnected('instagram') ? (
+                                    <Button variant="outline" size="sm" onClick={() => handleDisconnect('instagram')}>
+                                        Disconnect
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        size="sm"
+                                        onClick={() => handleConnect('instagram')}
+                                        disabled={!!connecting}
+                                    >
+                                        {connecting === 'instagram' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                        Connect
+                                    </Button>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
 
-                {/* Instagram */}
-                <div className="flex flex-col gap-4 p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
+                        {isConnected('instagram') && (
+                            <div className="flex items-center space-x-2 pt-2 border-t">
+                                <Switch
+                                    id="instagram-autopost"
+                                    checked={isConnected('instagram')?.auto_post_enabled}
+                                    onCheckedChange={(checked) => handleToggleAutoPost('instagram', checked)}
+                                />
+                                <Label htmlFor="instagram-autopost">Enable Auto-Posting</Label>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Facebook */}
+                    <div className="flex items-center justify-between p-4 border rounded-lg opacity-50 cursor-not-allowed">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                                IG
+                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                                FB
                             </div>
                             <div>
-                                <h3 className="font-medium">Instagram</h3>
-                                {isConnected('instagram') ? (
-                                    <p className="text-sm text-green-600 flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        Connected as @{isConnected('instagram')?.platform_username}
-                                    </p>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">Not connected</p>
-                                )}
+                                <h3 className="font-medium">Facebook</h3>
+                                <p className="text-sm text-muted-foreground">Coming Soon</p>
                             </div>
                         </div>
-                        {isConnected('instagram') ? (
-                            <Button variant="outline" size="sm" onClick={() => handleDisconnect('instagram')}>
-                                Disconnect
-                            </Button>
-                        ) : (
-                            <Button
-                                size="sm"
-                                onClick={() => handleConnect('instagram')}
-                                disabled={!!connecting}
-                            >
-                                {connecting === 'instagram' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                Connect
-                            </Button>
-                        )}
+                        <Button variant="ghost" size="sm" disabled>
+                            Connect
+                        </Button>
                     </div>
-
-                    {isConnected('instagram') && (
-                        <div className="flex items-center space-x-2 pt-2 border-t">
-                            <Switch
-                                id="instagram-autopost"
-                                checked={isConnected('instagram')?.auto_post_enabled}
-                                onCheckedChange={(checked) => handleToggleAutoPost('instagram', checked)}
-                            />
-                            <Label htmlFor="instagram-autopost">Enable Auto-Posting</Label>
-                        </div>
-                    )}
-                </div>
-
-                {/* Facebook */}
-                <div className="flex items-center justify-between p-4 border rounded-lg opacity-50 cursor-not-allowed">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                            FB
-                        </div>
-                        <div>
-                            <h3 className="font-medium">Facebook</h3>
-                            <p className="text-sm text-muted-foreground">Coming Soon</p>
-                        </div>
-                    </div>
-                    <Button variant="ghost" size="sm" disabled>
-                        Connect
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
+                </CardContent>
+            </Card>
+        );
+    }
