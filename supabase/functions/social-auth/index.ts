@@ -72,11 +72,14 @@ serve(async (req) => {
         } catch (error) {
             console.error('Error in social-auth:', error)
             return new Response(
-                JSON.stringify({ error: error.message }),
+                JSON.stringify({ error: (error as Error).message }),
                 {
                     status: 400,
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
                 },
             )
         }
-    })
+    } catch (e) {
+        return new Response((e as Error).message, { status: 500, headers: corsHeaders })
+    }
+})
