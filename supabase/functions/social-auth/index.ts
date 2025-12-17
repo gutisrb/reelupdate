@@ -50,14 +50,17 @@ serve(async (req) => {
             else if (platform === 'instagram') {
                 const clientId = Deno.env.get('INSTAGRAM_CLIENT_ID')
                 console.log(`[Instagram Auth] Raw ID: '${clientId}'`)
-                if (!clientId) throw new Error('INSTAGRAM_CLIENT_ID not set')
+                if (!clientId) throw new Error('INSTAGRAM_CLIENT_ID not set (FB App ID)')
 
                 // Trim ID
                 const cleanId = clientId.trim();
 
-                const scopes = 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement'
+                // FB Login scopes for Instagram Business
+                const scopes = 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management'
 
-                url = `https://api.instagram.com/oauth/authorize?client_id=${cleanId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&state=${state}`
+                // Use Facebook Login endpoint
+                // API Version v21.0 or latest
+                url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${cleanId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${state}&response_type=code`
                 console.log(`[Instagram Auth] Generated URL: ${url}`)
             }
             else {
