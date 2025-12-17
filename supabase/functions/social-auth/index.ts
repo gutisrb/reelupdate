@@ -36,24 +36,35 @@ serve(async (req) => {
 
             if (platform === 'tiktok') {
                 const clientKey = Deno.env.get('TIKTOK_CLIENT_KEY')
+                console.log(`[TikTok Auth] Raw Key: '${clientKey}'`)
                 if (!clientKey) throw new Error('TIKTOK_CLIENT_KEY not set')
+
+                // Trim key just in case
+                const cleanKey = clientKey.trim();
 
                 const scopes = 'user.info.basic,video.publish,video.upload'
 
-                url = `https://www.tiktok.com/v2/auth/authorize?client_key=${clientKey}&scope=${scopes}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
+                url = `https://www.tiktok.com/v2/auth/authorize?client_key=${cleanKey}&scope=${scopes}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
+                console.log(`[TikTok Auth] Generated URL: ${url}`)
             }
             else if (platform === 'instagram') {
                 const clientId = Deno.env.get('INSTAGRAM_CLIENT_ID')
+                console.log(`[Instagram Auth] Raw ID: '${clientId}'`)
                 if (!clientId) throw new Error('INSTAGRAM_CLIENT_ID not set')
+
+                // Trim ID
+                const cleanId = clientId.trim();
 
                 const scopes = 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement'
 
-                url = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&state=${state}`
+                url = `https://api.instagram.com/oauth/authorize?client_id=${cleanId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&state=${state}`
+                console.log(`[Instagram Auth] Generated URL: ${url}`)
             }
             else {
                 throw new Error(`Unsupported platform: ${platform}`)
             }
 
+            console.log(`[Social Auth] Returning URL: ${url}`)
             return new Response(
                 JSON.stringify({ url }),
                 { headers: { ...corsHeaders, "Content-Type": "application/json" } },
