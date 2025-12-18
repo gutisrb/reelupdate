@@ -274,7 +274,7 @@ export function Galerija() {
   // Post video to social channels via webhook
   const postVideo = async (video: Video) => {
     if (postingVideoIds.has(video.id)) return;
-    
+
     setPostingVideoIds(prev => new Set(prev).add(video.id));
 
     try {
@@ -336,12 +336,12 @@ export function Galerija() {
     if (!profile || profile.review_first !== false) return;
 
     const newlyReadyVideos = videos.filter(video => {
-      const wasProcessing = previousVideos.current.find(prev => 
+      const wasProcessing = previousVideos.current.find(prev =>
         prev.id === video.id && !prev.video_url
       );
       const isNowReady = video.video_url !== null;
       const notPosted = !hasBeenPosted(video);
-      
+
       return wasProcessing && isNowReady && notPosted;
     });
 
@@ -351,6 +351,11 @@ export function Galerija() {
 
     previousVideos.current = videos;
   }, [videos, profile]);
+
+  const combinedItems = [
+    ...assets.map(a => ({ type: 'asset' as const, data: a })),
+    ...videos.map(v => ({ type: 'video' as const, data: v }))
+  ].sort((a, b) => new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime());
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -388,274 +393,274 @@ export function Galerija() {
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {/* Render assets */}
-                {assets.map((asset) => {
-                  const displayUrl = asset.thumb_url || asset.src_url || null;
-                  const fallbackUrl = asset.inputs?.image_urls?.[0] || null;
-                  
-                  return (
-                  <Card key={asset.id} className="hover-lift overflow-hidden">
-                    <CardContent className="p-0">
-                      {/* Media */}
-                      <div className="relative aspect-video bg-muted flex items-center justify-center">
-                        {asset.status === 'processing' ? (
-                          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                            <div className="text-center text-white">
-                              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                              <p className="text-sm font-medium">Obrada u toku…</p>
+                {combinedItems.map((item) => {
+                  if (item.type === 'asset') {
+                    const asset = item.data;
+                    const displayUrl = asset.thumb_url || asset.src_url || null;
+                    const fallbackUrl = asset.inputs?.image_urls?.[0] || null;
+
+                    return (
+                      <Card key={`asset-${asset.id}`} className="hover-lift overflow-hidden">
+                        <CardContent className="p-0">
+                          {/* Media */}
+                          <div className="relative aspect-video bg-muted flex items-center justify-center">
+                            {asset.status === 'processing' ? (
+                              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                                <div className="text-center text-white">
+                                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                                  <p className="text-sm font-medium">Obrada u toku…</p>
+                                </div>
+                              </div>
+                            ) : asset.status === 'ready' && !displayUrl ? (
+                              <>
+                                {fallbackUrl ? (
+                                  <>
+                                    <img
+                                      src={fallbackUrl}
+                                      alt={asset.prompt || 'Image'}
+                                      className="w-full h-full object-cover opacity-60"
+                                    />
+                                    <div className="absolute inset-0 bg-amber-500/10 backdrop-blur-sm flex items-center justify-center p-4">
+                                      <div className="text-center text-amber-700 dark:text-amber-300">
+                                        <p className="text-xs font-medium">Privremeni prikaz iz izvornog URL-a</p>
+                                        <p className="text-xs mt-1">Fajl nije sačuvan u bazu</p>
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="absolute inset-0 bg-amber-500/10 backdrop-blur-sm flex items-center justify-center p-4">
+                                    <div className="text-center text-amber-700 dark:text-amber-300">
+                                      <p className="text-sm font-medium">Greška pri učitavanju</p>
+                                      <p className="text-xs mt-1">Fajl nije sačuvan u bazu</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            ) : displayUrl ? (
+                              asset.kind === 'image' ? (
+                                <img
+                                  src={displayUrl}
+                                  alt={asset.prompt || 'Image'}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <video
+                                  src={displayUrl}
+                                  poster={asset.thumb_url || ''}
+                                  controls
+                                  muted
+                                  loop
+                                  className="w-full h-full object-cover"
+                                />
+                              )
+                            ) : (
+                              <div className="text-muted-foreground text-sm">
+                                Sadržaj nije dostupan
+                              </div>
+                            )}
+
+                            {/* Status badge */}
+                            <div className="absolute top-3 left-3">
+                              <Badge
+                                className={
+                                  statusColors[asset.status as keyof typeof statusColors] ||
+                                  'bg-muted text-muted-foreground'
+                                }
+                              >
+                                {asset.status === 'processing'
+                                  ? 'Obrađuje se'
+                                  : asset.status === 'ready'
+                                    ? 'Spremno'
+                                    : 'Greška'}
+                              </Badge>
+                            </div>
+
+                            {/* Platform badges */}
+                            {asset.posted_to && Array.isArray(asset.posted_to) && asset.posted_to.length > 0 && (
+                              <div className="absolute top-3 right-3 flex gap-1">
+                                {asset.posted_to.map((platform: string) => (
+                                  <Badge
+                                    key={platform}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {platformIcons[platform] || platform}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-4">
+                            <div className="text-xs text-text-subtle mb-2">
+                              {formatDate(asset.created_at)}
+                            </div>
+                            <p className="text-sm text-text-muted line-clamp-2 mb-4">
+                              {getDisplayText(asset)}
+                            </p>
+
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                disabled={!displayUrl}
+                                onClick={() => handleDownload(asset)}
+                                title={!displayUrl ? 'Download će biti omogućen kada se fajl sačuva' : 'Preuzmi'}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Preuzmi
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/app/galerija/${asset.id}`)}
+                                title="Prikaži detalje"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                        ) : asset.status === 'ready' && !displayUrl ? (
-                          <>
-                            {fallbackUrl ? (
+                        </CardContent>
+                      </Card>
+                    );
+                  } else {
+                    const video = item.data;
+                    const displayUrl = video.video_url || video.thumbnail_url || null;
+                    const isProcessing = !video.video_url;
+                    const posted = hasBeenPosted(video);
+                    const isPosting = postingVideoIds.has(video.id);
+                    const showPostButton = profile?.review_first === true && !isProcessing && displayUrl && !posted && !isPosting;
+
+                    // Parse platform badges from posted_channels_json
+                    const platformBadges = (() => {
+                      if (!video.posted_channels_json || typeof video.posted_channels_json !== 'object') return [];
+                      const channels = video.posted_channels_json as Record<string, any>;
+                      return Object.entries(channels).map(([platform, data]) => ({
+                        platform,
+                        status: data?.status || 'unknown'
+                      }));
+                    })();
+
+                    return (
+                      <Card
+                        key={`video-${video.id}`}
+                        className="hover-lift overflow-hidden cursor-pointer"
+                        onClick={() => !isProcessing && displayUrl && navigate(`/app/galerija/${video.id}`)}
+                      >
+                        <CardContent className="p-0">
+                          {/* Media */}
+                          <div className="relative aspect-video bg-muted flex items-center justify-center">
+                            {isProcessing ? (
+                              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                                <div className="text-center text-white">
+                                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                                  <p className="text-sm font-medium">Obrada u toku…</p>
+                                </div>
+                              </div>
+                            ) : displayUrl ? (
                               <>
                                 <img
-                                  src={fallbackUrl}
-                                  alt={asset.prompt || 'Image'}
-                                  className="w-full h-full object-cover opacity-60"
+                                  src={video.thumbnail_url || displayUrl}
+                                  alt={video.title || 'Video thumbnail'}
+                                  className="w-full h-full object-cover"
                                 />
-                                <div className="absolute inset-0 bg-amber-500/10 backdrop-blur-sm flex items-center justify-center p-4">
-                                  <div className="text-center text-amber-700 dark:text-amber-300">
-                                    <p className="text-xs font-medium">Privremeni prikaz iz izvornog URL-a</p>
-                                    <p className="text-xs mt-1">Fajl nije sačuvan u bazu</p>
-                                  </div>
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
+                                  <PlayCircle className="h-16 w-16 text-white drop-shadow-lg" />
                                 </div>
                               </>
                             ) : (
-                              <div className="absolute inset-0 bg-amber-500/10 backdrop-blur-sm flex items-center justify-center p-4">
-                                <div className="text-center text-amber-700 dark:text-amber-300">
-                                  <p className="text-sm font-medium">Greška pri učitavanju</p>
-                                  <p className="text-xs mt-1">Fajl nije sačuvan u bazu</p>
-                                </div>
+                              <div className="text-muted-foreground text-sm">
+                                Sadržaj nije dostupan
                               </div>
                             )}
-                          </>
-                        ) : displayUrl ? (
-                          asset.kind === 'image' ? (
-                            <img
-                              src={displayUrl}
-                              alt={asset.prompt || 'Image'}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <video
-                              src={displayUrl}
-                              poster={asset.thumb_url || ''}
-                              controls
-                              muted
-                              loop
-                              className="w-full h-full object-cover"
-                            />
-                          )
-                        ) : (
-                          <div className="text-muted-foreground text-sm">
-                            Sadržaj nije dostupan
-                          </div>
-                        )}
 
-                        {/* Status badge */}
-                        <div className="absolute top-3 left-3">
-                          <Badge
-                            className={
-                              statusColors[asset.status as keyof typeof statusColors] ||
-                              'bg-muted text-muted-foreground'
-                            }
-                          >
-                            {asset.status === 'processing'
-                              ? 'Obrađuje se'
-                              : asset.status === 'ready'
-                              ? 'Spremno'
-                              : 'Greška'}
-                          </Badge>
-                        </div>
-
-                        {/* Platform badges */}
-                        {asset.posted_to && Array.isArray(asset.posted_to) && asset.posted_to.length > 0 && (
-                          <div className="absolute top-3 right-3 flex gap-1">
-                            {asset.posted_to.map((platform: string) => (
+                            {/* Status badge */}
+                            <div className="absolute top-3 left-3">
                               <Badge
-                                key={platform}
-                                variant="secondary"
-                                className="text-xs"
+                                className={
+                                  isProcessing
+                                    ? statusColors.processing
+                                    : statusColors.ready
+                                }
                               >
-                                {platformIcons[platform] || platform}
+                                {isProcessing ? 'Obrađuje se' : 'Spremno'}
                               </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <div className="text-xs text-text-subtle mb-2">
-                          {formatDate(asset.created_at)}
-                        </div>
-                        <p className="text-sm text-text-muted line-clamp-2 mb-4">
-                          {getDisplayText(asset)}
-                        </p>
-
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            disabled={!displayUrl}
-                            onClick={() => handleDownload(asset)}
-                            title={!displayUrl ? 'Download će biti omogućen kada se fajl sačuva' : 'Preuzmi'}
-                          >
-                            <Download className="h-4 w-4 mr-1" />
-                            Preuzmi
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/app/galerija/${asset.id}`)}
-                            title="Prikaži detalje"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  );
-                })}
-
-                {/* Render videos from videos table */}
-                {videos.map((video) => {
-                  const displayUrl = video.video_url || video.thumbnail_url || null;
-                  const isProcessing = !video.video_url;
-                  const posted = hasBeenPosted(video);
-                  const isPosting = postingVideoIds.has(video.id);
-                  const showPostButton = profile?.review_first === true && !isProcessing && displayUrl && !posted && !isPosting;
-                  
-                  // Parse platform badges from posted_channels_json
-                  const platformBadges = (() => {
-                    if (!video.posted_channels_json || typeof video.posted_channels_json !== 'object') return [];
-                    const channels = video.posted_channels_json as Record<string, any>;
-                    return Object.entries(channels).map(([platform, data]) => ({
-                      platform,
-                      status: data?.status || 'unknown'
-                    }));
-                  })();
-
-                  return (
-                    <Card 
-                      key={video.id} 
-                      className="hover-lift overflow-hidden cursor-pointer"
-                      onClick={() => !isProcessing && displayUrl && navigate(`/app/galerija/${video.id}`)}
-                    >
-                      <CardContent className="p-0">
-                        {/* Media */}
-                        <div className="relative aspect-video bg-muted flex items-center justify-center">
-                          {isProcessing ? (
-                            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                              <div className="text-center text-white">
-                                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                                <p className="text-sm font-medium">Obrada u toku…</p>
-                              </div>
                             </div>
-                          ) : displayUrl ? (
-                            <>
-                              <img
-                                src={video.thumbnail_url || displayUrl}
-                                alt={video.title || 'Video thumbnail'}
-                                className="w-full h-full object-cover"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
-                                <PlayCircle className="h-16 w-16 text-white drop-shadow-lg" />
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-muted-foreground text-sm">
-                              Sadržaj nije dostupan
-                            </div>
-                          )}
 
-                          {/* Status badge */}
-                          <div className="absolute top-3 left-3">
-                            <Badge
-                              className={
-                                isProcessing
-                                  ? statusColors.processing
-                                  : statusColors.ready
-                              }
-                            >
-                              {isProcessing ? 'Obrađuje se' : 'Spremno'}
-                            </Badge>
+                            {/* Platform badges from posted_channels_json */}
+                            {platformBadges.length > 0 && (
+                              <div className="absolute top-3 right-3 flex flex-wrap gap-1">
+                                {platformBadges.map(({ platform, status }) => (
+                                  <Badge
+                                    key={platform}
+                                    variant={status === 'posted' ? 'default' : status === 'failed' ? 'destructive' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    {platformIcons[platform] || platform}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Platform badges from posted_channels_json */}
-                          {platformBadges.length > 0 && (
-                            <div className="absolute top-3 right-3 flex flex-wrap gap-1">
-                              {platformBadges.map(({ platform, status }) => (
-                                <Badge
-                                  key={platform}
-                                  variant={status === 'posted' ? 'default' : status === 'failed' ? 'destructive' : 'secondary'}
-                                  className="text-xs"
+                          {/* Content */}
+                          <div className="p-4">
+                            <div className="text-xs text-text-subtle mb-2">
+                              {formatDate(video.created_at)}
+                            </div>
+                            <p className="text-sm text-text-muted line-clamp-2 mb-4">
+                              {video.title || 'Video bez naslova'}
+                            </p>
+
+                            <div className="flex gap-2">
+                              {showPostButton && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    postVideo(video);
+                                  }}
+                                  disabled={isPosting}
                                 >
-                                  {platformIcons[platform] || platform}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-4">
-                          <div className="text-xs text-text-subtle mb-2">
-                            {formatDate(video.created_at)}
-                          </div>
-                          <p className="text-sm text-text-muted line-clamp-2 mb-4">
-                            {video.title || 'Video bez naslova'}
-                          </p>
-
-                          <div className="flex gap-2">
-                            {showPostButton && (
+                                  <Share2 className="h-4 w-4 mr-1" />
+                                  Objavi
+                                </Button>
+                              )}
                               <Button
-                                variant="default"
+                                variant="outline"
                                 size="sm"
-                                className="flex-1"
+                                className={showPostButton ? '' : 'flex-1'}
+                                disabled={!displayUrl}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  postVideo(video);
+                                  handleDownload({ ...video, kind: 'video', status: isProcessing ? 'processing' : 'ready', src_url: video.video_url, thumb_url: video.thumbnail_url, prompt: video.title, inputs: null, posted_to: video.posted_channels_json } as Asset);
                                 }}
-                                disabled={isPosting}
+                                title={!displayUrl ? 'Download će biti omogućen kada se fajl sačuva' : 'Preuzmi'}
                               >
-                                <Share2 className="h-4 w-4 mr-1" />
-                                Objavi
+                                <Download className="h-4 w-4 mr-1" />
+                                Preuzmi
                               </Button>
-                            )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className={showPostButton ? '' : 'flex-1'}
-                              disabled={!displayUrl}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownload({ ...video, kind: 'video', status: isProcessing ? 'processing' : 'ready', src_url: video.video_url, thumb_url: video.thumbnail_url, prompt: video.title, inputs: null, posted_to: video.posted_channels_json } as Asset);
-                              }}
-                              title={!displayUrl ? 'Download će biti omogućen kada se fajl sačuva' : 'Preuzmi'}
-                            >
-                              <Download className="h-4 w-4 mr-1" />
-                              Preuzmi
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/app/galerija/${video.id}`);
-                              }}
-                              title="Prikaži detalje"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/app/galerija/${video.id}`);
+                                }}
+                                title="Prikaži detalje"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
+                        </CardContent>
+                      </Card>
+                    );
+                  }
                 })}
               </div>
 

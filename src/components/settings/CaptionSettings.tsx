@@ -233,17 +233,12 @@ export function CaptionSettings({ userId }: CaptionSettingsProps) {
           <div className="space-y-4">
             <Tabs value={captionSystem} onValueChange={(v) => setCaptionSystem(v as 'zapcap' | 'whisper')} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="zapcap">🎨 ZapCap Templates</TabsTrigger>
-                <TabsTrigger value="whisper">⚡ Whisper Custom (In-House)</TabsTrigger>
+                <TabsTrigger value="zapcap">🎨 Templates</TabsTrigger>
+                <TabsTrigger value="whisper">⚡ Custom</TabsTrigger>
               </TabsList>
 
-              {/* ZapCap System Tab */}
+              {/* Templates System Tab */}
               <TabsContent value="zapcap" className="mt-0 space-y-4">
-                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    <strong>ZapCap Templates:</strong> Uses external ZapCap API for caption generation with pre-designed templates.
-                  </p>
-                </div>
 
                 <Tabs defaultValue="all" className="w-full">
                   <TabsList className="grid w-full grid-cols-5 mb-6">
@@ -303,18 +298,18 @@ export function CaptionSettings({ userId }: CaptionSettingsProps) {
                 )}
               </TabsContent>
 
-              {/* Whisper System Tab */}
+              {/* Custom System Tab */}
               <TabsContent value="whisper" className="mt-0 space-y-4">
-                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-green-900 dark:text-green-100">
-                    <strong>Whisper Custom (In-House):</strong> Uses OpenAI Whisper + Cloudinary for caption generation with full customization control.
+                <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-xl bg-muted/30">
+                  <div className="bg-primary/10 p-4 rounded-full mb-4">
+                    <span className="text-4xl">🚧</span>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Completely Custom Captions</h3>
+                  <p className="text-muted-foreground max-w-sm mb-6">
+                    Building a powerful editor to let you customize every aspect of your captions. Coming soon!
                   </p>
+                  <Button disabled variant="outline">Not Available Yet</Button>
                 </div>
-
-                <CaptionCustomizer
-                  settings={customSettings}
-                  onChange={setCustomSettings}
-                />
               </TabsContent>
             </Tabs>
           </div>
