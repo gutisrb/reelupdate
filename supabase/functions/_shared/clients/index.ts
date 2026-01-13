@@ -15,13 +15,27 @@ import { ElevenLabsClient } from './elevenlabs.ts';
 import { ZapCapClient } from './zapcap.ts';
 import { API_KEYS } from '../config.ts';
 
-export function initClients() {
+import { KieClient } from './kie.ts';
+import { DirectorClient } from './director.ts';
+
+export const initClients = () => {
+    const openai = new OpenAIClient();
+    const elevenlabs = new ElevenLabsClient();
+    const google = new GoogleAIClient();
+    const cloudinary = new CloudinaryClient();
+    const luma = new LumaClient();
+    const zapcap = new ZapCapClient();
+    const kie = new KieClient();
+    const director = new DirectorClient(openai);
+
     return {
-        cloudinary: new CloudinaryClient(),
-        luma: new LumaClient(),
-        openai: new OpenAIClient(),
-        google: new GoogleAIClient(),
-        elevenlabs: new ElevenLabsClient(),
-        zapcap: new ZapCapClient(),
+        openai,
+        elevenlabs,
+        google,
+        cloudinary,
+        luma,
+        zapcap,
+        kie,
+        director
     };
-}
+};

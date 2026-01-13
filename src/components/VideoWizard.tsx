@@ -349,7 +349,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
   return (
     <div className="showtime min-h-[calc(100vh-64px)] bg-background">
       <div className="grain-overlay"></div>
-      <main className="container mx-auto px-6 py-8">
+      <main className="w-full px-6 py-8">
         <Stepper currentStep={wizardData.currentStep} />
 
         <div className="mt-8 relative pb-20">
@@ -385,44 +385,35 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
             />
           )}
 
-          {/* Sticky Action Bar */}
-          <div className={`sticky-cta ${wizardData.currentStep > 0 ? 'visible' : ''}`}>
-            <div className="p-4">
-              <div className="container mx-auto flex justify-between items-center">
-                {wizardData.currentStep > 1 && (
-                  <Button variant="ghost" onClick={prevStep} className="text-muted-foreground">
-                    Nazad
-                  </Button>
-                )}
-                <div className="flex-1"></div>
-                {wizardData.currentStep === 1 && (
-                  <Button
-                    onClick={nextStep}
-                    disabled={!canProceedToStep2() || isLoading}
-                    className="gradient-primary text-white hover-sheen"
-                  >
-                    Sledeći korak
-                  </Button>
-                )}
-                {wizardData.currentStep === 2 && (
-                  <Button
-                    onClick={nextStep}
-                    disabled={!canProceedToStep3()}
-                    className="gradient-primary text-white hover-sheen"
-                  >
-                    Sledeći korak
-                  </Button>
-                )}
-                {wizardData.currentStep === 3 && (
-                  <Button
-                    onClick={handleGenerate}
-                    disabled={isLoading}
-                    className="btn-primary-enhanced focus-ring-enhanced h-12 px-6 py-3 gradient-primary text-white hover-sheen"
-                  >
-                    {isLoading ? "Generišem..." : "Generiši video"}
-                  </Button>
-                )}
-              </div>
+          {/* Sticky Action Bar - Hidden on Step 2, Glassmorphism for Steps 1 & 3 */}
+          <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-3xl px-4 transition-all duration-300 ${wizardData.currentStep !== 2 && wizardData.currentStep > 0 ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}`}>
+            <div className="glass-bar h-16 px-8 flex items-center justify-between rounded-full border border-white/20 shadow-2xl backdrop-blur-xl bg-black/40">
+              {wizardData.currentStep > 1 && (
+                <Button variant="ghost" onClick={prevStep} className="text-white hover:bg-white/10 rounded-full">
+                  Nazad
+                </Button>
+              )}
+
+              <div className="flex-1"></div>
+
+              {wizardData.currentStep === 1 && (
+                <Button
+                  onClick={nextStep}
+                  disabled={!canProceedToStep2() || isLoading}
+                  className="gradient-primary text-white hover-sheen rounded-full px-8 h-10 shadow-lg shadow-primary/20"
+                >
+                  Sledeći korak
+                </Button>
+              )}
+              {wizardData.currentStep === 3 && (
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isLoading}
+                  className="gradient-primary text-white hover-sheen rounded-full px-8 h-10 shadow-lg shadow-primary/20"
+                >
+                  {isLoading ? "Generišem..." : "Generiši video"}
+                </Button>
+              )}
             </div>
           </div>
         </div>

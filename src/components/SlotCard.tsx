@@ -8,13 +8,13 @@ import { Plus, Trash2, ArrowRight, Move, MoreHorizontal, Edit3, X } from "lucide
 import { useToast } from "@/hooks/use-toast";
 
 // Helper component to manage object URLs for File previews
-function ImagePreview({ 
-  image, 
-  index, 
-  children 
-}: { 
-  image: File; 
-  index: number; 
+function ImagePreview({
+  image,
+  index,
+  children
+}: {
+  image: File;
+  index: number;
   children: (url: string) => React.ReactNode;
 }) {
   const [url, setUrl] = useState<string>('');
@@ -22,14 +22,14 @@ function ImagePreview({
   useEffect(() => {
     const objectUrl = URL.createObjectURL(image);
     setUrl(objectUrl);
-    
+
     return () => {
       URL.revokeObjectURL(objectUrl);
     };
   }, [image]);
 
   if (!url) return null;
-  
+
   return <>{children(url)}</>;
 }
 
@@ -154,7 +154,7 @@ export function SlotCard({
   const handleDragStart = (e: React.DragEvent, imageIndex: number) => {
     setDraggedImageIndex(imageIndex);
     setDragState(true, { fromSlot: slotIndex, imageIndex });
-    
+
     e.dataTransfer.setData("application/json", JSON.stringify({
       fromSlot: slotIndex,
       imageIndex: imageIndex
@@ -227,7 +227,7 @@ export function SlotCard({
       });
       return;
     }
-    
+
     onDuplicateToNext(image);
   };
 
@@ -239,36 +239,37 @@ export function SlotCard({
       onDrop={onDrop}
     >
       {/* Card Header */}
-      <div className="p-4 pb-3">
-        <h4 className="text-[13px] font-medium text-muted-foreground">
+      <div className="px-4 py-3 flex justify-between items-center border-b border-border/10">
+        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
           Slot {slotIndex + 1}
         </h4>
+        {images.length > 0 && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm font-medium">{images.length}/2</span>}
       </div>
 
       {/* Media Rail */}
       <div className="px-4">
         {images.length === 0 ? (
           <div className="media-rail">
-            <div className="w-full h-full border-2 border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 hover:bg-muted/50 transition-colors"
+            <div className="w-full h-full border border-dashed border-indigo-200/50 dark:border-indigo-800/50 rounded-xl bg-indigo-50/10 hover:bg-indigo-50/30 dark:bg-indigo-900/10 dark:hover:bg-indigo-900/20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group"
               onClick={() => document.getElementById(`slot-${slotIndex}-file-input`)?.click()}
             >
-              <div className="text-center">
-                <Plus className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />
-                <p className="text-sm text-muted-foreground/70">Dodaj fotografije</p>
+              <div className="w-12 h-12 rounded-full bg-indigo-100/50 dark:bg-indigo-900/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Plus className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
               </div>
+              <p className="text-xs font-medium text-indigo-900/70 dark:text-indigo-200/70">Dodaj slike</p>
             </div>
           </div>
         ) : (
           <div className={`media-rail ${images.length === 1 ? 'single-photo' : ''}`}>
             {images.map((image, index) => {
               const isBeingDragged = draggedImageIndex === index;
-              
+
               return (
                 <ImagePreview key={index} image={image} index={index}>
                   {(url) => (
                     <Dialog>
                       <DialogTrigger asChild>
-                        <div 
+                        <div
                           className={`photo-tile ${isBeingDragged ? 'dragging' : ''}`}
                           draggable
                           onDragStart={(e) => handleDragStart(e, index)}
@@ -281,50 +282,50 @@ export function SlotCard({
                             alt={`Image ${index + 1}`}
                           />
 
-                      {/* Remove Individual Image Button */}
-                      <div
-                        className="action-pill remove-image"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeAt(index);
-                        }}
-                        title="Ukloni ovu sliku"
-                      >
-                        <X className="w-3 h-3" />
-                      </div>
+                          {/* Remove Individual Image Button */}
+                          <div
+                            className="action-pill remove-image"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeAt(index);
+                            }}
+                            title="Ukloni ovu sliku"
+                          >
+                            <X className="w-3 h-3" />
+                          </div>
 
-                      {/* Per-Photo Actions */}
-                      <div
-                        className="action-pill uredi"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUrediClick(image, index);
-                        }}
-                        title="Uredi u Stage Studio"
-                      >
-                        <Edit3 className="w-3 h-3" />
-                        Uredi
-                      </div>
-                      
-                      {/* Novi Action - only on end frame */}
-                      {images.length === 2 && index === 1 && (
-                        <div
-                          className="action-pill novi"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNoviClick(image);
-                          }}
-                          title="Kopiraj u sledeći slot kao početni frejm"
-                        >
-                          Novi
-                          <ArrowRight className="w-3 h-3 ml-1" />
-                        </div>
-                      )}
+                          {/* Per-Photo Actions */}
+                          <div
+                            className="action-pill uredi"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUrediClick(image, index);
+                            }}
+                            title="Uredi u Stage Studio"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            Uredi
+                          </div>
+
+                          {/* Novi Action - only on end frame */}
+                          {images.length === 2 && index === 1 && (
+                            <div
+                              className="action-pill novi"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNoviClick(image);
+                              }}
+                              title="Kopiraj u sledeći slot kao početni frejm"
+                            >
+                              Novi
+                              <ArrowRight className="w-3 h-3 ml-1" />
+                            </div>
+                          )}
                         </div>
                       </DialogTrigger>
                       <DialogContent className="max-w-3xl">
-                        <img 
-                          src={url} 
+                        <img
+                          src={url}
                           alt={`Preview ${index + 1}`}
                           className="w-full h-auto rounded-lg"
                         />
@@ -336,7 +337,7 @@ export function SlotCard({
             })}
           </div>
         )}
-        
+
         {/* Add Second Photo Link */}
         {images.length === 1 && (
           <a
@@ -357,7 +358,7 @@ export function SlotCard({
       <div className="slot-actions">
         <div className="slot-actions-left">
           {images.length === 2 && (
-            <span 
+            <span
               className="slot-action"
               onClick={handleSwapPhotos}
               title="Zameni redosled fotografija"
@@ -390,7 +391,7 @@ export function SlotCard({
             </PopoverContent>
           </Popover>
         </div>
-        
+
         <div className="slot-actions-right">
           {images.length > 0 && (
             <span

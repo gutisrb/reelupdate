@@ -75,6 +75,20 @@ export function GalerijaDetail() {
       if (error) throw error;
 
       setVideo(data);
+
+      // Fetch additional generation details (director info)
+      const { data: details } = await (supabase as any)
+        .from('video_generation_details')
+        .select('*')
+        .eq('video_id', id)
+        .maybeSingle();
+
+      if (details) {
+        // Merge details into video object temporarily or store separately
+        // For simplicity, we attach it to 'meta' or a new state
+        (data as any).generation_details = details;
+        setVideo({ ...data, generation_details: details } as any);
+      }
     } catch (error: any) {
       toast({
         title: 'Greška',
@@ -270,7 +284,7 @@ export function GalerijaDetail() {
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="w-full max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
       <Button variant="ghost" onClick={() => navigate('/app/galerija')} className="mb-4">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Nazad na galeriju
@@ -295,7 +309,7 @@ export function GalerijaDetail() {
                     src={videoUrl}
                     poster={video.thumbnail_url || ''}
                     controls
-                    className="w-full h-auto"
+                    className="max-h-[75vh] w-auto mx-auto object-contain"
                   />
                 ) : video.status === 'processing' ? (
                   <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
@@ -334,6 +348,51 @@ export function GalerijaDetail() {
         </div>
 
         <div className="space-y-4">
+
+          {/* AI Strategy Info Card */}
+          {(video as any).generation_details && (
+            <Card className="border-indigo-100 bg-indigo-50/20 dark:border-indigo-900/50">
+              <CardHeader className="pb-3 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">✨</span>
+                  <CardTitle className="text-base font-semibold">Viralna Strategija</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-background/50 p-3 rounded-lg border border-border/50">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold block mb-1">Strategija</span>
+                    <p className="font-medium text-indigo-600 dark:text-indigo-400 capitalize">
+                      {(video as any).generation_details.strategy_used || "Auto"}
+                    </p>
+                  </div>
+                  <div className="bg-background/50 p-3 rounded-lg border border-border/50">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold block mb-1">Audio Hook</span>
+                    <p className="text-sm italic text-foreground/80">
+                      {(video as any).generation_details.settings_snapshot?.script_hook || "Automatski"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-background/50 p-3 rounded-lg border border-border/50">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold block mb-1">Vizuelni Uvod</span>
+                  <p className="text-sm text-foreground/80">
+                    {(video as any).generation_details.settings_snapshot?.visual_hook || "Automatski"}
+                  </p>
+                </div>
+                {/* Voiceover Script Preview */}
+                {(video as any).generation_details.voiceover_script && (
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2 block">AI Skripta</span>
+                    <div className="bg-background/50 p-3 rounded-lg border border-border/50 text-xs text-muted-foreground max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                      {(video as any).generation_details.voiceover_script}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Akcije Card - Now First */}
           <Card className="border-2">
             <CardHeader className="pb-3">

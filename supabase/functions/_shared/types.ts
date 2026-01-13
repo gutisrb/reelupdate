@@ -27,6 +27,11 @@ export interface VideoGenerationRequest {
   total_images: number;
   caption_video_url?: string; // Browser-rendered caption overlay video
   logo_size_percent?: number;
+  director_personality?: string;
+  // Manual Overrides
+  property_type?: string;
+  script_hook?: string;
+  visual_hook?: string;
 }
 
 export interface UserSettings {
@@ -151,3 +156,19 @@ export interface ZapCapTranscriptResponse {
     end: number;
   }>;
 }
+export interface VideoBlueprint {
+  strategy_name: string;
+  script_hook: string;
+  visual_hook_type: 'motion' | 'overlay' | 'none';
+  visual_hook_instruction: string;
+}
+
+export interface DirectorContext {
+  history_strategies: string[];
+  wildcard: string;
+  preferred_vibe?: string;
+}
+
+// Update existing or add to VideoGenerationRequest if needed
+// For now, we fetch history from DB inside the function, so request doesn't need much change
+// except maybe a flag to enable/disable director mode if we want manually.

@@ -38,7 +38,7 @@ export function ImageSlots({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const handleBulkAdd = (files: File[], showToast: boolean = true) => {
-    const next = slots.map(s => ({...s, images: [...s.images]}));
+    const next = slots.map(s => ({ ...s, images: [...s.images] }));
     let fileIndex = 0;
     let totalCapacity = clipCount * 2;
     let currentTotal = next.reduce((sum, slot) => sum + slot.images.length, 0);
@@ -164,7 +164,7 @@ export function ImageSlots({
       />
 
       {/* Drop-anywhere grid */}
-      <div 
+      <div
         className="grid-drop-zone transition-all duration-200"
         onDragOver={(e) => {
           e.preventDefault();
@@ -189,37 +189,35 @@ export function ImageSlots({
         />
       </div>
 
-      {/* Desktop: Sticky action bar */}
-      <div className="hidden md:block fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg px-4">
-        <div className="glass-bar h-14 px-6 flex items-center justify-between rounded-full border border-white/20">
+      {/* Desktop: Sticky action bar (Glass Pill) */}
+      <div className="hidden md:block fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-3xl px-4 transition-all duration-300">
+        <div className="glass-bar h-16 px-8 flex items-center justify-between rounded-full border border-white/20 shadow-2xl backdrop-blur-xl bg-black/40">
           <Button
             onClick={onPrev}
             variant="ghost"
             size="sm"
-            className="text-sm font-medium hover:bg-white/10"
+            className="text-white hover:bg-white/10 rounded-full"
           >
             Nazad
           </Button>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Popunjeno:</span>
-            <div className="progress-rail">
+          <div className="flex items-center gap-4 text-xs font-medium text-white/90">
+            <span className="uppercase tracking-wider opacity-70">Popunjeno</span>
+            <div className="w-32 h-1.5 bg-white/20 rounded-full overflow-hidden">
               <div
-                className="progress-fill"
+                className="h-full bg-primary shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-500"
                 style={{
                   width: `${(slots.filter(s => s.images.length >= 1).length / clipCount) * 100}%`
                 }}
               />
             </div>
-            <span>{slots.filter(s => s.images.length >= 1).length}/{clipCount}</span>
+            <span className="font-bold tabular-nums text-sm">{slots.filter(s => s.images.length >= 1).length} / {clipCount}</span>
           </div>
 
           <Button
             onClick={onNext}
             disabled={!canProceed}
-            variant="default"
-            size="sm"
-            className="text-sm px-4 py-2 h-8 rounded-full gradient-primary disabled:opacity-50"
+            className="gradient-primary text-white hover-sheen rounded-full px-8 h-10 shadow-lg shadow-primary/20"
           >
             Sledeći korak
           </Button>

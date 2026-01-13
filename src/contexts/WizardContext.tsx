@@ -12,6 +12,10 @@ export interface FormData {
   sprat?: string;
   extras?: string;
   logo_size?: number;
+  director_personality?: string;
+  property_type?: string;
+  script_hook?: string;
+  visual_hook?: string;
 }
 
 export interface WizardData {
