@@ -1,5 +1,7 @@
 // src/components/wizard/DetailsStep.tsx
 import React, { useState, useEffect } from "react";
+import { Sparkles, Wand2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -317,14 +319,39 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
                 <Label className="text-xs font-semibold uppercase tracking-wide text-indigo-900/60 dark:text-indigo-100/60 mb-4 block">Ručne Izmene (Advanced)</Label>
                 <div className="space-y-5">
                   <div>
-                    <Label className="text-xs text-muted-foreground mb-1.5 block flex justify-between">Uvodna rečenica <span className="text-[10px] opacity-70">(Hook)</span></Label>
-                    <HookInputWithPresets
-                      type="script_hook"
-                      value={formData.script_hook || ""}
-                      onChange={(v) => updateFormData({ ...formData, script_hook: v })}
-                      placeholder="npr. Ovo je stan iz snova..."
-                      multiline
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs text-muted-foreground block flex justify-between">Uvodna rečenica <span className="text-[10px] opacity-70">(Hook)</span></Label>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="script-auto-mode"
+                          checked={!formData.script_hook}
+                          onCheckedChange={(c) => c && updateFormData({ ...formData, script_hook: "" })}
+                          className="scale-75 data-[state=checked]:bg-indigo-500"
+                        />
+                        <Label htmlFor="script-auto-mode" className="text-[10px] font-medium cursor-pointer text-muted-foreground">
+                          AI Auto
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      {!formData.script_hook && (
+                        <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-[1px] flex items-center justify-center rounded-md border border-dashed border-indigo-200 dark:border-indigo-800 pointer-events-none">
+                          <div className="flex items-center gap-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1.5 rounded-full shadow-sm">
+                            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                            AI će generisati najbolji hook
+                          </div>
+                        </div>
+                      )}
+
+                      <HookInputWithPresets
+                        type="script_hook"
+                        value={formData.script_hook || ""}
+                        onChange={(v) => updateFormData({ ...formData, script_hook: v })}
+                        placeholder="npr. Ovo je stan iz snova..."
+                        multiline
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1.5 block flex justify-between">Vizuelni Uvod <span className="text-[10px] opacity-70">(Prvi kadar)</span></Label>
