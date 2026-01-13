@@ -389,6 +389,27 @@ export function GalerijaDetail() {
                     </div>
                   </div>
                 )}
+
+                {/* Property Data Summary */}
+                {(video as any).generation_details.settings_snapshot?.property_data && (
+                  <div className="pt-2 border-t border-border/50">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2 block">Ulazni Podaci</span>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-background/30 p-2 rounded border border-border/30">
+                        <span className="text-muted-foreground block">Tip:</span>
+                        <span className="font-medium">{(video as any).generation_details.settings_snapshot.property_type || 'Stan'}</span>
+                      </div>
+                      <div className="bg-background/30 p-2 rounded border border-border/30">
+                        <span className="text-muted-foreground block">Soba:</span>
+                        <span className="font-medium">{(video as any).generation_details.settings_snapshot.property_data.beds || '0'}</span>
+                      </div>
+                      <div className="bg-background/30 p-2 rounded border border-border/30 col-span-2">
+                        <span className="text-muted-foreground block">Opis:</span>
+                        <p className="line-clamp-3">{(video as any).generation_details.settings_snapshot.property_data.extras || '/'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
