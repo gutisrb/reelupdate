@@ -250,14 +250,27 @@ export function SlotCard({
       <div className="px-4">
         {images.length === 0 ? (
           <div className="media-rail">
-            <div className="w-full h-full border border-dashed border-indigo-200/50 dark:border-indigo-800/50 rounded-xl bg-indigo-50/10 hover:bg-indigo-50/30 dark:bg-indigo-900/10 dark:hover:bg-indigo-900/20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group"
-              onClick={() => document.getElementById(`slot-${slotIndex}-file-input`)?.click()}
-            >
-              <div className="w-12 h-12 rounded-full bg-indigo-100/50 dark:bg-indigo-900/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Plus className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            {slotIndex === 0 ? (
+              <div
+                className="w-full h-full border-2 border-dashed border-primary/40 rounded-xl bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group shadow-[0_0_15px_rgba(var(--brand-grad-rgb),0.1)] hover:shadow-[0_0_20px_rgba(var(--brand-grad-rgb),0.2)]"
+                onClick={() => navigate('/app/stage')}
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ring-4 ring-primary/5">
+                  <Plus className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-xs font-bold text-primary uppercase tracking-wider">AI Vizuelni Uvod</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Generiši me u Stage Studio</p>
               </div>
-              <p className="text-xs font-medium text-indigo-900/70 dark:text-indigo-200/70">Dodaj slike</p>
-            </div>
+            ) : (
+              <div className="w-full h-full border border-dashed border-indigo-200/50 dark:border-indigo-800/50 rounded-xl bg-indigo-50/10 hover:bg-indigo-50/30 dark:bg-indigo-900/10 dark:hover:bg-indigo-900/20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group"
+                onClick={() => document.getElementById(`slot-${slotIndex}-file-input`)?.click()}
+              >
+                <div className="w-12 h-12 rounded-full bg-indigo-100/50 dark:bg-indigo-900/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Plus className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <p className="text-xs font-medium text-indigo-900/70 dark:text-indigo-200/70">Dodaj slike</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className={`media-rail ${images.length === 1 ? 'single-photo' : ''}`}>

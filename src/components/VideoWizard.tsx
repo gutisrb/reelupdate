@@ -379,6 +379,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
             <PreviewStep
               wizardData={wizardData}
               onPrev={prevStep}
+              onJumpToStep={(s) => setCurrentStep(s)}
               onGenerate={handleGenerate}
               onSaveDraft={handleSaveDraft}
               isLoading={isLoading}

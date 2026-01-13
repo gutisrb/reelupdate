@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 interface PreviewStepProps {
   wizardData: WizardData;
   onPrev: () => void;
+  onJumpToStep: (step: 1 | 2 | 3) => void;
   onGenerate: () => void;
   onSaveDraft: () => void;
   isLoading: boolean;
@@ -15,6 +16,7 @@ interface PreviewStepProps {
 export const PreviewStep = ({
   wizardData,
   onPrev,
+  onJumpToStep,
   onGenerate,
   onSaveDraft,
   isLoading
@@ -61,7 +63,7 @@ export const PreviewStep = ({
           {/* 1. Viral Strategy Card */}
           <div className="group relative overflow-hidden rounded-2xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/30 dark:bg-indigo-950/10 p-8 transition-all hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20">
             <div className="absolute top-4 right-4">
-              <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={onPrev}>
+              <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onJumpToStep(1)}>
                 <Edit2 className="w-4 h-4 mr-2" /> Izmeni
               </Button>
             </div>
@@ -106,7 +108,7 @@ export const PreviewStep = ({
                 Vizuelni Materijali
                 <span className="text-sm font-normal text-muted-foreground ml-2">({totalImages} slika raspoređeno u {totalSlots} scena)</span>
               </h3>
-              <Button size="sm" variant="ghost" onClick={onPrev}>
+              <Button size="sm" variant="ghost" onClick={() => onJumpToStep(2)}>
                 <Edit2 className="w-4 h-4 mr-2" /> Izmeni
               </Button>
             </div>
@@ -146,7 +148,7 @@ export const PreviewStep = ({
           <div className="bg-surface border border-border rounded-2xl p-6 shadow-card h-full">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-lg">Podaci o Nekretnini</h3>
-              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {/* Navigate to step 1 via parent/context if needed, or just rely on stepper */ }}>
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onJumpToStep(1)}>
                 <Edit2 className="w-4 h-4" />
               </Button>
             </div>

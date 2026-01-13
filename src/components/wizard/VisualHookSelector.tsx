@@ -1,52 +1,54 @@
-import React from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, Camera, Move, ZoomIn, Eye, Film } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Check, Sparkles, MessageSquare, ChevronDown, ChevronUp, Bookmark } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { HookInputWithPresets } from "./HookPresetCombobox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export interface VisualHookPreset {
     id: string;
     label: string;
-    value: string; // The instruction text
+    value: string;
+    description: string;
     icon: React.ElementType;
-    color: string;
 }
 
-const VISUAL_HOOK_PRESETS: VisualHookPreset[] = [
+const VIRAL_HOOK_PRESETS: VisualHookPreset[] = [
     {
-        id: "push_in",
-        label: "Cinematic Push-In",
-        value: "Slow cinematic push-in to establish the scene.",
-        icon: ZoomIn,
-        color: "bg-blue-500"
+        id: "price_reveal",
+        label: "Price Reveal",
+        value: "Tekstualni overlay na sredini ekrana koji postepeno otkriva cenu.",
+        description: "Najefikasniji način za zadržavanje pažnje.",
+        icon: Sparkles
     },
     {
-        id: "drone_reveal",
-        label: "Drone Reveal",
-        value: "Aerial drone shot pulling back to reveal the property.",
-        icon: Camera,
-        color: "bg-sky-500"
+        id: "agent_entry",
+        label: "Agent Presence",
+        value: "Agent 'upada' ili 'uleće' u kadar pre nego što se prikaže prostor.",
+        description: "Daje ljudski dodir i dinamičnost.",
+        icon: MessageSquare
     },
     {
-        id: "pan_slow",
-        label: "Slow Pan",
-        value: "Smooth slow pan across the room highlighting space.",
-        icon: Move,
-        color: "bg-purple-500"
+        id: "door_kick",
+        label: "The Reveal",
+        value: "Kadar otvaranja vrata (first-person) koji vodi direktno u glavnu sobu.",
+        description: "Stvara osećaj ulaska u novi dom.",
+        icon: Sparkles
     },
     {
-        id: "detail_macro",
+        id: "luxury_zoom",
         label: "Luxury Detail",
-        value: "Close-up macro shot of a texture or luxury detail, pulling focus.",
-        icon: Eye,
-        color: "bg-amber-500"
+        value: "Krupni kadar najluksuznijeg dela (kamin, bazen) sa brzim odzumiranjem.",
+        description: "Fokusira se na 'wow' faktor.",
+        icon: Sparkles
     },
     {
-        id: "parallax",
-        label: "Parallax Slide",
-        value: "Sliding camera movement creating depth and parallax.",
-        icon: Film,
-        color: "bg-pink-500"
+        id: "question_hook",
+        label: "Question Overlay",
+        value: "Pitanje tipa 'Šta mislite koliko košta?' preko prvih 2s videa.",
+        description: "Podstiče komentare i engagement.",
+        icon: MessageSquare
     }
 ];
 
@@ -57,57 +59,79 @@ interface VisualHookSelectorProps {
 }
 
 export function VisualHookSelector({ value, onChange, className }: VisualHookSelectorProps) {
-    return (
-        <div className={cn("space-y-3", className)}>
-            <ScrollArea className="w-full whitespace-nowrap rounded-lg pb-2">
-                <div className="flex w-max space-x-3 p-1">
-                    {VISUAL_HOOK_PRESETS.map((preset) => {
-                        const isSelected = value === preset.value;
-                        const Icon = preset.icon;
-                        return (
-                            <button
-                                key={preset.id}
-                                type="button" // Prevent form submission
-                                onClick={() => onChange(preset.value)}
-                                className={cn(
-                                    "group relative flex flex-col items-start gap-2 rounded-xl border p-3 w-[140px] transition-all hover:scale-105 hover:shadow-md",
-                                    isSelected
-                                        ? "border-primary bg-primary/5 shadow-primary/20 ring-1 ring-primary"
-                                        : "border-border bg-card hover:border-primary/50"
-                                )}
-                            >
-                                <div className={cn("p-2 rounded-lg text-white", preset.color)}>
-                                    <Icon className="w-5 h-5" />
-                                </div>
-                                <div className="space-y-1 text-left whitespace-normal">
-                                    <span className={cn("text-xs font-semibold block", isSelected ? "text-primary" : "text-foreground")}>
-                                        {preset.label}
-                                    </span>
-                                    <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2">
-                                        {preset.value}
-                                    </p>
-                                </div>
-                                {isSelected && (
-                                    <div className="absolute top-2 right-2 bg-primary rounded-full p-0.5">
-                                        <Check className="w-3 h-3 text-white" />
-                                    </div>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+    const [isOpen, setIsOpen] = useState(false);
 
-            {/* Custom Input Fallback */}
-            <div className="relative">
-                <input
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder="Ili opišite custom kadar..."
-                />
-            </div>
+    return (
+        <div className={cn("space-y-4", className)}>
+            {/* Input with Bookmarks */}
+            <HookInputWithPresets
+                type="visual_hook"
+                value={value}
+                onChange={onChange}
+                placeholder="Opišite prvi kadar (vizuelni hook)..."
+            />
+
+            {/* Expandable Suggestions */}
+            <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
+                <CollapsibleTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-primary transition-colors py-0 h-6"
+                    >
+                        <span className="flex items-center gap-2">
+                            <Sparkles className="w-3 h-3" />
+                            Predlozi viralnih hook-ova
+                        </span>
+                        {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </Button>
+                </CollapsibleTrigger>
+
+                <CollapsibleContent className="pt-2">
+                    <ScrollArea className="w-full whitespace-nowrap rounded-lg border border-border/40 bg-muted/20 pb-2">
+                        <div className="flex w-max space-x-3 p-3">
+                            {VIRAL_HOOK_PRESETS.map((preset) => {
+                                const isSelected = value === preset.value;
+                                const Icon = preset.icon;
+                                return (
+                                    <button
+                                        key={preset.id}
+                                        type="button"
+                                        onClick={() => onChange(preset.value)}
+                                        className={cn(
+                                            "group relative flex flex-col items-start gap-2 rounded-xl border p-3 w-[160px] transition-all hover:bg-background shadow-sm hover:shadow-md",
+                                            isSelected
+                                                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                                : "border-border/60 bg-background/50"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-2 w-full">
+                                            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600">
+                                                <Icon className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-[11px] font-bold truncate">
+                                                {preset.label}
+                                            </span>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground leading-snug whitespace-normal line-clamp-2 text-left">
+                                            {preset.description}
+                                        </p>
+                                        <div className="mt-1 w-full bg-muted/40 p-1.5 rounded text-[9px] text-foreground/70 whitespace-normal text-left line-clamp-2">
+                                            "{preset.value.slice(0, 40)}..."
+                                        </div>
+                                        {isSelected && (
+                                            <div className="absolute -top-1 -right-1 bg-primary rounded-full p-0.5 border-2 border-background">
+                                                <Check className="w-2.5 h-2.5 text-white" />
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                </CollapsibleContent>
+            </Collapsible>
         </div>
     );
 }
