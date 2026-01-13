@@ -290,33 +290,116 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
 
         {/* Right Col */}
         <div className="col-span-1 xl:col-span-4 relative h-full">
-          <div className="bg-indigo-50/80 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl p-8 sticky top-6 backdrop-blur-sm shadow-xl shadow-indigo-500/5 transition-all hover:shadow-indigo-500/10">
-            <div className="flex items-center gap-2 mb-6">
-              <span className="text-xl">✨</span>
-              <h3 className="font-semibold text-lg text-indigo-900 dark:text-indigo-100">AI Režiser (Studio)</h3>
+          {/* Glassmorphism Card */}
+          <div className="relative overflow-hidden bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-6 sticky top-6 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] ring-1 ring-black/5 dark:ring-white/5 transition-all duration-500 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.12)]">
+
+            {/* Header with Gradient Text */}
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+                <Wand2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
+                  AI Režiser Studio
+                </h3>
+                <p className="text-xs text-muted-foreground font-medium">Virtuelni kreativni direktor</p>
+              </div>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <Label className="text-13 text-muted-foreground mb-2 block">Karakter Režisera (Vibe)</Label>
+            <div className="space-y-8">
+              {/* Director Personality Selector */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold text-foreground/80">Karakter Režisera (Vibe)</Label>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full">Stil</span>
+                </div>
+
                 <Select value={formData.director_personality || "auto"} onValueChange={(v) => handleSelectChange('director_personality', v)}>
-                  <SelectTrigger className="h-11 w-full bg-background/80"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">🤖 Auto</SelectItem>
-                    <SelectItem value="bold">🦁 Bold</SelectItem>
-                    <SelectItem value="luxury">💎 Luxury</SelectItem>
-                    <SelectItem value="funny">😂 Funny</SelectItem>
-                    <SelectItem value="mystery">🕵️ Mystery</SelectItem>
-                    <SelectItem value="professional">👔 Professional</SelectItem>
+                  <SelectTrigger className="h-14 w-full bg-background/50 border-indigo-100 dark:border-indigo-800/50 backdrop-blur-sm rounded-xl hover:bg-background/80 transition-all font-medium text-base shadow-sm group">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px] p-1 glass-panel border-indigo-100/50">
+                    <SelectItem value="auto" className="rounded-lg py-2.5 px-3 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 cursor-pointer mb-1">
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                          <Wand2 className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-sm">🤖 Automatski</span>
+                          <span className="text-[10px] text-muted-foreground">AI analizira i bira najbolje</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+
+                    <div className="h-px bg-border/50 my-1 mx-2" />
+
+                    <SelectItem value="bold" className="rounded-lg py-2.5 px-3 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">🦁</span>
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-sm">Dinamičan</span>
+                          <span className="text-[10px] text-muted-foreground">Brz, atraktivan, moderan</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+
+                    <SelectItem value="luxury" className="rounded-lg py-2.5 px-3 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">💎</span>
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-sm">Luksuzan</span>
+                          <span className="text-[10px] text-muted-foreground">Elegantan, spor, premium</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+
+                    <SelectItem value="professional" className="rounded-lg py-2.5 px-3 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">👔</span>
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-sm">Profesionalan</span>
+                          <span className="text-[10px] text-muted-foreground">Ozbiljan, informativan, korporativan</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+
+                    <SelectItem value="mystery" className="rounded-lg py-2.5 px-3 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">🕵️</span>
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-sm">Misteriozan</span>
+                          <span className="text-[10px] text-muted-foreground">Teasing, cinematic, radoznao</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+
+                    <SelectItem value="funny" className="rounded-lg py-2.5 px-3 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">😂</span>
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-sm">Duhovit</span>
+                          <span className="text-[10px] text-muted-foreground">Zabavan, opušten, engaging</span>
+                        </div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground/70 mt-1.5">AI analizira slike i bira strategiju.</p>
               </div>
 
-              <div className="border-t border-indigo-200/50 dark:border-indigo-800/50" />
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                  <div className="w-full border-t border-indigo-100 dark:border-indigo-800/40"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-transparent px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 backdrop-blur-sm">Advanced Controls</span>
+                </div>
+              </div>
 
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-indigo-900/60 dark:text-indigo-100/60 mb-4 block">Ručne Izmene (Advanced)</Label>
+                <Label className="text-sm font-semibold text-foreground/80 mb-4 block flex justify-between items-center">
+                  Finog Podešavanja
+                  <span className="text-[10px] font-normal text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-md">Opciono</span>
+                </Label>
                 <div className="space-y-5">
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
