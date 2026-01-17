@@ -145,6 +145,51 @@ Return ONLY the corrected transcript with proper Serbian punctuation and capital
   }
 
   /**
+   * Optimize image editing instruction for Nano Banana
+   */
+  async optimizeImagePrompt(instruction: string): Promise<string> {
+    const SYSTEM_PROMPT = `You rewrite a user instruction into ONE clear, robust English command for the image-editing model google/nano-banana-edit.
+Rules:
+- Output ONE line of plain English.
+- FOCUS on the "Insert..." text structure: "Insert the main subject from image 2 into image 1 [placement description]."
+- Use "main subject" or the specific object name (e.g. "man", "sofa") if the user provides it.
+- Ensure the instruction explicitly states WHERE to place it (e.g. "standing in front of the bed", "on the floor").
+- REMOVE technical terms like "match perspective", "lens", "focal length", "scale", or "lighting".
+- KEEP it natural but authoritative.
+- BAD: "add man" (too vague).
+- GOOD: "Insert the man from image 2 into image 1 standing on the floor in front of the bed."
+- If the instruction is empty or unclear, default to:
+  "Insert the main subject from image 2 into image 1 so it is clearly visible in the room."`;
+
+    const body = {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `instructions: ${instruction}` }
+      ],
+      temperature: 1.0,
+      max_tokens: 300
+    };
+
+    const response = await fetch(API_ENDPOINTS.openai.chatCompletions, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      console.warn('OpenAI prompt optimization failed, using original.');
+      return instruction;
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || instruction;
+  }
+
+  /**
    * Transcribe audio using Whisper
    */
   async createTranscription(audioUrl: string): Promise<string> {

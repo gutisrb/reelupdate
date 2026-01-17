@@ -10,6 +10,8 @@ interface PhotosStepProps {
   onNext: () => void;
   onPrev: () => void;
   canProceed: boolean;
+  visualHook: string;
+  onVisualHookChange: (hook: string) => void;
 }
 
 export const PhotosStep = ({
@@ -20,6 +22,8 @@ export const PhotosStep = ({
   onNext,
   onPrev,
   canProceed,
+  visualHook,
+  onVisualHookChange,
 }: PhotosStepProps) => {
   const totalImages = slots.reduce((acc, slot) => acc + slot.images.length, 0);
 
@@ -31,11 +35,10 @@ export const PhotosStep = ({
             variant={clipCount === 5 ? "default" : "ghost"}
             size="sm"
             onClick={() => onClipCountChange(5)}
-            className={`h-10 px-6 text-sm rounded-full transition-all duration-200 ${
-              clipCount === 5 
-                ? "gradient-primary text-white shadow-md" 
-                : "text-muted-foreground hover:text-foreground hover:bg-surface"
-            }`}
+            className={`h-10 px-6 text-sm rounded-full transition-all duration-200 ${clipCount === 5
+              ? "gradient-primary text-white shadow-md"
+              : "text-muted-foreground hover:text-foreground hover:bg-surface"
+              }`}
           >
             5 klipova
           </Button>
@@ -43,11 +46,10 @@ export const PhotosStep = ({
             variant={clipCount === 6 ? "default" : "ghost"}
             size="sm"
             onClick={() => onClipCountChange(6)}
-            className={`h-10 px-6 text-sm rounded-full transition-all duration-200 ${
-              clipCount === 6 
-                ? "gradient-primary text-white shadow-md" 
-                : "text-muted-foreground hover:text-foreground hover:bg-surface"
-            }`}
+            className={`h-10 px-6 text-sm rounded-full transition-all duration-200 ${clipCount === 6
+              ? "gradient-primary text-white shadow-md"
+              : "text-muted-foreground hover:text-foreground hover:bg-surface"
+              }`}
           >
             6 klipova
           </Button>
@@ -62,6 +64,8 @@ export const PhotosStep = ({
         onNext={onNext}
         onPrev={onPrev}
         canProceed={canProceed}
+        visualHook={visualHook}
+        onVisualHookChange={onVisualHookChange}
       />
     </div>
   );

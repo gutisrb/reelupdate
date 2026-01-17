@@ -9,7 +9,7 @@ export class GoogleAIClient {
   /**
    * Generate voiceover script using Gemini
    */
-  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25): Promise<string> {
+  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string): Promise<string> {
     // Full Serbian voiceover prompt from Make.com blueprint
     // Dynamic length based on video duration: 
     // 25s = ~70-75 words (approx 20-22s speaking time) 
@@ -29,11 +29,12 @@ Price: ${propertyData.price}€
 Size: ${propertyData.size}m²
 Rooms: ${propertyData.beds}
 Features: ${propertyData.extras}
-Floor: ${propertyData.sprat}
+Floor: ${propertyData.sprat} (Ako je format "X/Y", to znači "X sprat od ukupno Y spratova")
+PRICE_MENTION_STRATEGY: ${propertyData.price_mention || 'video'} (video = kaži cenu; description = kaži "Cena je u opisu"; contact_for_price = kaži "Kontaktirajte za cenu")
 VISUAL_CONTEXT (redosled/prostori): ${visualContext}
 AGENT_NOTE (ljudski unos: šta je posebno/vredno): ${propertyData.extras}
-
-HOOK STRATEGIJE (biraj jednu koja najbolje odgovara):
+${scriptHook ? `\nCRITICAL OVERRIDE: YOU MUST START THE SCRIPT WITH EXACTLY THIS HOOK: "${scriptHook}"\nNO OTHER OPENING ALLOWED.\n\nSEAMLESS FLOW REQUIRED: The text following this hook must connect IMMEDIATELY and SMOOTHLY. Do not start a new separate intro. If the hook is a "Story" ("Once upon a time..."), the next sentence must continue that story logic into the property details.` : ''}
+${!scriptHook ? `HOOK STRATEGIJE (biraj jednu koja najbolje odgovara):
 
 1. DIREKTAN POZIV: "Tražite [specifikacija]? Evo ga u [lokacija]."
 2. KARAKTERIZACIJA: "Ovaj stan je [jedinstvena karakteristika] na [lokacija]."
@@ -44,20 +45,22 @@ HOOK STRATEGIJE (biraj jednu koja najbolje odgovara):
 7. DRAMATIČNA IZJAVA: "[Karakteristika] koja se retko viđa u [lokacija]."
 8. URGENTNOST: "Ovaj stan u [lokacija] se ne pojavljuje često."
 9. EKSKLUZIVNOST: "Ekskluzivna prilika u [lokacija] – [feature]."
-10. PITANJE: "Šta ako vam kažem da [benefit] postoji u [lokacija]?"
+10. PITANJE: "Šta ako vam kažem da [benefit] postoji u [lokacija]?"` : ''}
 
 STRUKTURA VO (obavezno):
 
-1. **HOOK (${hookWordLimit})**: Prva rečenica. Agresivna, istinita, MORA uhvatiti pažnju. Bez uopštenog marketinga. Poštuj ulaz (ne dodaj ništa što ne postoji).
+1. **HOOK (${hookWordLimit})**: Prva rečenica. ${scriptHook ? `MORA BITI DOSLOVNO: "${scriptHook}" i PRIRODNO SPOJENO SA OSTATKOM.` : 'Agresivna, istinita, MORA uhvatiti pažnju.'}
 2. **ISHOD ZA GLEDAOCA (2–4 reči)**: Rečenica koja jasno komunicira zašto je ovaj stan rešenje (npr. "Vaš novi dom u [lokacija]." ili "Početak komfornijeg života.").
 3. **ČINJENICE (1–3 bitna detalja)**: Kratko. Samo iz ulaza. Prioritizuj: kvadratura, broj soba, sprat, posebne karakteristike (terasa, garaža, renoviran). Ne nabrajaj sve—samo najjače elemente.
-4. **CENA (obavezno)**: "Cena je u opisu."
+4. **CENA (obavezno)**: Zavisno od PRICE_MENTION_STRATEGY. Ako je 'video', reci iznos; ako je 'description', reci "Cena je u opisu"; ako je 'contact_for_price', reci "Kontaktirajte za cenu".
 5. **CTA (call-to-action)**: "Pišite mi za sve detalje." (ili varijacija ako bolje zvuči u kontekstu)
 
 STROGI PRAVILA:
 
 - Jezik: Srpski, **ekavica**, **latinica** (NIKAD ćirilica ili ijekavica).
-- Brojevi: Uvek rečima (npr. "pedeset kvadrata", "tri sobe", "drugi sprat").
+- Brojevi: Uvek rečima (npr. "pedeset kvadrata", "tri sobe"). 
+- SPRAT: Ako piše npr. "4/7", reci "četvrti sprat od sedam" ili "na četvrtom spratu od ukupno sedam". Nikako "četiri sedam".
+- CENA: Ako je strategija 'video', reci npr. "dvesta četrdeset pet hiljada evra".
 - Ton: Direktan, siguran, iskren—bez obećanja koja nisu u ulazu. BEZ uopštenog marketinga ("najbolji", "savršen" itd.), osim ako nije doslovno istina.
 - Dužina: **${wordCountRange} ukupno** (računajući hook + ishod + činjenice + cena + CTA). Ovo je strogo.
 - Bez halucinacija: Nikakve informacije koje nisu u ulazu. Ako nije pomenuto, ne postoji.

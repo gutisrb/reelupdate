@@ -610,7 +610,11 @@ label {
 /* Media Rail */
 .media-rail {
   width: 100%;
-  aspect-ratio: 4/5;
+  min-height: 300px;
+  /* Ensure visibility */
+  height: auto;
+  flex: 1;
+  /* Allow expanding to fill parent height */
   display: flex;
   gap: 8px;
   position: relative;
@@ -622,7 +626,9 @@ label {
 
 .photo-tile {
   flex: 1;
-  aspect-ratio: 4/5;
+  aspect-ratio: auto;
+  /* Let parent drive height, or match parent */
+  height: 100%;
   border-radius: 12px;
   overflow: hidden;
   position: relative;

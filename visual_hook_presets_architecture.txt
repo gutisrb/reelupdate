@@ -1,0 +1,76 @@
+VISUAL HOOK PRESETS: ARCHITECTURE & PROMPT GUIDE
+===================================================
+
+This document explains the technical implementation of "Visual Hook Presets" and provides the full collection of backend prompts currently used in the ReelUpdate pipeline.
+
+1. THE PRESET ARCHITECTURE
+--------------------------
+Currently, Slot 1 acts as the "Hook Slot." When a user selects a Preset, the system follows a specific image-generation logic before handing the frames to Luma for animation.
+
+### A. The "Two-Frame" Logic
+For Luma Dream Machine to animate a transition effectively, we need a Start Frame and an End Frame.
+- If the user uploads ONE image: We use that as the base and generate the "Hook" version as the second image.
+- If the user selects a Preset: We map the Preset name (e.g., "Start with Blur") to a specific instruction for Kie.ai.
+
+### B. High-Complexity Transitions (The "Agent Fail" Challenge)
+Presets like "Agent Fail" require multi-pass generation to maintain "Character Consistency."
+1. Pass 1: "Add a real estate agent standing in the middle of this room, professional attire, looking at camera."
+2. Pass 2: Using the result of Pass 1, instruct: "Modify the person from the previous image so they are mid-fall or laying on the floor, same room, same clothes."
+
+2. PRESET PROMPT REPOSITORY (MASTER LIST)
+-----------------------------------------
+
+| Preset Name         | Logical Flow | Master Prompt for Kie.ai (Flux/Nano-Banana) |
+|---------------------|--------------|---------------------------------------------|
+| **Start with Blur** | Frame 1: Blurred / Frame 2: Clear | "Apply heavy gaussian blur to the entire image while keeping colors vibrant. The result must be a high-quality blurred version of this specific room." |
+| **Agent Fail**      | Frame 1: Agent Stand / Frame 2: Agent Fall | "Add a professional real estate agent standing in the center. [Pass 2]: Change the agent to be mid-fall or lying on the floor, looking shocked." |
+| **Empty to Furnished**| Frame 1: Empty / Frame 2: Staged | "Virtually stage this room with high-end modern furniture, luxury rugs, and ambient lighting. Maintain the same floor and wall structure." |
+| **Furnished to Empty**| Frame 1: Furnished / Frame 2: Empty | "Completely remove all furniture, rugs, and decor from this room. Show only the empty architectural shell, clean floors, and bare walls." |
+| **Labubu**          | Frame 1: Normal / Frame 2: Giant Monster | "Add a giant 3D Labubu toy mascot character standing in the center of the room. High detail, matching the lighting of the house." |
+| **Sketch**          | Frame 1: Pencil Drawing / Frame 2: Photo | "Transform this photo into an artistic pencil sketch / architectural drawing. High contrast, graphite texture, white paper background." |
+| **Low Battery**     | Frame 1: UI Overlay / Frame 2: Action | "Overlay a realistic iPhone 'Low Battery' warning popup (20% remaining) centered on the image. Semi-transparent background." |
+
+3. FULL BACKEND PROMPT COLLECTION
+---------------------------------
+
+### 1. The Director (GPT-4o)
+Used in `director.ts` to design the overall video strategy.
+"You are the Creative Director for a viral real estate social media agency. Your goal is to design a unique 'Viral Blueprint' for a property video. 
+OUTPUT: Strategy Name, Script Hook (Catchy Opening), Visual Hook Type (motion/overlay) and specific instructions."
+
+### 2. The Scriptwriter (Gemini 1.5)
+Used in `google.ts` to write the Serbian voiceover.
+"Ti si performance copywriter za kratke nekretninske videoe na Instagramu. Tvoj VO mora zadržati gledanje: agresivan, istinit HOOK u prvoj rečenici.
+CRITICAL OVERRIDE: YOU MUST START THE SCRIPT WITH EXACTLY THIS HOOK: [Hook Text].
+Pravila: Srpski, ekavica, brojevi rečima, 70-75 reči."
+
+### 3. The Vision Analyst (GPT-4 Vision)
+Used in `index.ts` to generate the Luma animation prompt.
+"You generate a compact control prompt for Luma Dream Machine. 
+Rules: Select EXACTLY one camera motion (Push In, Pan, etc.). Use professional language: 'glides smoothly', 'revealing spatial flow'. 
+Constraint: Avoid dissolve, maintain spatial continuity."
+
+### 4. Transcription Fixer (OpenAI)
+Used after ZapCap transcription to fix hallucinations.
+"Compare the raw transcript against the original voiceover script [Script]. 
+Correct any errors in property names, prices, or locations that ZapCap may have misheard. Maintain same timestamps."
+
+4. GUIDANCE ON DYNAMIC SITUATIONS
+---------------------------------
+To handle the "Agent Fail" or "Labubu" situations correctly, the `prepareClip` function should be upgraded from a "Simple Edit" to a "Strategy Switch":
+
+```typescript
+// Proposed Logic Update:
+switch(presetName) {
+  case "Start with Blur":
+    // Pass 1: Generate blurred frame 1
+    // Frame 2: Use original image
+    break;
+  case "Agent Fail":
+    // Pass 1: Add standing agent to Frame 1
+    // Pass 2: Add falling agent to Frame 2 (referencing Frame 1 person)
+    break;
+}
+```
+
+This keeps the presets "Hardcoded" in their framework while allowing the AI (Kie.ai/Flux) to be "Dynamic" in how it renders the specific room.

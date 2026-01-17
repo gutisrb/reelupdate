@@ -28,6 +28,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
   const [processingStatus, setProcessingStatus] = useState<string>('Inicijalizacija...');
   const [interimVideoUrl, setInterimVideoUrl] = useState<string | null>(null);
   const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
+  const [previewResult, setPreviewResult] = useState<{ videoUrl: string; script: string } | null>(null);
 
   const { toast } = useToast();
   const { profile, loading: profileLoading } = useProfile(user);
@@ -74,9 +75,28 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
             // Check for completion
             if (videoData.status === 'ready' && videoData.video_url) {
               setFinalVideoUrl(videoData.video_url);
-              setGenerationState('complete');
-              setProcessingStatus('Gotovo!');
-              setProgress(100);
+
+              // If it was a preview, fetch the script and show it in place
+              if (videoData.title?.startsWith('[PREVIEW]')) {
+                const { data: details } = await supabase
+                  .from('video_generation_details')
+                  .select('voiceover_script')
+                  .eq('video_id', currentVideoId)
+                  .maybeSingle();
+
+                setPreviewResult({
+                  videoUrl: videoData.video_url,
+                  script: details?.voiceover_script || "Script not found."
+                });
+                setGenerationState('idle');
+                setIsLoading(false);
+                setProgress(100);
+              } else {
+                setGenerationState('complete');
+                setProcessingStatus('Gotovo!');
+                setProgress(100);
+              }
+
               clearInterval(pollInterval);
 
               toast({
@@ -174,6 +194,21 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     form.append("baths", wizardData.formData.baths || "");
     form.append("sprat", wizardData.formData.sprat || "");
     form.append("extras", wizardData.formData.extras || "");
+    form.append("price_mention", wizardData.formData.price_mention || "video");
+
+    // Construct property_data for JSON-based access in backend if needed
+    const propData = {
+      title: wizardData.formData.title,
+      price: wizardData.formData.price,
+      location: wizardData.formData.location,
+      size: wizardData.formData.size || "",
+      beds: wizardData.formData.beds || "",
+      baths: wizardData.formData.baths || "",
+      sprat: wizardData.formData.sprat || "",
+      extras: wizardData.formData.extras || "",
+      price_mention: wizardData.formData.price_mention || "video"
+    };
+    form.append("property_data", JSON.stringify(propData));
 
 
 
@@ -278,6 +313,49 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     }
   };
 
+  const handlePreview = async () => {
+    setIsLoading(true);
+    setProgress(20);
+
+    try {
+      const { form: multipartData, videoId } = await createMultipartFormData();
+      multipartData.append('is_preview', 'true');
+
+      setCurrentVideoId(videoId);
+      setProgress(40);
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/process-video-generation`;
+
+      console.log('📡 Calling Preview Edge Function:', edgeFunctionUrl);
+
+      const res = await fetch(edgeFunctionUrl, {
+        method: "POST",
+        body: multipartData,
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Greška prilikom pokretanja preview-a.`);
+      }
+
+      setGenerationState('generating');
+      setProcessingStatus('Generisanje preview-a (Hook + Script)...');
+      setProgress(50);
+
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Greška",
+        description: "Nije uspelo pokretanje preview-a.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveDraft = () => {
     toast({ title: "Sačuvano", description: "Vaš nacrt je sačuvan." });
   };
@@ -372,6 +450,8 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
               onPrev={prevStep}
               onNext={nextStep}
               canProceed={canProceedToStep3()}
+              visualHook={wizardData.formData.visual_hook || ""}
+              onVisualHookChange={(hook) => updateFormData({ ...wizardData.formData, visual_hook: hook, price_mention: wizardData.formData.price_mention })}
             />
           )}
 
@@ -381,6 +461,9 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
               onPrev={prevStep}
               onJumpToStep={(s) => setCurrentStep(s)}
               onGenerate={handleGenerate}
+              onPreview={handlePreview}
+              previewResult={previewResult}
+              onClosePreview={() => setPreviewResult(null)}
               onSaveDraft={handleSaveDraft}
               isLoading={isLoading}
             />

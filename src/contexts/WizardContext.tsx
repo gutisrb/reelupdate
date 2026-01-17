@@ -16,6 +16,7 @@ export interface FormData {
   property_type?: string;
   script_hook?: string;
   visual_hook?: string;
+  price_mention?: 'video' | 'description' | 'contact_for_price';
 }
 
 export interface WizardData {

@@ -9,6 +9,7 @@ export interface PropertyData {
   baths: string;
   sprat: string;
   extras: string;
+  price_mention?: 'video' | 'description' | 'contact_for_price';
 }
 
 export interface ImageSlot {
@@ -32,6 +33,8 @@ export interface VideoGenerationRequest {
   property_type?: string;
   script_hook?: string;
   visual_hook?: string;
+  is_preview?: boolean;
+  price_mention?: 'video' | 'description' | 'contact_for_price';
 }
 
 export interface UserSettings {
@@ -67,6 +70,7 @@ export interface UserSettings {
   caption_max_lines?: number;
   caption_emojis?: boolean;
   caption_single_word?: boolean;
+  price_mention_default?: 'video' | 'description' | 'contact_for_price';
 }
 
 export interface ClipData {
@@ -167,6 +171,11 @@ export interface DirectorContext {
   history_strategies: string[];
   wildcard: string;
   preferred_vibe?: string;
+  brand_logo_url?: string | null;
+  brand_colors?: {
+    primary?: string;
+    secondary?: string;
+  };
 }
 
 // Update existing or add to VideoGenerationRequest if needed

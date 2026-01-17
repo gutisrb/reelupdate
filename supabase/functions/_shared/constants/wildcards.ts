@@ -19,8 +19,6 @@ export const CREATIVE_WILDCARDS = [
     "Use a 'Question' hook",
     "Use a 'Storytime' intro",
     "Use a 'Secret' angle",
-    "Pretend to be the owner",
-    "Pretend to be a neighbor",
     "Highlight a specific flaw as a feature",
     "Compare to a hotel",
     "Compare to a previous sale",

@@ -3,14 +3,17 @@ import { SlotCard } from "./SlotCard";
 import { SlotData } from "./ImageSlots";
 import { DragProvider } from "./DragContext";
 import useEmblaCarousel from "embla-carousel-react";
+import { SmartSlot } from "./SmartSlot";
 
 interface SlotsGridProps {
   slots: SlotData[];
   onSlotsChange: (slots: SlotData[]) => void;
   clipCount: 5 | 6;
+  visualHook: string;
+  onVisualHookChange: (hook: string) => void;
 }
 
-export function SlotsGrid({ slots, onSlotsChange, clipCount }: SlotsGridProps) {
+export function SlotsGrid({ slots, onSlotsChange, clipCount, visualHook, onVisualHookChange }: SlotsGridProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: false,
     align: 'start',
@@ -45,32 +48,45 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount }: SlotsGridProps) {
   }, [emblaApi]);
 
   const moveImage = (fromSlot: number, imageIndex: number, toSlot: number, toIndex?: number) => {
-    const next = slots.map(s => ({...s, images: [...s.images]}));
+    const next = slots.map(s => ({ ...s, images: [...s.images] }));
+
+    if (fromSlot < 0 || fromSlot >= next.length || toSlot < 0 || toSlot >= next.length) return;
+
     const src = next[fromSlot];
     const dst = next[toSlot];
 
-    // Safety check: ensure source image exists
-    if (!src || !src.images[imageIndex]) {
-      console.warn('Source image not found, skipping move');
+    if (!src || !src.images || typeof src.images[imageIndex] === 'undefined') return;
+
+    const img = src.images[imageIndex];
+
+    // INTERNAL SLOT MOVE (Swap/Reorder)
+    if (fromSlot === toSlot) {
+      if (typeof toIndex === 'number' && toIndex !== imageIndex && toIndex < src.images.length) {
+        const newImages = [...src.images];
+        [newImages[imageIndex], newImages[toIndex]] = [newImages[toIndex], newImages[imageIndex]];
+        src.images = newImages.filter(Boolean);
+        onSlotsChange(next);
+      }
       return;
     }
 
-    const [img] = src.images.splice(imageIndex, 1);
+    // CROSS-SLOT MOVE
+    // Remove from source
+    src.images.splice(imageIndex, 1);
 
-    // if target index provided, place there or swap if occupied
     if (typeof toIndex === "number" && toIndex < dst.images.length) {
-      // Target position exists, swap
+      // Drop specifically on a tile -> swap with that tile
       const displacedImage = dst.images[toIndex];
       dst.images[toIndex] = img;
       if (displacedImage) {
         src.images.push(displacedImage);
       }
     } else {
-      // Dropping into general slot area or beyond current length
+      // Drop on general card area
       if (dst.images.length < 2) {
         dst.images.push(img);
       } else {
-        // Slot is full (has 2 images), swap with the last image
+        // Slot is full, swap with the last image
         const displacedImage = dst.images.pop()!;
         dst.images.push(img);
         if (displacedImage) {
@@ -79,9 +95,9 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount }: SlotsGridProps) {
       }
     }
 
-    // Compact arrays to remove any undefined/null values
-    src.images = src.images.filter(Boolean);
-    dst.images = dst.images.filter(Boolean);
+    // Final safety filter
+    src.images = src.images.filter((i): i is File => i instanceof File);
+    dst.images = dst.images.filter((i): i is File => i instanceof File);
 
     onSlotsChange(next);
   };
@@ -90,7 +106,7 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount }: SlotsGridProps) {
     const nextSlotIndex = slotIndex + 1;
     if (nextSlotIndex >= clipCount) return;
 
-    const next = slots.map(s => ({...s, images: [...s.images]}));
+    const next = slots.map(s => ({ ...s, images: [...s.images] }));
     const nextSlot = next[nextSlotIndex];
 
     if (nextSlot.images.length < 2) {
@@ -110,7 +126,7 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount }: SlotsGridProps) {
   };
 
   const handleBulkFilesFromSlot = (files: File[], startingSlotIndex: number) => {
-    const next = slots.map(s => ({...s, images: [...s.images]}));
+    const next = slots.map(s => ({ ...s, images: [...s.images] }));
     let fileIndex = 0;
 
     // Start filling from the starting slot
@@ -123,60 +139,100 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount }: SlotsGridProps) {
     onSlotsChange(next);
   };
 
-    const slotCards = slots.slice(0, clipCount).map((slot, index) => (
-      <SlotCard
-        key={slot.id}
-        slotIndex={index}
-        images={slot.images}
-        isHero={false}
-        totalSlots={clipCount}
-        onImagesChange={(images: File[]) => {
-          const newSlots = [...slots];
-          newSlots[index] = { ...slot, images };
-          onSlotsChange(newSlots);
-        }}
-        onReceiveInternalImage={({ fromSlot, imageIndex, toIndex }) =>
-          moveImage(fromSlot, imageIndex, index, toIndex)
-        }
-        onDuplicateToNext={handleDuplicateToNext(index)}
-        onReorderSlot={handleReorderSlot}
-        onBulkFilesAdded={handleBulkFilesFromSlot}
-      />
-    ));
 
-    return (
-      <DragProvider>
-        {isMobile ? (
-          // Mobile: Swipeable Carousel
-          <div className="slots-carousel-container">
-            <div className="slots-carousel-viewport" ref={emblaRef}>
-              <div className="slots-carousel-track">
-                {slotCards.map((card, idx) => (
-                  <div key={idx} className="slots-carousel-slide">
-                    {card}
+
+  return (
+    <DragProvider>
+      {isMobile ? (
+        // Mobile: Swipeable Carousel
+        <div className="slots-carousel-container">
+          <div className="slots-carousel-viewport" ref={emblaRef}>
+            <div className="slots-carousel-track">
+              {slots.slice(0, clipCount).map((slot, index) => {
+                const commonProps = {
+                  key: slot.id,
+                  slotIndex: index,
+                  images: slot.images,
+                  isHero: false,
+                  totalSlots: clipCount,
+                  onImagesChange: (images: File[]) => {
+                    const newSlots = [...slots];
+                    newSlots[index] = { ...slot, images };
+                    onSlotsChange(newSlots);
+                  },
+                  onReceiveInternalImage: ({ fromSlot, imageIndex, toIndex }: any) =>
+                    moveImage(fromSlot, imageIndex, index, toIndex),
+                  onDuplicateToNext: handleDuplicateToNext(index),
+                  onReorderSlot: handleReorderSlot,
+                  onBulkFilesAdded: handleBulkFilesFromSlot,
+                };
+
+                return (
+                  <div key={index} className="slots-carousel-slide">
+                    {index === 0 ? (
+                      <SmartSlot {...commonProps} visualHook={visualHook} onVisualHookChange={onVisualHookChange} />
+                    ) : (
+                      <SlotCard {...commonProps} />
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </div>
 
-            {/* Carousel Dots */}
-            <div className="slots-carousel-dots">
-              {Array.from({ length: clipCount }).map((_, idx) => (
-                <button
-                  key={idx}
-                  className={`slots-carousel-dot ${idx === selectedIndex ? 'active' : ''}`}
-                  onClick={() => emblaApi?.scrollTo(idx)}
-                  aria-label={`Go to slot ${idx + 1}`}
+          {/* Carousel Dots */}
+          <div className="slots-carousel-dots">
+            {Array.from({ length: clipCount }).map((_, idx) => (
+              <button
+                key={idx}
+                className={`slots-carousel-dot ${idx === selectedIndex ? 'active' : ''}`}
+                onClick={() => emblaApi?.scrollTo(idx)}
+                aria-label={`Go to slot ${idx + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        // Desktop: Grid Layout
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 pb-24 w-full px-4 lg:px-6">
+          {slots.slice(0, clipCount).map((slot, index) => {
+            const commonProps = {
+              key: slot.id,
+              slotIndex: index,
+              images: slot.images,
+              isHero: false,
+              totalSlots: clipCount,
+              onImagesChange: (images: File[]) => {
+                const newSlots = [...slots];
+                newSlots[index] = { ...slot, images };
+                onSlotsChange(newSlots);
+              },
+              onReceiveInternalImage: ({ fromSlot, imageIndex, toIndex }: any) =>
+                moveImage(fromSlot, imageIndex, index, toIndex),
+              onDuplicateToNext: handleDuplicateToNext(index),
+              onReorderSlot: handleReorderSlot,
+              onBulkFilesAdded: handleBulkFilesFromSlot,
+            };
+
+            if (index === 0) {
+              return (
+                <SmartSlot
+                  {...commonProps}
+                  visualHook={visualHook}
+                  onVisualHookChange={onVisualHookChange}
+                  className="col-span-1 shadow-md hover:shadow-lg transition-shadow"
                 />
-              ))}
-            </div>
-          </div>
-        ) : (
-          // Desktop: Grid Layout
-          <div className="uniform-slots-grid">
-            {slotCards}
-          </div>
-        )}
-      </DragProvider>
-    );
+              );
+            }
+
+            return (
+              <SlotCard
+                {...commonProps}
+              />
+            );
+          })}
+        </div>
+      )}
+    </DragProvider>
+  );
 }

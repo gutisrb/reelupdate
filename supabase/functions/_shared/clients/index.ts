@@ -23,7 +23,7 @@ export const initClients = () => {
     const elevenlabs = new ElevenLabsClient();
     const google = new GoogleAIClient();
     const cloudinary = new CloudinaryClient();
-    const luma = new LumaClient();
+    // const luma = new LumaClient(); // DISABLED
     const zapcap = new ZapCapClient();
     const kie = new KieClient();
     const director = new DirectorClient(openai);
@@ -33,7 +33,7 @@ export const initClients = () => {
         elevenlabs,
         google,
         cloudinary,
-        luma,
+        // luma,
         zapcap,
         kie,
         director

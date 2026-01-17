@@ -21,6 +21,8 @@ interface Props {
   onNext: () => void;
   onPrev: () => void;
   canProceed: boolean;
+  visualHook: string;
+  onVisualHookChange: (hook: string) => void;
 }
 
 export function ImageSlots({
@@ -31,6 +33,8 @@ export function ImageSlots({
   onNext,
   onPrev,
   canProceed,
+  visualHook,
+  onVisualHookChange,
 }: Props) {
   const maxImages = clipCount * 2;
   const { toast } = useToast();
@@ -186,6 +190,8 @@ export function ImageSlots({
           slots={slots}
           onSlotsChange={onSlotsChange}
           clipCount={clipCount}
+          visualHook={visualHook}
+          onVisualHookChange={onVisualHookChange}
         />
       </div>
 

@@ -9,6 +9,9 @@ interface PreviewStepProps {
   onPrev: () => void;
   onJumpToStep: (step: 1 | 2 | 3) => void;
   onGenerate: () => void;
+  onPreview?: () => void;
+  previewResult?: { videoUrl: string; script: string } | null;
+  onClosePreview?: () => void;
   onSaveDraft: () => void;
   isLoading: boolean;
 }
@@ -18,6 +21,9 @@ export const PreviewStep = ({
   onPrev,
   onJumpToStep,
   onGenerate,
+  onPreview,
+  previewResult,
+  onClosePreview,
   onSaveDraft,
   isLoading
 }: PreviewStepProps) => {
@@ -33,6 +39,65 @@ export const PreviewStep = ({
   return (
     <div className="w-full max-w-[1920px] mx-auto px-4 lg:px-8 space-y-8">
 
+      {/* Preview Result Modal Overlay */}
+      {previewResult && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="w-full max-w-4xl bg-surface border-border shadow-2xl overflow-hidden">
+            <CardContent className="p-0">
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                {/* Video Column */}
+                <div className="aspect-[9/16] bg-black flex items-center justify-center relative">
+                  <video
+                    src={previewResult.videoUrl}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute top-4 left-4">
+                    <Badge className="bg-indigo-600 text-white border-0">Vizuelni Hook (Slot 1)</Badge>
+                  </div>
+                </div>
+
+                {/* Script Column */}
+                <div className="p-8 flex flex-col gap-6">
+                  <div>
+                    <h3 className="text-2xl font-bold flex items-center gap-2 mb-2">
+                      <Sparkles className="w-6 h-6 text-indigo-500" />
+                      AI Voiceover Script
+                    </h3>
+                    <p className="text-muted-foreground">Ova skripta je generisana na osnovu vaših unosa i vizuelnog konteksta.</p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-muted/30 p-6 rounded-xl border border-border/50 italic text-lg leading-relaxed text-foreground/90">
+                    "{previewResult.script}"
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs text-muted-foreground text-center">
+                      Da li ste zadovoljni? Ako želite da promenite hook ili podatke, zatvorite ovaj prozor i izmenite detalje.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button variant="outline" onClick={onClosePreview} className="w-full">
+                        Zatvori & Izmeni
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          onClosePreview?.();
+                          onGenerate();
+                        }}
+                        className="w-full gradient-primary text-white"
+                      >
+                        Sve je super, Generiši!
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-6">
         <div className="space-y-1">
@@ -47,6 +112,15 @@ export const PreviewStep = ({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={onPreview}
+            disabled={!isReady || isLoading}
+            className="gap-2 border-indigo-200 hover:bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300"
+          >
+            <Sparkles className="w-4 h-4" />
+            Testiraj Hook & Script
+          </Button>
           <Button variant="outline" onClick={onSaveDraft} className="gap-2">
             <Save className="w-4 h-4" />
             Sačuvaj nacrt

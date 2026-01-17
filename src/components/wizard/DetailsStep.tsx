@@ -1,7 +1,8 @@
 // src/components/wizard/DetailsStep.tsx
 import React, { useState, useEffect } from "react";
-import { Sparkles, Wand2 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { useNavigate } from "react-router-dom";
+import { Sparkles, Wand2, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils"; import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { PresetScroll } from "./PresetScroll";
 import { HookInputWithPresets } from "./HookPresetCombobox";
-import { VisualHookSelector } from "./VisualHookSelector";
 
 // Updated FormData to match WizardContext
 type FormData = {
@@ -38,6 +38,7 @@ type FormData = {
   property_type?: string;
   script_hook?: string;
   visual_hook?: string;
+  price_mention?: 'video' | 'description' | 'contact_for_price';
 };
 
 interface DetailsStepProps {
@@ -50,7 +51,6 @@ interface DetailsStepProps {
 
 const ROOM_OPTIONS = [
   "Garsonjera",
-  "Jednosoban",
   "Jednoiposoban",
   "Dvosoban",
   "Dvoiposoban",
@@ -78,6 +78,7 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
   canProceed,
   isLoading = false,
 }) => {
+  const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -145,9 +146,22 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
                       <SelectContent>{PROPERTY_TYPES.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Cena (€)</Label>
-                    <Input name="price" value={formData.price} onChange={handleChange} className="h-12" />
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">Cena (€)</Label>
+                      <Input name="price" value={formData.price} onChange={handleChange} className="h-12" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">Gde pomenuti cenu?</Label>
+                      <Select value={formData.price_mention || "video"} onValueChange={(v) => handleSelectChange('price_mention', v)}>
+                        <SelectTrigger className="h-12 bg-background"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="video">🔊 U videu</SelectItem>
+                          <SelectItem value="description">📝 U opisu</SelectItem>
+                          <SelectItem value="contact_for_price">📞 Kontakt za cenu</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -253,6 +267,17 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
               <div>
                 <Label className="text-13 text-muted-foreground mb-1.5 block">Cena (€)</Label>
                 <Input name="price" value={formData.price} onChange={handleChange} className="h-12 bg-background/50" placeholder="245.000" />
+              </div>
+              <div>
+                <Label className="text-13 text-muted-foreground mb-1.5 block">Gde pomenuti cenu?</Label>
+                <Select value={formData.price_mention || "video"} onValueChange={(v) => handleSelectChange('price_mention', v)}>
+                  <SelectTrigger className="h-12 bg-background/50"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">🔊 Pomeni u videu</SelectItem>
+                    <SelectItem value="description">📝 Pomeni u opisu (Video: "Cena u opisu")</SelectItem>
+                    <SelectItem value="contact_for_price">📞 Kontaktirati za cenu</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div>
@@ -402,47 +427,50 @@ const DetailsStep: React.FC<DetailsStepProps> = ({
                 </Label>
                 <div className="space-y-5">
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <Label className="text-xs text-muted-foreground block flex justify-between">Uvodna rečenica <span className="text-[10px] opacity-70">(Hook)</span></Label>
-                      <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-sm font-semibold text-foreground/80">Uvodna rečenica <span className="text-[10px] font-normal text-muted-foreground ml-1">(Hook)</span></Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="script-auto-mode" className={cn("text-xs font-medium cursor-pointer transition-colors", !formData.script_hook ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground")}>
+                          AI Automatski
+                        </Label>
                         <Switch
                           id="script-auto-mode"
                           checked={!formData.script_hook}
-                          onCheckedChange={(c) => c && updateFormData({ ...formData, script_hook: "" })}
-                          className="scale-75 data-[state=checked]:bg-indigo-500"
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              updateFormData({ ...formData, script_hook: "" }); // Auto Mode
+                            } else {
+                              updateFormData({ ...formData, script_hook: " " }); // Manual Mode (Force Input)
+                            }
+                          }}
+                          className="scale-90 data-[state=checked]:bg-indigo-500"
                         />
-                        <Label htmlFor="script-auto-mode" className="text-[10px] font-medium cursor-pointer text-muted-foreground">
-                          AI Auto
-                        </Label>
                       </div>
                     </div>
 
-                    <div className="relative">
+                    <div className="relative group transition-all duration-300">
+                      {/* Only show input if NOT in Auto mode (i.e. has value) */}
+                      {!!formData.script_hook && (
+                        <HookInputWithPresets
+                          type="script_hook"
+                          value={formData.script_hook}
+                          onChange={(v) => updateFormData({ ...formData, script_hook: v })}
+                          placeholder="npr. Ovo je stan iz snova..."
+                          multiline
+                        />
+                      )}
                       {!formData.script_hook && (
-                        <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-[1px] flex items-center justify-center rounded-md border border-dashed border-indigo-200 dark:border-indigo-800 pointer-events-none">
-                          <div className="flex items-center gap-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1.5 rounded-full shadow-sm">
-                            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                            AI će generisati najbolji hook
+                        <div className="rounded-lg border border-dashed border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/20 p-4 text-center">
+                          <div className="flex items-center justify-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">
+                            <Sparkles className="w-4 h-4" />
+                            AI će generisati najbolju uvodnu rečenicu
                           </div>
                         </div>
                       )}
-
-                      <HookInputWithPresets
-                        type="script_hook"
-                        value={formData.script_hook || ""}
-                        onChange={(v) => updateFormData({ ...formData, script_hook: v })}
-                        placeholder="npr. Ovo je stan iz snova..."
-                        multiline
-                      />
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1.5 block flex justify-between">Vizuelni Uvod <span className="text-[10px] opacity-70">(Prvi kadar)</span></Label>
-                    <VisualHookSelector
-                      value={formData.visual_hook || ""}
-                      onChange={(v) => updateFormData({ ...formData, visual_hook: v })}
-                    />
-                  </div>
+
+
                 </div>
               </div>
             </div>

@@ -1,0 +1,131 @@
+VIDEO GENERATION PROCESSING PIPELINE - DETAILED TECHNICAL BREAKDOWN
+===================================================================
+
+This document outlines the end-to-end processing pipeline for generating viral real estate videos within the "ReelUpdate" application.
+
+The pipeline replaces a previous Make.com workflow with a custom Supabase Edge Function (`process-video-generation`), integrating multiple AI services (OpenAI, Google Gemini, ElevenLabs, Luma Dream Machine) and media processing tools (Cloudinary, ZapCap).
+
+1. OVERVIEW & TRIGGER
+---------------------
+- **Frontend Trigger**: The process is initiated from `src/components/VideoWizard.tsx` (or similar wizard components).
+- **Data Submission**: A `FormData` object is POSTed to the Supabase Edge Function URL (`/functions/v1/process-video-generation`).
+- **Input Data**:
+  - `user_id`, `video_id` (UUIDs).
+  - `property_data` (Title, Price, Location, Beds/Baths, Extras).
+  - `image_N` (Raw file uploads).
+  - `grouping` (JSON defining which images form clips, e.g., Frame-to-Frame pairs or Single Image).
+  - `settings` (Director personality, Property type, Manual hooks).
+
+2. EDGE FUNCTION: INITIALIZATION & VALIDATION
+---------------------------------------------
+File: `supabase/functions/process-video-generation/index.ts`
+
+1.  **Request Handling**: The function accepts `POST` requests. It first checks if the request is a "Recursive Poll" (JSON payload) or a "New Request" (FormData).
+2.  **Credit Check**:
+    - Queries the `profiles` table to check `video_credits_remaining`.
+    - If credits > 0, calls RPC `spend_video_credit` to deduct 1 credit.
+    - Inserts a new record into the `videos` table with `status: 'processing'`.
+3.  **Background Processing**: The main logic is wrapped in `EdgeRuntime.waitUntil(startVideoGeneration(...))` to verify the response to the client immediately (`200 OK`) while processing continues in the background.
+
+3. PHASE 0: THE "AI DIRECTOR" (STRATEGY)
+----------------------------------------
+File: `supabase/functions/_shared/clients/director.ts`
+
+Before generating assets, the system acts as a "Creative Director" to define the video's vibe.
+
+1.  **Context Assembly**:
+    - Fetches the last 5 `video_generation_details` to check `strategy_used` (to avoid repetition).
+    - Picks a random "Creative Wildcard" (e.g., "Fast Paced", "POV Walk") or uses the user's `director_personality`.
+2.  **Blueprint Generation**:
+    - Calls `DirectorClient.generateBlueprint` using GPT-4o.
+    - **Prompt**: "You are a Creative Director... design a unique 'Viral Blueprint'..."
+    - **Output**: Returns a JSON blueprint containing:
+        - `strategy_name`
+        - `script_hook` (Opening text hook)
+        - `visual_hook_type` ("motion", "overlay", or "none")
+        - `visual_hook_instruction` (Specific edit instructions)
+3.  **Manual Overrides**: If the user provided a manual `script_hook` in the Form Data, it overrides the AI's suggestion.
+
+4. PHASE 1: VISUAL PROCESSING (LUMA & HOOKS)
+--------------------------------------------
+Function: `prepareClip` (Parallel execution for multiple clips)
+
+1.  **Image Upload**:
+    - Uploads raw images (Start Frame and optional End Frame) to Cloudinary.
+2.  **Visual Hook Execution (Slot 1 Only)**:
+    - If the Blueprint dictates a "motion" hook for the first slot, calls `clients.kie.editImage`.
+    - `KieClient` uses AI image editing (Stable Diffusion/Flux) to modify the start image based on the `visual_hook_instruction` (e.g., "add confetti", "make it night time").
+3.  **Vision Analysis (GPT-4 Vision)**:
+    - Sends the Start/End images to OpenAI GPT-4 Vision.
+    - **Prompt**: Analysis of room type, lighting, stable anchors, and selection of professional camera motion (e.g., "Push In", "Pan Left").
+    - **Output**: A specific `luma_prompt` describing the scene and motion.
+4.  **Luma Animation**:
+    - Calls `clients.luma.createGeneration` with the generated prompt and start/end image URLs.
+    - This triggers the Luma Dream Machine API to eventually generate a video clip.
+    - Returns a `luma_generation_id`.
+5.  **Wait Loop**: `finishClip` function polls Luma until the video is ready, then uploads the result to Cloudinary (`clip_VIDEOID_INDEX.mp4`).
+
+5. PHASE 2: AUDIO ENGINEERING
+-----------------------------
+(Runs in parallel with Visual Processing)
+
+1.  **Script Writing**:
+    - Calls `clients.google.generateVoiceoverScript` (using Gemini).
+    - Context: Property data + Visual descriptions of clips + The "Script Hook" from Phase 0.
+    - Output: A timed voiceover script.
+2.  **Text-to-Speech (TTS)**:
+    - Calls `clients.google.generateTTS` using Google Cloud TTS.
+    - Uses user-defined voice settings (ID, language, speed).
+    - Output: PCM Audio data, converted/uploaded to Cloudinary as a WAV file.
+3.  **Music Composition**:
+    - Analyzes video mood (from Phase 1).
+    - Calls `clients.elevenlabs.generateMusic` (or retrieves stock music) to generate a track matching the `mood` and `duration`.
+
+6. PHASE 3: ASSEMBLY (STAGE 1)
+------------------------------
+Function: `clients.cloudinary.assembleVideo`
+
+1.  **Composition**:
+    - Uses Cloudinary's Video API to stitch all generated `clip_urls` together sequentially.
+    - Overlays the `voiceover_url` and `music_url` (with volume ducking/normalization).
+2.  **Rendering**:
+    - Generates a "Stage 1" video URL.
+    - This is the "Clean" video (No captions, no logo yet).
+
+7. PHASE 4: POST-PROCESSING (CAPTIONS & BRANDING)
+-------------------------------------------------
+System: ZapCap Integration
+
+1.  **Caption Task Creation**:
+    - If `caption_enabled` is true, calls `clients.zapcap.createCaptionTask` with the `stage1_url` and the `caption_template_id`.
+    - This is an async process.
+2.  **Recursive Polling** (`handleZapCapPoll`):
+    - The Edge Function triggers *itself* (invokeSelf) with `mode: 'zapcap_poll'` to avoid HTTP timeout limits.
+    - **Transcript Correction**:
+        - Fetches raw transcript from ZapCap.
+        - Uses OpenAI to "Diff/Correct" the transcript against the original *Voiceover Script* (to fix proper nouns, brand names, and hallucinations).
+        - Uploads corrected transcript back to ZapCap.
+    - **Approval & Render**: Approves the transcript and waits for ZapCap to burn in the captions.
+3.  **Logo Overlay**:
+    - Once ZapCap finishes, downloads the video.
+    - If `logo_url` exists in User Settings, uses Cloudinary to overlay the logo (watermark) at the specified position/size.
+
+8. PHASE 5: FINAL DELIVERY
+--------------------------
+1.  **Database Recording**:
+    - Inserts a comprehensive record into `video_generation_details`:
+        - `clip_data` (Prompts, moods, Luma IDs).
+        - `voiceover_script` & URLs.
+        - `strategy_used` (for future reference).
+        - `settings_snapshot` (what settings were used at the time).
+2.  **Status Update**:
+    - Updates `videos` table:
+        - `status`: 'ready' (or 'failed' if errors occurred).
+        - `video_url`: The final Cloudinary URL (with captions + logo).
+        - `thumbnail_url`: The first frame of the first clip.
+        - `duration_seconds`: Total calculated duration.
+
+9. ERROR HANDLING
+-----------------
+- The entire process is wrapped in `try/catch`.
+- If any step fails (OpenAI quota, Luma timeout, Cloudinary error), the `videos` table status is updated to `failed` with the specific `error_text`.
