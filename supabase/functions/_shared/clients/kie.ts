@@ -77,7 +77,7 @@ export class KieClient {
                     image_url: startImageUrl,
                     tail_image_url: endImageUrl || undefined,
                     duration: "5",
-                    cfg_scale: 0.8,
+                    cfg_scale: 0.5,
                     negative_prompt: negativePrompt || "blur, distort, low quality, static, frozen"
                 }
             })
