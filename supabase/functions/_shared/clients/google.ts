@@ -9,7 +9,7 @@ export class GoogleAIClient {
   /**
    * Generate voiceover script using Gemini 3.0
    */
-  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string): Promise<string> {
+  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string, retryCount: number = 0): Promise<string> {
     // ... Word count logic remains the same ...
     const wordCountRange = videoLength >= 30 ? '80–85 reči' : '70–75 reči';
     const hookWordLimit = videoLength >= 30 ? '≤14 reči' : '≤12 reči';
@@ -44,9 +44,10 @@ export class GoogleAIClient {
     );
 
     if (response.status === 503) {
-      console.warn('[GoogleAIClient] Gemini 503 Overloaded (Script), retrying once...');
-      await new Promise(r => setTimeout(r, 2000));
-      return this.generateVoiceoverScript(propertyData, visualContext, videoLength, scriptHook);
+      if (retryCount >= 3) throw new Error(`Gemini 503 Overloaded after ${retryCount} retries`);
+      console.warn(`[GoogleAIClient] Gemini 503 Overloaded (Script), retrying (${retryCount + 1}/3)...`);
+      await new Promise(r => setTimeout(r, 2000 * (retryCount + 1))); // Exponential backoff
+      return this.generateVoiceoverScript(propertyData, visualContext, videoLength, scriptHook, retryCount + 1);
     }
 
     if (!response.ok) {
@@ -102,7 +103,8 @@ export class GoogleAIClient {
   async analyzeImagesForVideo(
     firstImageUrl: string,
     secondImageUrl: string | null,
-    prompt: string
+    prompt: string,
+    retryCount: number = 0
   ): Promise<any> {
     console.log(`[GoogleAIClient] Analyzing images for video with Gemini 3.0...`);
 
@@ -157,9 +159,10 @@ export class GoogleAIClient {
     );
 
     if (response.status === 503) {
-      console.warn('[GoogleAIClient] Gemini 503 Overloaded (Vision), retrying once...');
-      await new Promise(r => setTimeout(r, 2000));
-      return this.analyzeImagesForVideo(firstImageUrl, secondImageUrl, prompt);
+      if (retryCount >= 3) throw new Error(`Gemini 503 Overloaded after ${retryCount} retries`);
+      console.warn(`[GoogleAIClient] Gemini 503 Overloaded (Vision), retrying (${retryCount + 1}/3)...`);
+      await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+      return this.analyzeImagesForVideo(firstImageUrl, secondImageUrl, prompt, retryCount + 1);
     }
 
     if (!response.ok) {
@@ -396,7 +399,7 @@ Rules:
     messages: { role: string; content: string }[];
     temperature?: number;
     responseMimeType?: string;
-  }): Promise<any> {
+  }, retryCount: number = 0): Promise<any> {
     const body = {
       contents: params.messages.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -426,9 +429,10 @@ Rules:
     );
 
     if (response.status === 503) {
-      console.warn('[GoogleAIClient] Gemini 503 Overloaded (Chat), retrying once...');
-      await new Promise(r => setTimeout(r, 2000));
-      return this.chat(params);
+      if (retryCount >= 3) throw new Error(`Gemini 503 Overloaded after ${retryCount} retries`);
+      console.warn(`[GoogleAIClient] Gemini 503 Overloaded (Chat), retrying (${retryCount + 1}/3)...`);
+      await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+      return this.chat(params, retryCount + 1);
     }
 
     if (!response.ok) {
