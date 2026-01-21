@@ -64,12 +64,24 @@ export class GoogleAIClient {
   ): Promise<any> {
     console.log(`[GoogleAIClient] Analyzing images for video with Gemini 3.0...`);
 
-    const imageParts = [
-      { file_data: { mime_type: "image/jpeg", file_uri: firstImageUrl } }
-    ];
+    const imageParts: any[] = [];
 
+    // Fetch and convert first image
+    try {
+      const resp1 = await fetch(firstImageUrl);
+      const blob1 = await resp1.arrayBuffer();
+      const base64_1 = btoa(String.fromCharCode(...new Uint8Array(blob1)));
+      imageParts.push({ inline_data: { mime_type: "image/jpeg", data: base64_1 } });
+    } catch (e) { console.error("[GoogleAIClient] Failed to fetch first image", e); }
+
+    // Fetch and convert second image if exists
     if (secondImageUrl) {
-      imageParts.push({ file_data: { mime_type: "image/jpeg", file_uri: secondImageUrl } });
+      try {
+        const resp2 = await fetch(secondImageUrl);
+        const blob2 = await resp2.arrayBuffer();
+        const base64_2 = btoa(String.fromCharCode(...new Uint8Array(blob2)));
+        imageParts.push({ inline_data: { mime_type: "image/jpeg", data: base64_2 } });
+      } catch (e) { console.error("[GoogleAIClient] Failed to fetch second image", e); }
     }
 
     const body = {
@@ -102,8 +114,14 @@ export class GoogleAIClient {
     const data = await response.json();
     const content = data.candidates[0]?.content?.parts[0]?.text;
 
-    if (!content) throw new Error('No content returned from Gemini 3.0 Vision');
-    return JSON.parse(content);
+    if (!content) {
+      console.error('[GoogleAIClient] Empty response from Gemini 3.0 Vision', JSON.stringify(data));
+      throw new Error('No content returned from Gemini 3.0 Vision');
+    }
+
+    const parsed = JSON.parse(content);
+    console.log(`[GoogleAIClient] Vision analysis complete. Prompt: "${parsed.luma_prompt?.substring(0, 50)}..."`);
+    return parsed;
   }
 
   /**

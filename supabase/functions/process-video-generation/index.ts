@@ -522,8 +522,8 @@ async function handleZapCapPoll(payload: any, functionUrl: string, authToken: st
 
 async function invokeSelf(payload: any, passedUrl: string, authToken: string) {
   try {
-    const projectUrl = Deno.env.get('SUPABASE_URL');
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const projectUrl = API_ENDPOINTS.supabase.url;
+    const serviceKey = API_ENDPOINTS.supabase.serviceRoleKey;
     const functionUrl = projectUrl ? `${projectUrl}/functions/v1/process-video-generation` : passedUrl;
     const token = serviceKey ? `Bearer ${serviceKey}` : authToken;
     await fetch(functionUrl, { method: 'POST', headers: { 'Authorization': token, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
