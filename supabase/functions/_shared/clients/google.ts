@@ -112,7 +112,7 @@ export class GoogleAIClient {
     }
 
     const data = await response.json();
-    const content = data.candidates[0]?.content?.parts[0]?.text;
+    const content = this.safeExtractText(data);
 
     if (!content) {
       console.error('[GoogleAIClient] Empty response from Gemini 3.0 Vision', JSON.stringify(data));
@@ -218,11 +218,11 @@ Rules:
     }
 
     const data: GoogleTTSResponse = await response.json();
-    const base64Audio = data.candidates[0]?.content?.parts[0]?.inlineData?.data;
+    const base64Audio = this.safeExtractInlineData(data);
 
     if (!base64Audio) {
       console.error('[Gemini TTS] Response structure:', JSON.stringify(data, null, 2));
-      throw new Error('No audio data returned from Gemini TTS');
+      throw new Error('No audio data returned from Gemini TTS. Possible safety block?');
     }
 
     console.log(`[Gemini TTS] Base64 audio length: ${base64Audio.length} chars`);
@@ -322,7 +322,12 @@ Rules:
     }
 
     const data = await response.json();
-    const text = data.candidates[0]?.content?.parts[0]?.text;
+    const text = this.safeExtractText(data);
+
+    if (!text) {
+      console.error('[GoogleAIClient] Chat response structure missing candidates/content:', JSON.stringify(data));
+      throw new Error('Gemini 3.0 chat returned no content. This usually means a safety block or quota limit.');
+    }
 
     // Return in a structure similar to OpenAI for compatibility if needed, 
     // or just return the raw text if expected by the caller.
@@ -333,6 +338,26 @@ Rules:
         }
       }]
     };
+  }
+
+  /**
+   * Safe extraction of text from Gemini response structure
+   */
+  private safeExtractText(data: any): string | null {
+    if (!data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return null;
+    }
+    return data.candidates[0].content.parts[0].text;
+  }
+
+  /**
+   * Safe extraction of inline audio data from Gemini response structure
+   */
+  private safeExtractInlineData(data: any): string | null {
+    if (!data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data) {
+      return null;
+    }
+    return data.candidates[0].content.parts[0].inlineData.data;
   }
 
   /**
