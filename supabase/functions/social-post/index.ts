@@ -28,13 +28,32 @@ serve(async (req) => {
         const { connection_id, video_url, caption, platform } = await req.json()
         if (!connection_id || !video_url || !platform) throw new Error('Missing required fields')
 
-        // 3. Get Connection Tokens
-        // We use the service_role key to read the tokens (security critical)
+        // 3. Check User's Subscription Tier (autoposting requires Professional+)
         const adminClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
+        const { data: profile, error: profileError } = await adminClient
+            .from('profiles')
+            .select('subscription_tier')
+            .eq('id', user.id)
+            .single()
+
+        if (profileError || !profile) throw new Error('Could not fetch user profile')
+
+        // Validate tier allows autoposting
+        const autopostingTiers = ['professional', 'agency', 'enterprise']
+        if (!autopostingTiers.includes(profile.subscription_tier)) {
+            return new Response(JSON.stringify({
+                error: 'Autoposting requires Professional tier or higher. Please upgrade your subscription.'
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
+        }
+
+        // 4. Get Connection Tokens
         const { data: connection, error: connError } = await adminClient
             .from('social_connections')
             .select('*')
@@ -46,11 +65,13 @@ serve(async (req) => {
 
         let result = {}
 
-        // 4. Platform Specific Logic
+        // 5. Platform Specific Logic
         if (platform === 'tiktok') {
             result = await postToTikTok(connection, video_url, caption)
         } else if (platform === 'instagram') {
             result = await postToInstagram(connection, video_url, caption)
+        } else if (platform === 'facebook') {
+            result = await postToFacebook(connection, video_url, caption)
         } else {
             throw new Error('Unsupported platform')
         }
@@ -108,15 +129,16 @@ async function postToTikTok(connection: any, videoUrl: string, caption: string) 
 
 // --- Instagram Logic ---
 async function postToInstagram(connection: any, videoUrl: string, caption: string) {
-    // Facebook Page ID linked to the IG account is needed usually? 
-    // Actually for IG Graph API, we post to the IG User ID.
-    // POST https://graph.facebook.com/v21.0/{ig-user-id}/media
+    // Use the stored Instagram Business ID and page access token
+    const pageAccessToken = connection.page_access_token || connection.access_token
+    const igUserId = connection.instagram_business_id || connection.platform_user_id
 
-    const accessToken = connection.access_token
-    const igUserId = connection.platform_user_id
+    if (!igUserId) {
+        throw new Error('Instagram Business account not found. Please reconnect your Instagram account.')
+    }
 
     // 1. Create Media Container
-    const containerUrl = `https://graph.facebook.com/v21.0/${igUserId}/media?media_type=REELS&video_url=${encodeURIComponent(videoUrl)}&caption=${encodeURIComponent(caption)}&access_token=${accessToken}`
+    const containerUrl = `https://graph.facebook.com/v21.0/${igUserId}/media?media_type=REELS&video_url=${encodeURIComponent(videoUrl)}&caption=${encodeURIComponent(caption)}&access_token=${pageAccessToken}`
 
     const containerRes = await fetch(containerUrl, { method: 'POST' })
     const containerData = await containerRes.json()
@@ -127,15 +149,13 @@ async function postToInstagram(connection: any, videoUrl: string, caption: strin
 
     const creationId = containerData.id
 
-    // 2. Wait for Processing (Naive wait, ideally we poll)
-    // Instagram videos take time to process. 
-    // We'll try to publish immediately, if it fails, the frontend might need to retry or we sleep here.
-    // Rate limit-wise sleeping in edge function is bad, but let's try a small delay.
-    // A better approach is usually webhooks or polling status. 
-    // For MVP/Screencast, let's just return the 'Pending' status or try to publish.
+    // 2. Wait for Processing (naive wait - ideally we poll)
+    // Instagram videos take time to process.
+    // For now, return the creation_id and let frontend poll or retry
+    // A better approach is to use webhooks or a background job
 
-    // Let's try to publish.
-    const publishUrl = `https://graph.facebook.com/v21.0/${igUserId}/media_publish?creation_id=${creationId}&access_token=${accessToken}`
+    // Let's try to publish immediately
+    const publishUrl = `https://graph.facebook.com/v21.0/${igUserId}/media_publish?creation_id=${creationId}&access_token=${pageAccessToken}`
     const publishRes = await fetch(publishUrl, { method: 'POST' })
     const publishData = await publishRes.json()
 
@@ -145,4 +165,37 @@ async function postToInstagram(connection: any, videoUrl: string, caption: strin
     }
 
     return { success: true, platform: 'instagram', data: publishData }
+}
+
+// --- Facebook Logic ---
+async function postToFacebook(connection: any, videoUrl: string, caption: string) {
+    // Use page access token and Facebook Page ID
+    const pageAccessToken = connection.page_access_token || connection.access_token
+    const pageId = connection.facebook_page_id || connection.platform_user_id
+
+    if (!pageId) {
+        throw new Error('Facebook Page not found. Please reconnect your Facebook account.')
+    }
+
+    // Upload video to Facebook Page
+    // POST /{page-id}/videos
+    const uploadUrl = `https://graph.facebook.com/v21.0/${pageId}/videos`
+
+    const params = new URLSearchParams({
+        access_token: pageAccessToken,
+        description: caption,
+        file_url: videoUrl
+    })
+
+    const response = await fetch(`${uploadUrl}?${params.toString()}`, {
+        method: 'POST'
+    })
+
+    const data = await response.json()
+
+    if (data.error) {
+        throw new Error(`Facebook Post Error: ${data.error.message}`)
+    }
+
+    return { success: true, platform: 'facebook', data }
 }

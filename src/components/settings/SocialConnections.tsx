@@ -302,19 +302,57 @@ export function SocialConnections({ userId }: SocialConnectionsProps) {
                 </div>
 
                 {/* Facebook */}
-                <div className="flex items-center justify-between p-4 border rounded-lg opacity-50 cursor-not-allowed">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                            FB
+                <div className="flex flex-col gap-4 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                                FB
+                            </div>
+                            <div>
+                                <h3 className="font-medium">Facebook</h3>
+                                {isConnected('facebook') ? (
+                                    <p className="text-sm text-green-600 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        Connected: {isConnected('facebook')?.platform_username}
+                                    </p>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">Not connected</p>
+                                )}
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="font-medium">Facebook</h3>
-                            <p className="text-sm text-muted-foreground">Coming Soon</p>
+                        <div className="flex items-center gap-2">
+                            {isConnected('facebook') && (
+                                <Button variant="secondary" size="sm" onClick={() => handleTestPost('facebook', (isConnected('facebook') as any)?.id)}>
+                                    Test Post
+                                </Button>
+                            )}
+                            {isConnected('facebook') ? (
+                                <Button variant="outline" size="sm" onClick={() => handleDisconnect('facebook')}>
+                                    Disconnect
+                                </Button>
+                            ) : (
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleConnect('instagram')} // Uses same Meta OAuth flow
+                                    disabled={!!connecting}
+                                >
+                                    {connecting === 'instagram' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    Connect
+                                </Button>
+                            )}
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" disabled>
-                        Connect
-                    </Button>
+
+                    {isConnected('facebook') && (
+                        <div className="flex items-center space-x-2 pt-2 border-t">
+                            <Switch
+                                id="facebook-autopost"
+                                checked={isConnected('facebook')?.auto_post_enabled}
+                                onCheckedChange={(checked) => handleToggleAutoPost('facebook', checked)}
+                            />
+                            <Label htmlFor="facebook-autopost">Enable Auto-Posting</Label>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

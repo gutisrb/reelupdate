@@ -75,8 +75,7 @@ serve(async (req) => {
             const clientId = Deno.env.get('INSTAGRAM_CLIENT_ID')
             const clientSecret = Deno.env.get('INSTAGRAM_CLIENT_SECRET')
 
-            // FB Login Token Exchange
-            // GET https://graph.facebook.com/v21.0/oauth/access_token?client_id={app-id}&redirect_uri={redirect-uri}&client_secret={app-secret}&code={code-parameter}
+            // 1. Exchange code for short-lived token
             const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${clientSecret}&code=${code}`
 
             const tokenRes = await fetch(tokenUrl)
@@ -84,40 +83,134 @@ serve(async (req) => {
 
             if (tokenData.error) throw new Error(tokenData.error.message || 'FB Token Error')
 
-            accessToken = tokenData.access_token
-            // FB tokens are usually long-lived (60 days) or need explicit exchange. 
-            // The one returned here is usually short-lived, but we can exchange.
-            // For simplicity, let's use it. Ideally we exchange for long-lived.
-            expiresIn = tokenData.expires_in || 3600
+            const shortLivedToken = tokenData.access_token
 
-            // Get User Name (Facebook User)
-            // Note: This connects the FB User. We might need to fetch connected IG pages later.
-            // For now, let's store the FB User ID/Name as the connection.
-            const userRes = await fetch(`https://graph.facebook.com/me?fields=id,name&access_token=${accessToken}`)
-            const userData = await userRes.json()
+            // 2. Exchange for long-lived token (60 days validity)
+            const longLivedUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`
 
-            if (userData.error) throw new Error(userData.error.message)
+            const longLivedRes = await fetch(longLivedUrl)
+            const longLivedData = await longLivedRes.json()
 
-            platformUserId = userData.id
-            platformUsername = userData.name // This is the FB Name
+            if (longLivedData.error) throw new Error(longLivedData.error.message || 'Failed to get long-lived token')
+
+            accessToken = longLivedData.access_token
+            expiresIn = longLivedData.expires_in || 5184000 // 60 days in seconds
+
+            // 3. Get user's Facebook Pages
+            const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${accessToken}`)
+            const pagesData = await pagesRes.json()
+
+            if (pagesData.error) throw new Error(pagesData.error.message || 'Failed to get Facebook pages')
+
+            // 4. Get first page (or iterate to find IG-connected page)
+            let facebookPageId = ''
+            let pageAccessToken = ''
+            let instagramBusinessId = ''
+            let instagramUsername = ''
+
+            if (pagesData.data && pagesData.data.length > 0) {
+                // Try to find a page with an Instagram account
+                for (const page of pagesData.data) {
+                    const pageId = page.id
+                    const pageToken = page.access_token // This is the page-scoped access token
+
+                    // Check if this page has a connected IG Business account
+                    const igRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}?fields=instagram_business_account&access_token=${pageToken}`)
+                    const igData = await igRes.json()
+
+                    if (igData.instagram_business_account) {
+                        facebookPageId = pageId
+                        pageAccessToken = pageToken
+                        instagramBusinessId = igData.instagram_business_account.id
+
+                        // Get IG username
+                        const igUserRes = await fetch(`https://graph.facebook.com/v21.0/${instagramBusinessId}?fields=username&access_token=${pageToken}`)
+                        const igUserData = await igUserRes.json()
+                        instagramUsername = igUserData.username || 'Unknown'
+
+                        break // Use first page with IG account
+                    }
+                }
+
+                // If no IG account found, use first page anyway (for FB posting)
+                if (!facebookPageId && pagesData.data.length > 0) {
+                    const firstPage = pagesData.data[0]
+                    facebookPageId = firstPage.id
+                    pageAccessToken = firstPage.access_token
+                    platformUsername = firstPage.name
+                }
+            }
+
+            if (!facebookPageId) {
+                throw new Error('No Facebook pages found. Please create a Facebook page and link it to an Instagram Business account.')
+            }
+
+            platformUserId = facebookPageId // Store FB Page ID as primary identifier
+            platformUsername = instagramUsername || platformUsername || 'Facebook Page'
+
+            // Store page access token (more reliable than user token for posting)
+            accessToken = pageAccessToken
+
+            // Create separate connections for Instagram and Facebook
+            // We'll save Instagram connection if IG account exists
+            if (instagramBusinessId) {
+                await supabase
+                    .from('social_connections')
+                    .upsert({
+                        user_id: userId,
+                        platform: 'instagram',
+                        platform_user_id: instagramBusinessId,
+                        platform_username: instagramUsername,
+                        access_token: pageAccessToken,
+                        refresh_token: null,
+                        expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+                        facebook_page_id: facebookPageId,
+                        instagram_business_id: instagramBusinessId,
+                        page_access_token: pageAccessToken
+                    }, {
+                        onConflict: 'user_id,platform'
+                    })
+            }
+
+            // Also save Facebook connection
+            await supabase
+                .from('social_connections')
+                .upsert({
+                    user_id: userId,
+                    platform: 'facebook',
+                    platform_user_id: facebookPageId,
+                    platform_username: platformUsername,
+                    access_token: pageAccessToken,
+                    refresh_token: null,
+                    expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+                    facebook_page_id: facebookPageId,
+                    page_access_token: pageAccessToken
+                }, {
+                    onConflict: 'user_id,platform'
+                })
+
+            // Skip the default save below since we already saved
+            platformUserId = '' // This will skip the generic save
         }
 
-        // Save to Database
-        const { error: dbError } = await supabase
-            .from('social_connections')
-            .upsert({
-                user_id: userId,
-                platform,
-                platform_user_id: platformUserId,
-                platform_username: platformUsername,
-                access_token: accessToken,
-                refresh_token: refreshToken || null,
-                expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
-            }, {
-                onConflict: 'user_id,platform'
-            })
+        // Save to Database (only for TikTok, Instagram/Facebook already saved above)
+        if (platformUserId) {
+            const { error: dbError } = await supabase
+                .from('social_connections')
+                .upsert({
+                    user_id: userId,
+                    platform,
+                    platform_user_id: platformUserId,
+                    platform_username: platformUsername,
+                    access_token: accessToken,
+                    refresh_token: refreshToken || null,
+                    expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+                }, {
+                    onConflict: 'user_id,platform'
+                })
 
-        if (dbError) throw dbError
+            if (dbError) throw dbError
+        }
 
         // Redirect back to app
         // Assuming the app is hosted at the origin of the referrer or a known URL
