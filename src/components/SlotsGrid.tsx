@@ -167,12 +167,14 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount, visualHook, onVisua
                   onBulkFilesAdded: handleBulkFilesFromSlot,
                 };
 
+                const { key, ...restProps } = commonProps;
+
                 return (
                   <div key={index} className="slots-carousel-slide">
                     {index === 0 ? (
-                      <SmartSlot {...commonProps} visualHook={visualHook} onVisualHookChange={onVisualHookChange} />
+                      <SmartSlot key={key} {...restProps} visualHook={visualHook} onVisualHookChange={onVisualHookChange} />
                     ) : (
-                      <SlotCard {...commonProps} />
+                      <SlotCard key={key} {...restProps} />
                     )}
                   </div>
                 );
@@ -214,10 +216,13 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount, visualHook, onVisua
               onBulkFilesAdded: handleBulkFilesFromSlot,
             };
 
+            const { key, ...restProps } = commonProps;
+
             if (index === 0) {
               return (
                 <SmartSlot
-                  {...commonProps}
+                  key={key}
+                  {...restProps}
                   visualHook={visualHook}
                   onVisualHookChange={onVisualHookChange}
                   className="col-span-1 shadow-md hover:shadow-lg transition-shadow"
@@ -227,7 +232,8 @@ export function SlotsGrid({ slots, onSlotsChange, clipCount, visualHook, onVisua
 
             return (
               <SlotCard
-                {...commonProps}
+                key={key}
+                {...restProps}
               />
             );
           })}

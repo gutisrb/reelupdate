@@ -41,7 +41,12 @@ export class GoogleAIClient {
     }
 
     const data = await response.json();
-    const text = data.candidates[0]?.content?.parts[0]?.text;
+    const text = this.safeExtractText(data);
+
+    if (!text) {
+      console.error('[GoogleAIClient] Voiceover script structure missing candidates/content:', JSON.stringify(data));
+      throw new Error('Gemini 3.0 script generation returned no content. Possible safety block.');
+    }
 
     if (!text) throw new Error('No text returned from Gemini 3.0');
 
@@ -167,7 +172,8 @@ Rules:
     }
 
     const data = await response.json();
-    return data.candidates[0]?.content?.parts[0]?.text || instruction;
+    const text = this.safeExtractText(data);
+    return text || instruction;
   }
 
   /**
