@@ -553,8 +553,8 @@ async function initiateClip(
   const PRESET_HOOKS: Record<string, string> = {
     "Start with Blur": "Apply heavy gaussian blur to the entire image while keeping colors vibrant. The result must be a high-quality blurred version of this specific room.",
     "Agent Fail": "Add a professional real estate agent standing in the center of the room, professional attire.",
-    "Empty to Furnished": "Virtually stage this room with high-end modern furniture, luxury rugs, and ambient lighting. Maintain the same floor and wall structure.",
-    "Furnished to Empty": "Completely remove all furniture, rugs, and decor from this room. Show only the empty architectural shell, clean floors, and bare walls.",
+    "Empty to Furnished": "Virtually stage this room to create a simple, modern, aesthetic look. Use stylish but normal furniture, neutral rugs, and cozy ambient lighting. Maintain the same floor and wall structure.",
+    "Furnished to Empty": "Completely remove all furniture, rugs, and decor from this room. Show only the empty architectural shell, clean floors, and bare walls. Professional and clean result.",
     "Labubu": "Add a giant 3D Labubu toy mascot character standing in the center of the room. High detail, matching lighting.",
     "Sketch": "Transform this photo into an artistic pencil sketch / architectural drawing. High contrast, graphite texture.",
     "Low Battery": "Overlay a realistic iPhone 'Low Battery' warning popup (20% remaining) centered on the image."
@@ -590,11 +590,11 @@ async function initiateClip(
       } else if (rawHook === 'Empty to Furnished' || rawHook === 'Furnished to Empty') {
         const targetForEdit = endUrl || startUrl;
         console.log(`[${data.video_id}] 🎨 SENDING TO IMAGE EDITOR (Kie.ai): "${mappedInstruction}"`);
-        const editedImageUrl = await clients.kie.editImage(targetForEdit, mappedInstruction, data.visual_hook);
+        const editedImageUrl = await clients.kie.editImage(targetForEdit, mappedInstruction);
         endUrl = editedImageUrl;
         usedInstruction = rawHook === 'Empty to Furnished' ? "STAGING_APPEAR: furniture appears naturally in room" : "STAGING_CLEAR: furniture clears naturally from room";
       } else if (rawHook === 'Labubu') {
-        const editedImageUrl = await clients.kie.editImage(endUrl || startUrl, mappedInstruction, data.visual_hook);
+        const editedImageUrl = await clients.kie.editImage(endUrl || startUrl, mappedInstruction);
         endUrl = editedImageUrl;
         usedInstruction = "PROP_REVEAL: Labubu mascot character appears or bobs softly; maintain identity";
       } else if (rawHook === 'Low Battery') {
