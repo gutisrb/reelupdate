@@ -7,96 +7,9 @@ export class OpenAIClient {
   private apiKey = API_KEYS.OPENAI;
 
   /**
-   * Analyze images with GPT-4o Vision and generate Luma prompt
+   * OpenAI remains for Whisper transcription and correction logic.
+   * PORTED: Scriptwriting, Vision Analysis, and Prompt Optimization have been migrated to Gemini 3.0.
    */
-  async analyzeImagesForVideo(
-    firstImageUrl: string,
-    secondImageUrl: string | null,
-    prompt: string
-  ): Promise<GPT4VisionResponse> {
-    const images = [
-      { type: 'image_url', image_url: { url: firstImageUrl } },
-    ];
-
-    if (secondImageUrl) {
-      images.push({ type: 'image_url', image_url: { url: secondImageUrl } });
-    }
-
-    const body = {
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            ...images,
-          ],
-        },
-      ],
-      max_tokens: 4000,
-      temperature: 0.7,
-      top_p: 0.5,
-    };
-
-    const response = await fetch(API_ENDPOINTS.openai.chatCompletions, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API failed: ${error}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content returned from OpenAI');
-    }
-
-    // Parse JSON response
-    try {
-      return JSON.parse(content);
-    } catch (e) {
-      throw new Error(`Failed to parse OpenAI response as JSON: ${content}`);
-    }
-  }
-
-  /**
-   * General purpose chat completion
-   */
-  async chat(params: {
-    messages: { role: string; content: string }[];
-    model?: string;
-    temperature?: number;
-  }): Promise<any> {
-    const body = {
-      model: params.model || 'gpt-4o',
-      messages: params.messages,
-      temperature: params.temperature ?? 1.0,
-    };
-
-    const response = await fetch(API_ENDPOINTS.openai.chatCompletions, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI chat failed: ${error}`);
-    }
-
-    return await response.json();
-  }
 
   /**
    * Correct transcript using GPT
@@ -144,50 +57,6 @@ Return ONLY the corrected transcript with proper Serbian punctuation and capital
     return data.choices[0]?.message?.content || transcript;
   }
 
-  /**
-   * Optimize image editing instruction for Nano Banana
-   */
-  async optimizeImagePrompt(instruction: string): Promise<string> {
-    const SYSTEM_PROMPT = `You rewrite a user instruction into ONE clear, robust English command for the image-editing model google/nano-banana-edit.
-Rules:
-- Output ONE line of plain English.
-- FOCUS on the "Insert..." text structure: "Insert the main subject from image 2 into image 1 [placement description]."
-- Use "main subject" or the specific object name (e.g. "man", "sofa") if the user provides it.
-- Ensure the instruction explicitly states WHERE to place it (e.g. "standing in front of the bed", "on the floor").
-- REMOVE technical terms like "match perspective", "lens", "focal length", "scale", or "lighting".
-- KEEP it natural but authoritative.
-- BAD: "add man" (too vague).
-- GOOD: "Insert the man from image 2 into image 1 standing on the floor in front of the bed."
-- If the instruction is empty or unclear, default to:
-  "Insert the main subject from image 2 into image 1 so it is clearly visible in the room."`;
-
-    const body = {
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `instructions: ${instruction}` }
-      ],
-      temperature: 1.0,
-      max_tokens: 300
-    };
-
-    const response = await fetch(API_ENDPOINTS.openai.chatCompletions, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      console.warn('OpenAI prompt optimization failed, using original.');
-      return instruction;
-    }
-
-    const data = await response.json();
-    return data.choices[0]?.message?.content || instruction;
-  }
 
   /**
    * Transcribe audio using Whisper

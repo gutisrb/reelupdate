@@ -1,12 +1,12 @@
-import { OpenAIClient } from './openai.ts';
+import { GoogleAIClient } from './google.ts';
 import { CREATIVE_WILDCARDS, VIRAL_STRATEGIES } from '../constants/wildcards.ts';
 import type { VideoBlueprint, PropertyData, DirectorContext } from '../types.ts';
 
 export class DirectorClient {
-    private openai: OpenAIClient;
+    private google: GoogleAIClient;
 
-    constructor(openaiClient: OpenAIClient) {
-        this.openai = openaiClient;
+    constructor(googleClient: GoogleAIClient) {
+        this.google = googleClient;
     }
 
     async generateBlueprint(
@@ -66,10 +66,10 @@ OUTPUT JSON:
   "visual_hook_instruction": "string" 
 } (If visual_hook_type is motion, use a PRESET name or a content-edit instruction. If overlay, describe the text context.)`;
 
-        const response = await this.openai.chat({
+        const response = await this.google.chat({
             messages: [{ role: 'user', content: prompt }],
-            model: 'gpt-4o',
-            temperature: 0.9 // High creativity
+            temperature: 0.9,
+            responseMimeType: "application/json"
         });
 
         const content = response.choices[0]?.message?.content;

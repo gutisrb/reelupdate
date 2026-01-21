@@ -30,6 +30,17 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+
+      if (payload.mode === 'kling_poll') {
+        console.log(`[${payload.video_id}] 🔄 RESUMING: Recursive polling for Kling Videos`);
+        // @ts-ignore
+        EdgeRuntime.waitUntil(
+          handleKlingPoll(payload, req.url, req.headers.get('Authorization') || '')
+        );
+        return new Response(JSON.stringify({ ok: true, message: 'Kling polling resumed' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     // Default: Initial connection (FormData)
@@ -39,6 +50,9 @@ serve(async (req) => {
     const groupingStr = formData.get('grouping') as string;
     const captionVideoUrl = formData.get('caption_video_url') as string | null;
     const directorPersonality = formData.get('director_personality') as string | null;
+    const visualHookRaw = formData.get('visual_hook') as string | null;
+
+    console.log(`[${videoId}] 📥 INPUT: visual_hook="${visualHookRaw}"`);
 
     if (!videoId || !userId) {
       throw new Error('Missing required fields: video_id or user_id');
@@ -211,11 +225,11 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       console.log(`[${data.video_id}] 🎬 CLIPS: Preparing ${data.image_slots.length} clips...`);
       // If PREVIEW, only process the first slot (Visual Hook)
       const slotsToProcess = isPreview ? [data.image_slots[0]] : data.image_slots;
-      const clipPreparations = slotsToProcess.map((slot, index) =>
-        prepareClip(slot, index, data, clients, index === 0 ? blueprint : null)
+      const clipInitiations = slotsToProcess.map((slot, index) =>
+        initiateClip(slot, index, data, clients, index === 0 ? blueprint : null)
       );
-      clips = await Promise.all(clipPreparations);
-      console.log(`[${data.video_id}] 🎨 CLIPS READY (${clips.length})`);
+      clips = await Promise.all(clipInitiations);
+      console.log(`[${data.video_id}] 🚀 CLIPS INITIATED (${clips.length} tasks started)`);
     }
 
     if (clips.length > 0 && clips[0].first_image_url) {
@@ -266,124 +280,180 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       }
     }
 
-    // Wait for Kling (Wait for loop)
-    if (!isTestMode) {
-      await supabase.from('videos').update({ processing_status_text: 'Animating hooks...' }).eq('id', data.video_id);
-      const completionPromises = clips.map((clip, index) => finishClip(clip, index, data, clients));
-      clips = await Promise.all(completionPromises);
-    }
-
-    // 6. FINALIZING PREVIEW OR FULL ASSEMBLY
-    if (isPreview) {
-      console.log(`[${data.video_id}] 🏁 PREVIEW MODE COMPLETE`);
-      await supabase.from('videos').update({
-        status: 'ready',
-        video_url: clips[0].clip_url,
-        thumbnail_url: clips[0]?.first_image_url || null,
-        duration_seconds: 5,
-        // Store script in a structured detail record or repurposed field
-        title: `[PREVIEW] ${voiceoverScript.substring(0, 50)}...`,
-        updated_at: new Date().toISOString()
-      }).eq('id', data.video_id);
-
-      // Also update details so user can see the full script
-      await supabase.from('video_generation_details').insert({
-        video_id: data.video_id,
-        clip_data: clips,
-        voiceover_script: voiceoverScript,
-        settings_snapshot: {
-          ...userSettings,
-          is_preview: true,
-          visual_hook: data.visual_hook || blueprint.visual_hook_instruction,
-          script_hook: data.script_hook || blueprint.script_hook
-        },
-        strategy_used: blueprint.strategy_name,
-        processing_started_at: new Date(startTime).toISOString(),
-      });
-      return;
-    }
-
-    await supabase.from('videos').update({ processing_status_text: 'Assembling video...' }).eq('id', data.video_id);
-    console.log(`[${data.video_id}] 🧱 ASSEMBLY: Starting stage 1 assembly...`);
-    const assemblyTransformationUrl = clients.cloudinary.assembleVideo(
-      clips.map(c => c.clip_url), voiceoverUpload.secure_url, musicUrl, clips.length * 5, userSettings.default_music_volume_db
-    );
-    const stage1Result = await clients.cloudinary.uploadVideoFromUrl(assemblyTransformationUrl, `stage1_assembly_${data.video_id}_${Date.now()}`);
-    const currentVideoUrl = stage1Result.secure_url;
-    console.log(`[${data.video_id}] 🧱 ASSEMBLY: STAGE 1 COMPLETE: ${currentVideoUrl}`);
-
-    let zapCapTaskId = null;
-    let zapCapVideoId = null;
-
-    /*
-    if (userSettings.caption_enabled && userSettings.caption_system === 'zapcap') {
-      console.log(`[${data.video_id}] 🧱 ASSEMBLY: Sending to ZapCap...`);
-      await supabase.from('videos').update({
-        processing_status_text: 'Generating captions...',
-        video_url: currentVideoUrl
-      }).eq('id', data.video_id);
-
-      const zc = await clients.zapcap.createCaptionTask(currentVideoUrl, captionTemplateId);
-      zapCapTaskId = zc.taskId;
-      zapCapVideoId = zc.videoId;
-      console.log(`[${data.video_id}] 🚀 ZAPCAP SUBMITTED: Task ID ${zapCapTaskId}, Video ID ${zapCapVideoId}`);
-    }
-    */
-    console.log(`[${data.video_id}] 🛑 ZAPCAP DISABLED BY USER REQUEST (Saving credits)`);
-
-    const captionData = {
-      template_id: captionTemplateId,
-      transcript: '',
-      zapcap_task_id: zapCapTaskId,
-      zapcap_video_id: zapCapVideoId,
-      stage1_url: currentVideoUrl
-    };
-
-    const { error: dbError } = await supabase.from('video_generation_details').insert({
+    // 5. SAVE INTERMEDIATE STATE & HAND OFF TO POLLER
+    const detailsPayload = {
       video_id: data.video_id,
       clip_data: clips,
       voiceover_script: voiceoverScript,
       voiceover_url: voiceoverUpload.secure_url,
       music_url: musicUrl,
       music_source: musicSource,
-      caption_data: captionData,
+      caption_data: {},
       settings_snapshot: {
         ...userSettings,
         visual_hook: data.visual_hook || blueprint.visual_hook_instruction,
         script_hook: data.script_hook || blueprint.script_hook,
         property_type: data.property_type,
-        property_data: data.property_data
+        property_data: data.property_data,
+        is_preview: isPreview
       },
       strategy_used: blueprint.strategy_name,
       processing_started_at: new Date(startTime).toISOString(),
-    });
+    };
 
+    const { error: dbError } = await supabase.from('video_generation_details').insert(detailsPayload);
     if (dbError) console.error('DB Insert Error:', dbError);
 
-    if (zapCapTaskId) {
-      console.log(`[${data.video_id}] ⏳ Triggering recursive polling...`);
-      await invokeSelf({
-        mode: 'zapcap_poll',
-        video_id: data.video_id,
-        zapcap_task_id: zapCapTaskId,
-        zapcap_video_id: zapCapVideoId,
-        stage1_url: currentVideoUrl,
-        original_request_data: data
-      }, functionUrl, authToken);
-
-    } else {
-      await supabase.from('videos').update({
-        status: 'ready',
-        video_url: currentVideoUrl,
-        thumbnail_url: clips[0]?.first_image_url || null,
-        duration_seconds: clips.length * 5,
-        updated_at: new Date().toISOString()
-      }).eq('id', data.video_id);
-    }
+    console.log(`[${data.video_id}] 📡 Handing off to handleKlingPoll...`);
+    await invokeSelf({
+      mode: 'kling_poll',
+      video_id: data.video_id,
+      original_request_data: data
+    }, functionUrl, authToken);
 
   } catch (error) {
     console.error(`[${data.video_id}] Fatal Error in Start Phase:`, error);
     await supabase.from('videos').update({ status: 'failed', error_text: (error as any).message }).eq('id', data.video_id);
+  }
+}
+
+async function handleKlingPoll(payload: any, functionUrl: string, authToken: string) {
+  const { video_id } = payload;
+  const supabase = createClient(API_ENDPOINTS.supabase.url, API_ENDPOINTS.supabase.serviceRoleKey);
+  const clients = initClients();
+
+  console.log(`[${video_id}] 📡 Polling Kling Tasks...`);
+
+  const { data: details, error: detailsError } = await supabase.from('video_generation_details').select('*').eq('video_id', video_id).single();
+  if (detailsError || !details) {
+    console.error(`[${video_id}] Details not found or error:`, detailsError);
+    return;
+  }
+
+  const clips: ClipData[] = details.clip_data || [];
+  const MAX_TIME_MS = 100000; // 100 seconds
+  const START_TIME = Date.now();
+  const POLL_INTERVAL = 5000;
+
+  let allClipsDone = false;
+  let updatedSomething = false;
+
+  while (Date.now() - START_TIME < MAX_TIME_MS) {
+    let pendingCount = 0;
+    for (let i = 0; i < clips.length; i++) {
+      if (clips[i].clip_url) continue;
+
+      pendingCount++;
+      const taskId = clips[i].kling_task_id;
+      if (!taskId) continue;
+
+      try {
+        const finalUrl = await clients.kie.waitForCompletionPollingOnce(taskId);
+        if (finalUrl) {
+          console.log(`[${video_id}] Clip ${i} ready! Uploading to Cloudinary...`);
+          const cloudinaryUpload = await clients.cloudinary.uploadVideo(finalUrl, `clip_${video_id}_${i}.mp4`);
+          clips[i].clip_url = cloudinaryUpload.secure_url;
+          updatedSomething = true;
+        }
+      } catch (e: any) {
+        // Log errors but continue polling other clips
+        console.error(`[${video_id}] Clip ${i} check failed:`, e.message);
+      }
+    }
+
+    if (pendingCount === 0) {
+      allClipsDone = true;
+      break;
+    }
+
+    await new Promise(r => setTimeout(r, POLL_INTERVAL));
+  }
+
+  if (updatedSomething) {
+    await supabase.from('video_generation_details').update({ clip_data: clips }).eq('video_id', video_id);
+  }
+
+  if (!allClipsDone) {
+    console.log(`[${video_id}] 🔄 Kling still pending. Re-invoking poller...`);
+    await invokeSelf({ mode: 'kling_poll', video_id }, functionUrl, authToken);
+    return;
+  }
+
+  // ALL CLIPS READY -> FINALIZE
+  const userSettings = details.settings_snapshot;
+  const isPreview = userSettings?.is_preview;
+  const voiceoverUrl = details.voiceover_url;
+  const musicUrl = details.music_url;
+
+  if (isPreview) {
+    console.log(`[${video_id}] 🏁 Finalizing PREVIEW video...`);
+    await supabase.from('videos').update({
+      status: 'ready',
+      video_url: clips[0].clip_url,
+      thumbnail_url: clips[0]?.first_image_url || null,
+      duration_seconds: 5,
+      title: `[PREVIEW] ${details.voiceover_script.substring(0, 50)}...`,
+      updated_at: new Date().toISOString()
+    }).eq('id', video_id);
+  } else {
+    console.log(`[${video_id}] 🧱 ASSEMBLY: Starting assembly...`);
+    await supabase.from('videos').update({ processing_status_text: 'Assembling video...' }).eq('id', video_id);
+
+    // Assemble (Stages 1: Cloudinary Native Assembly)
+    const assemblyUrl = clients.cloudinary.assembleVideo(
+      clips.map(c => c.clip_url),
+      voiceoverUrl,
+      musicUrl,
+      clips.length * 5,
+      userSettings.default_music_volume_db || -60
+    );
+
+    const stage1Result = await clients.cloudinary.uploadVideoFromUrl(assemblyUrl, `stage1_assembly_${video_id}_${Date.now()}`);
+    const currentVideoUrl = stage1Result.secure_url;
+
+    if (userSettings.caption_enabled && userSettings.caption_system === 'zapcap') {
+      console.log(`[${video_id}] 🧱 ASSEMBLY: Sending to ZapCap...`);
+      await supabase.from('videos').update({
+        processing_status_text: 'Generating captions...',
+        video_url: currentVideoUrl
+      }).eq('id', video_id);
+
+      const zc = await clients.zapcap.createCaptionTask(currentVideoUrl, userSettings.caption_template_id);
+      await supabase.from('video_generation_details').update({
+        caption_data: {
+          zapcap_task_id: zc.taskId,
+          zapcap_video_id: zc.videoId,
+          corrections_made: false,
+          stage1_url: currentVideoUrl
+        }
+      }).eq('video_id', video_id);
+
+      await invokeSelf({
+        mode: 'zapcap_poll',
+        video_id,
+        zapcap_task_id: zc.taskId,
+        zapcap_video_id: zc.videoId,
+        stage1_url: currentVideoUrl
+      }, functionUrl, authToken);
+    } else {
+      // Default logo overlay
+      let finalVideo = currentVideoUrl;
+      if (userSettings.logo_url) {
+        try {
+          const transformed = clients.cloudinary.addLogoOverlay(currentVideoUrl, userSettings.logo_url, userSettings.logo_position, userSettings.logo_size_percent);
+          const stage3 = await clients.cloudinary.uploadVideoFromUrl(transformed, `final_video_${video_id}`);
+          finalVideo = stage3.secure_url;
+        } catch (e) { console.error('Logo overlay failed', e); }
+      }
+
+      await supabase.from('videos').update({
+        status: 'ready',
+        video_url: finalVideo,
+        thumbnail_url: clips[0]?.first_image_url || null,
+        duration_seconds: clips.length * 5,
+        updated_at: new Date().toISOString()
+      }).eq('id', video_id);
+    }
   }
 }
 
@@ -460,7 +530,7 @@ async function invokeSelf(payload: any, passedUrl: string, authToken: string) {
   } catch (e) { console.error('Invoke self failed', e); }
 }
 
-async function prepareClip(
+async function initiateClip(
   slot: any,
   index: number,
   data: VideoGenerationRequest,
@@ -491,10 +561,13 @@ async function prepareClip(
   };
 
   if (index === 0 && blueprint && blueprint.visual_hook_type === 'motion') {
-    const rawHook = data.visual_hook || blueprint.visual_hook_instruction;
+    const normalizedHook = (data.visual_hook || blueprint.visual_hook_instruction || "").trim();
+    const PRESET_KEYS = Object.keys(PRESET_HOOKS);
+    const matchedKey = PRESET_KEYS.find(k => k.toLowerCase() === normalizedHook.toLowerCase());
+    const rawHook = matchedKey || normalizedHook;
     const mappedInstruction = PRESET_HOOKS[rawHook as keyof typeof PRESET_HOOKS] || rawHook;
 
-    console.log(`[${data.video_id}] 🎨 VISUAL HOOK LOGIC: Raw="${rawHook}"`);
+    console.log(`[${data.video_id}] 🎨 VISUAL HOOK LOGIC: Raw="${normalizedHook}" Matched="${rawHook}"`);
 
     try {
       if (rawHook === 'Start with Blur') {
@@ -503,27 +576,45 @@ async function prepareClip(
         startUrl = blurredUrl;
         usedInstruction = "Blurred start frame transition to clear original";
       } else if (rawHook === 'Agent Fail') {
-        console.log(`[${data.video_id}] 🎭 MULTI-STEP: Processing Agent Fail with cross-frame consistency...`);
-        const prompt1 = "Insert a professional real estate agent standing in the center of the room, professional attire, full body, clear face.";
-        const optimizedPrompt1 = await clients.openai.optimizeImagePrompt(prompt1);
-        console.log(`[${data.video_id}] 🎨 Kie Pass 1 (Standing): ${optimizedPrompt1}`);
+        console.log(`[${data.video_id}] 🎭 AGENT FAIL: Switch to single-pass logic for more realistic physics...`);
+        const prompt1 = "Professional real estate agent standing in the foreground, close to the camera, facing camera, professional business attire, full body, friendly smile, clear face.";
+        const optimizedPrompt1 = await clients.google.optimizeImagePrompt(prompt1);
+        console.log(`[${data.video_id}] 🎨 Kie Pass 1 (Standing Close): ${optimizedPrompt1}`);
         const standingAgentUrl = await clients.kie.editImage(startUrl, optimizedPrompt1);
 
-        const prompt2 = "Insert the exact same person from the reference image, but now they are tripping and falling on the floor in the center of the room. Comical, shocked expression.";
-        const optimizedPrompt2 = await clients.openai.optimizeImagePrompt(prompt2);
-        const targetCanvas = endUrl || startUrl;
-        console.log(`[${data.video_id}] 🎨 Kie Pass 2 (Falling): "${optimizedPrompt2}"`);
-
-        const fallingAgentUrl = await clients.kie.editImage(
-          targetCanvas,
-          optimizedPrompt2,
-          undefined,
-          standingAgentUrl
-        );
-
+        // We use the standing agent for both frames (or just as the base) 
+        // to let the video AI (Kling) animate the limbs and gravity without morphing artifacts.
         startUrl = standingAgentUrl;
-        endUrl = fallingAgentUrl;
-        usedInstruction = "Agent standing (Frame 1) to agent falling (Frame 2) sequence";
+        endUrl = standingAgentUrl;
+        usedInstruction = "AGENT_SLIP: character unexpectedly trips and falls to the floor; comical and surprising; high-speed limbs movement; character stays in context then drops";
+      } else if (rawHook === 'Empty to Furnished' || rawHook === 'Furnished to Empty') {
+        const targetForEdit = endUrl || startUrl;
+        console.log(`[${data.video_id}] 🎨 SENDING TO IMAGE EDITOR (Kie.ai): "${mappedInstruction}"`);
+        const editedImageUrl = await clients.kie.editImage(targetForEdit, mappedInstruction, data.visual_hook);
+        endUrl = editedImageUrl;
+        usedInstruction = rawHook === 'Empty to Furnished' ? "STAGING_APPEAR: furniture appears naturally in room" : "STAGING_CLEAR: furniture clears naturally from room";
+      } else if (rawHook === 'Labubu') {
+        const editedImageUrl = await clients.kie.editImage(endUrl || startUrl, mappedInstruction, data.visual_hook);
+        endUrl = editedImageUrl;
+        usedInstruction = "PROP_REVEAL: Labubu mascot character appears or bobs softly; maintain identity";
+      } else if (rawHook === 'Low Battery') {
+        console.log(`[${data.video_id}] 🔋 LOW BATTERY: Applying Cloudinary overlay...`);
+        // The user wants a specific "Low Battery" popup overlay on the first frame.
+        // Format: l_low_battery_roilxt,w_0.8,o_100/fl_layer_apply,g_center
+        const overlayTransform = "l_low_battery_roilxt,w_0.8,o_100/fl_layer_apply,g_center";
+
+        // We inject the transformation after /upload/
+        if (startUrl.includes('/upload/')) {
+          const parts = startUrl.split('/upload/');
+          const transformedStartUrl = `${parts[0]}/upload/${overlayTransform}/${parts[1]}`;
+          endUrl = startUrl; // Original clean image as end frame
+          startUrl = transformedStartUrl; // Overlay image as start frame
+          usedInstruction = "LOW_BATTERY: The low battery warning popup is visible on screen then disappears";
+          console.log(`[${data.video_id}] 🔋 LOW BATTERY: Transformed URL: ${startUrl}`);
+        } else {
+          console.warn(`[${data.video_id}] 🔋 LOW BATTERY: Could not apply overlay, invalid URL format: ${startUrl}`);
+          usedInstruction = rawHook;
+        }
       } else {
         // Broaden motion detection to catch camera-only instructions
         const motionKeywords = [
@@ -554,26 +645,26 @@ async function prepareClip(
 
   const promptSystemInstruction = getCinematicPrompt(usedInstruction);
 
-  const visionAnalysis = await clients.openai.analyzeImagesForVideo(
+  const visionAnalysis = await clients.google.analyzeImagesForVideo(
     startUrl,
     endUrl,
     promptSystemInstruction
   );
 
-  console.log(`[${data.video_id}] 🚀 [KLING-ENGAGED] Submitting to Kling 2.1 Pro via Kie.ai Client...`);
-
-  // Kling generation (waits for completion)
-  const klingVideoUrl = await clients.kie.generateVideo(
+  // Create Kling task (async)
+  const taskId = await clients.kie.createVideoTask(
     visionAnalysis.luma_prompt,
     startUrl,
-    endUrl
+    endUrl,
+    visionAnalysis.negative_prompt
   );
 
   return {
     slot_index: index,
-    luma_generation_id: 'LEGACY_COMPAT_ID',
+    luma_generation_id: taskId, // Store taskId here
+    kling_task_id: taskId,
     luma_prompt: visionAnalysis.luma_prompt,
-    clip_url: klingVideoUrl,
+    clip_url: '', // Empty for now
     first_image_url: startUrl,
     second_image_url: endUrl,
     is_keyframe: !!endUrl,
@@ -583,63 +674,38 @@ async function prepareClip(
 }
 
 async function finishClip(clipData: ClipData, index: number, data: VideoGenerationRequest, clients: any): Promise<ClipData> {
-  // Kling generation already happened.
-  if (!clipData.clip_url) {
+  // Wait for Kling completion if we have a task ID
+  let finalUrl = clipData.clip_url;
+
+  if (!finalUrl && clipData.kling_task_id) {
+    console.log(`[${data.video_id}] ⏳ Waiting for Kling Task ${clipData.kling_task_id} (Clip ${index})...`);
+    finalUrl = await clients.kie.waitForCompletion(clipData.kling_task_id);
+  }
+
+  if (!finalUrl) {
     console.error(`[${data.video_id}] Clip ${index} has no URL!`);
     return clipData;
   }
 
   // Upload to Cloudinary
-  const cloudinaryUpload = await clients.cloudinary.uploadVideo(clipData.clip_url, `clip_${data.video_id}_${index}.mp4`);
+  const cloudinaryUpload = await clients.cloudinary.uploadVideo(finalUrl, `clip_${data.video_id}_${index}.mp4`);
   return { ...clipData, clip_url: cloudinaryUpload.secure_url };
 }
 
 function getCinematicPrompt(extraInstruction: string = ""): string {
-  const instructionBlock = extraInstruction ? `\n\nCRITICAL OVERRIDE / VISUAL HOOK INSTRUCTION:\nThe user has specified a mandatory visual hook/motion: "${extraInstruction}".\nYOU MUST INCORPORATE THIS into 'luma_prompt'. If it describes a camera motion (e.g. "POV walk"), use the closest matching Allowed Motion (e.g. Push In or Move) and describe that action in Sentence A.` : "";
+  let hookContext = "";
+  if (extraInstruction.includes("AGENT_SLIP")) {
+    hookContext = "\n- EXTREME SURPRISE: The person unexpectedly slips and falls vertically. Match this with 'character slips and falls rapidly' in Sentence B. Sudden and reactive limbs.";
+  } else if (extraInstruction.includes("STAGING")) {
+    hookContext = `\n- RENOVATION: furniture ${extraInstruction.includes('APPEAR') ? 'appears naturally' : 'clears naturally'} in Sentence B.`;
+  } else if (extraInstruction.includes("PROP_REVEAL")) {
+    hookContext = "\n- MASCOT: Character 'bobs softly' or 'remains stable' in Sentence B.";
+  }
 
-  return 'You generate a compact control prompt for High-Fidelity AI Video Model (Kling Pro) from 1 or 2 property images(keyframes).\nReturn ONLY the JSON fields: is_keyframe, description, luma_prompt, mood.' + instructionBlock + '\n\nALLOWED CAMERA MOTIONS(choose EXACTLY one token, verbatim)\nStatic | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down\n\n1) ANALYZE IMAGES(do not output this analysis)\n- Room type & scale(tight / medium / wide).Lighting(bright daylight / warm indoor / mixed / evening).\n- Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.\n- Edits / themes / hooks actually visible: balloons / confetti / seasonal decor; mascot / large toy; signage / text overlay; 3D room "cube on white"; added furniture; renovation deltas.\n- Actors / people: none | only frame 1 | only frame 2 | present in both(note if positions differ).\n- Frame relation: ONE_IMAGE | SAME_SPACE | ADJACENT_VIEW | DIFFERENT_ROOM | CUBE_START.\n\n2) CAMERA MOTION SELECTION(pick ONE from the list)\n  - Prefer Push In / Move Left / Move Right / Pan Left / Pan Right for tight interiors.\n- Allow Orbit / Crane / Pull Out / Zoom Out only in large / open spaces or exteriors where "out-painting" is safer.\n- If any actors visible, downshift to Push In / Move / Pan.\n- CRITICAL: If using "Zoom Out" or "Pull Out", you MUST include "stable geometry preservation" and "gradual lens expansion" to prevent sliding artifacts.\n- Use Static only if artifacts demand it.\n\nPROFESSIONAL CAMERA LANGUAGE REQUIREMENT:\n' +
-    'ALWAYS use professional cinematography descriptors:\n- Movement quality: "glides smoothly", "sweeps gradually", "tracks steadily", "dollies fluidly", "pans gracefully"\n' +
-    '- Reveal verbs: "revealing", "showcasing", "highlighting", "unveiling"(NEVER "explore", "past" alone)\n' +
-    '- Motion quality: "with cinematic parallax", "with fluid motion", "with smooth acceleration"\n' +
-    '- Easing: "starts gently and accelerates" or "eases into motion" when space allows\n\n' +
-    '3) COMPOSE luma_prompt AS TWO SHORT SENTENCES(total 20–30 words)\n' +
-    'Sentence A(professional cinematography + space):\n- Start with the chosen CAMERA MOTION token(exact text), followed by a colon.\n- Add professional movement descriptor: "camera glides smoothly", "camera sweeps gradually", "camera tracks steadily", "camera dollies fluidly"\n' +
-    '- Add 1–2 spatial anchors using cinematic language:\n- Use "gliding alongside"(NOT "past" or "along" alone)\n- Use "sweeping across" or "tracking through"(NOT bare prepositions)\n' +
-    '- Use "revealing [feature]" or "showcasing [detail]"(NOT "exploring")\n' +
-    '- Examples: "camera glides smoothly alongside window wall, revealing dining area"\n' +
-    '"camera tracks steadily from media wall, showcasing architectural flow"\n' +
-    '"camera sweeps gradually across living space, highlighting natural light"\n' +
-    '- Add motion quality descriptor: "with cinematic parallax", "with fluid spatial flow", "with smooth acceleration"\n' +
-    '- Add ONE relation clause:\n– ONE_IMAGE: "smoothly revealing [architectural feature]" or "gradually showcasing [spatial detail]"\n' +
-    '– SAME_SPACE: "fluid transition with cinematic parallax; seamless geometry preservation; avoid dissolve"\n' +
-    '– ADJACENT_VIEW: "professional camera movement connecting views; maintain spatial continuity; avoid dissolve"\n' +
-    '– DIFFERENT_ROOM: "smooth cinematic transition into second space; professional match-cut; no dissolve"\n' +
-    '– CUBE_START: "cinematic push from exterior into interior; smooth acceleration; maintain motion flow"\n\n' +
-    'Sentence B(include ONLY what applies; keep compact):\n' +
-    '- Actors:\n– only frame 1 → "character remains first frame only; exits naturally; no rapid motion."\n' +
-    '– only frame 2 → "character enters naturally in second frame; minimal motion."\n' +
-    '– in both → "characters hold still (blinks okay); no rapid movement; maintain identity."\n– none → "no people."\n' +
-    '- Hooks / themes / props(ONLY IF SALIENT): mention category - level only(e.g., "balloons", "seasonal decor", "signage") when visually central or ≳15 % of frame; otherwise do NOT mention.\n' +
-    '– Use ONE simple verb: drift / settle / appear / clear / pop softly.\n' +
-    '- Small decor(frames, plants, small plush / toys, table items): remain static and SHOULD NOT be mentioned.\n' +
-    '- Furnishing change: choose ONE → "furniture appears naturally" OR "furniture clears naturally."\n' +
-    '- End Sentence B with lighting and ONE mood word(from the whitelist below).\n\n' +
-    'PROFESSIONAL CAMERA EXAMPLES(use this language style):\n✅ "Move Right: camera glides smoothly alongside media wall, revealing dining area with cinematic parallax; seamless spatial transition. No people. Bright daylight, cozy."\n✅ "Push In: camera dollies forward steadily toward window, showcasing panoramic views with smooth acceleration. No people. Natural lighting, elegant."\n✅ "Pan Left: camera sweeps gradually across living space, highlighting architectural features with fluid motion. No people. Warm lighting, sophisticated."\n✅ "Static: camera holds steady at window wall, smoothly revealing seating arrangement in natural light. No people. Bright lighting, spacious."\n\n' +
-    '❌ AVOID these(sounds like walking / handheld):\n❌ "Move Right past media wall and dining table"\n❌ "explore seating arrangement"\n❌ "along window wall"(without "gliding" or "smoothly")\n❌ "over geometric floor"(without smooth descriptor)\n\n' +
-    '4) COMPOSE description(STRICT PROPERTY - ONLY, 12–18 words)\n' +
-    '- Include ONLY architectural / permanent features and natural lighting: layout & room type; windows / doors / balcony; beams / coffers / skylight; built - ins / cabinetry / media wall; fixed kitchen / bath items; flooring material / pattern; view; lighting as observed.\n' +
-    '- EXCLUDE everything movable or likely edited: people / actors; balloons / confetti / themes; loose furniture / decor; rugs; plants; tableware; toys; signage / text overlays; staged props.\n' +
-    '- If two images, favor features present in BOTH; if unsure a feature is permanent, omit it.\n' +
-    '- Friendly marketing tone.\n\n' +
-    '5) FINAL SELF - CHECK BEFORE OUTPUT\n' +
-    '- luma_prompt begins with a valid motion token followed by colon; total ≤ 30 words.\n' +
-    '- luma_prompt includes PROFESSIONAL CAMERA LANGUAGE: "glides/sweeps/tracks/dollies/smoothly/gradually/fluidly"\n' +
-    '- luma_prompt uses CINEMATIC REVEAL VERBS: "revealing/showcasing/highlighting"(NOT "past/explore/along" alone)\n' +
-    '- Movement includes quality descriptor: "with cinematic parallax", "with fluid motion", "with smooth acceleration"\n' +
-    '- If is_keyframe = true and "avoid dissolve" is missing, add it to Sentence A.\n' +
-    '- If any actors detected and motion is Orbit / Crane / Pull Out / Zoom, downgrade to Push In.\n' +
-    '- luma_prompt contains no tiny - prop nouns; use category - level only when salient(≥15 % frame).\n' +
-    '- description contains NO people / props / themes / staging words(property - only).\n' +
-    '- NO WALKING LANGUAGE: verify no "past", "explore", or bare "along" / "over" without smooth descriptors\n\n' +
-    '6) OUTPUT FORMAT(Return ONLY a JSON object.No ```json blocks or additional text )\n{\n  "is_keyframe": boolean,\n  "description": "property-only, 12–18 words",\n  "luma_prompt": "two sentences, 20–30 words, using professional cinematography language",\n  "mood": "luxury|modern|elegant|cozy|upbeat|calm|sophisticated|contemporary|warm|bright|minimalist|spacious|intimate|professional|stylish|chic|serene|energetic|ambient|classic|urban|trendy"\n}';
+  const instructionBlock = extraInstruction ? `\n\nCRITICAL: A mandatory visual hook ("${extraInstruction}") is active. 
+DO NOT SACRIFICE PROPERTY DETAILS OR CAMERA MOTION for this hook.
+- Sentence A MUST remain 100% focused on PROPERTY SHOWCASING (Camera + Anchors).
+- The HOOK ACTION MUST be restricted to Sentence B as an additive layer.${hookContext}` : "";
+
+  return 'You generate a compact control prompt for High-Fidelity AI Video Model (Kling Pro) from 1 or 2 property images(keyframes).\nReturn ONLY the JSON fields: is_keyframe, description, luma_prompt, negative_prompt, mood.' + instructionBlock + '\n\nALLOWED CAMERA MOTIONS(choose EXACTLY one token, verbatim)\nStatic | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down\n\n1) ANALYZE IMAGES\n- Room type & scale. Lighting.\n- Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.\n- "Center Anchor": Identify the most prominent object/feature in the center of the frame (e.g. "red sofa", "kitchen island", "window").\n- Visual hooks present: agent/actor, staging, balloons, mascot, text overlay.\n\n2) CAMERA MOTION SELECTION(pick ONE)\n- Prefer Push In / Move / Pan for tight interiors.\n- "Zoom Out" requires safety keywords: "stable geometry preservation" and "gradual lens expansion".\n\n3) COMPOSE luma_prompt AS TWO SHORT SENTENCES\nSentence A(PROPERTY SHOWCASE):\n- Start with chosen CAMERA MOTION token, followed by a colon.\n- Add STRICT DIRECTIONAL VECTOR: "glides smoothly STRAIGHT toward [Center Anchor]", "tracks DIRECTLY alongside [Side Anchor]".\n- NEVER use vague directions like "toward living area" if it implies moving through an unseen hallway.\n- Add 1-2 architectural anchors: e.g. "alongside window wall", "toward media wall".\n- MUST include quality clause: "revealing spatial flow with cinematic parallax" or "showcasing layout with fluid motion".\n- ALWAYS conclude Sentence A with stability rule: "seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve".\n\nSentence B(ADDITIVE ACTIONS & HOOKS):\n- Actors: use "characters hold still" or describe the specific HOOK ACTION if active (e.g. "character slips and falls rapidly").\n- Hooks: e.g., "balloons drift softly", "furniture appears naturally".\n- Lighting & Mood: End with one mood word from whitelist.\n\nGEOMETRY SAFETY RULES (CRITICAL):\n- LOCK ON VISIBLE ANCHORS: Movement must be relative to objects VISIBLE in the start frame.\n- NO IMAGINARY SPACES: NEVER describe entering a hallway or room that is not clearly visible.\n- NO WALL CLIPPING: Camera must stay strictly within the visible 3D volume.\n\nPROFESSIONAL EXAMPLES:\n✅ "Push In: camera glides smoothly STRAIGHT toward the visible red sofa, showcasing architectural flow with cinematic parallax; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Character slips and falls rapidly; bright daylight, upbeat."\n✅ "Move Right: camera tracks DIRECTLY alongside the window wall, revealing natural light with fluid motion; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Furniture appears naturally; luxury."\n\n4) COMPOSE description(PROPERTY-ONLY, 12-18 words)\n- Architectural features only. EXCLUDE people, themes, or edited hooks.\n\n5) GENERATE negative_prompt (ROBUST ANTI-HALLUCINATION)\n- Must include: "distorted geometry, morphing walls, sliding furniture, disintegrating objects, new hallway, entering unseen room, passing through wall, blurry, shaky, low quality".\n\n6) OUTPUT FORMAT(JSON only)\n{\n  "is_keyframe": boolean,\n  "description": "string",\n  "luma_prompt": "string",\n  "negative_prompt": "string",\n  "mood": "luxury|modern|elegant|cozy|upbeat|calm|sophisticated|contemporary|warm|bright|minimalist|spacious|intimate|professional|stylish|chic|serene|energetic|ambient|classic|urban|trendy"\n}';
 }

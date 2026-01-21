@@ -192,16 +192,7 @@ serve(async (req: Request) => {
             // we might need vision. But standard "furnish this room" works with text.
             // Let's stick to text-only for the prompt refinement to save tokens/complexity unless requested.
 
-            const gptResponse = await clients.openai.chat({
-                messages: [
-                    { role: 'system', content: SYSTEM_PROMPT },
-                    { role: 'user', content: `instructions: ${fullInstructions}` }
-                ],
-                model: 'gpt-4o',
-                temperature: 1.0
-            });
-
-            const optimizedPrompt = gptResponse.choices[0]?.message?.content || fullInstructions;
+            const optimizedPrompt = await clients.google.optimizeImagePrompt(fullInstructions);
             console.log(`[Create] Optimized Prompt: ${optimizedPrompt}`);
 
             // 4. Call Kie.ai

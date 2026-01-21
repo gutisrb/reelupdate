@@ -76,6 +76,7 @@ export interface UserSettings {
 export interface ClipData {
   slot_index: number;
   luma_generation_id: string;
+  kling_task_id?: string;
   luma_prompt: string;
   clip_url: string;
   first_image_url: string;

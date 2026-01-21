@@ -226,6 +226,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
     form.append("total_images", String(compressedEntries.length));
     form.append("user_id", user.id);
     form.append("video_id", videoId);
+    form.append("visual_hook", wizardData.formData.visual_hook || "");
 
     return { form, originalCount, compressedCount: compressedEntries.length, videoId };
   };

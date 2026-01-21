@@ -12,6 +12,7 @@ import { useDrag } from "./DragContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
+import { VisualHookSelector } from "./wizard/VisualHookSelector";
 
 // --- Types ---
 interface SmartSlotProps {
@@ -217,63 +218,15 @@ export function SmartSlot({
                 </div>
             </div>
 
-            {/* DRAWER (Expanded Content) */}
+            {/* DRAWER (Expanded Content) - REPLACED WITH PRESET GALLERY */}
             <div className={cn(
-                "bg-indigo-50/50 dark:bg-indigo-950/20 border-b border-indigo-100 dark:border-indigo-900/30 overflow-hidden transition-all duration-300 ease-in-out",
-                (isHookActive && isDrawerOpen) ? "max-h-[400px] opacity-100 p-4" : "max-h-0 opacity-0 p-0"
+                "bg-indigo-50/30 dark:bg-indigo-950/10 border-b border-indigo-100 dark:border-indigo-900/20 overflow-hidden transition-all duration-500 ease-in-out",
+                (isHookActive && isDrawerOpen) ? "max-h-[600px] opacity-100 p-4" : "max-h-0 opacity-0 p-0"
             )}>
-                <Tabs defaultValue="auto" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/60 dark:bg-black/20 h-8">
-                        <TabsTrigger value="auto" className="text-[10px] h-6">Presets</TabsTrigger>
-                        <TabsTrigger value="bookmarks" className="text-[10px] h-6">Saved</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="auto" className="mt-0">
-                        {suggestions.length === 0 ? (
-                            <div className="h-24 flex items-center justify-center text-muted-foreground text-[10px] bg-white/40 rounded-lg border border-dashed text-center px-4">
-                                No AI suggestions found. Using default hooks.
-                            </div>
-                        ) : (
-                            <ScrollArea className="w-full whitespace-nowrap pb-2">
-                                <div className="flex w-max space-x-2">
-                                    {suggestions.map((s: any) => (
-                                        <div key={s.id} onClick={() => handleSelectHook(s.concept_name || s.title)}
-                                            className={cn(
-                                                "w-24 h-24 rounded-lg border bg-white/80 hover:border-indigo-500 cursor-pointer flex flex-col items-center justify-center p-2 text-center transition-all",
-                                                visualHook === (s.concept_name || s.title) ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50" : ""
-                                            )}>
-                                            <Sparkles className="w-4 h-4 text-indigo-500 mb-1" />
-                                            <span className="text-[9px] font-bold leading-none line-clamp-2 text-wrap px-1">{s.concept_name || s.title}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <ScrollBar orientation="horizontal" />
-                            </ScrollArea>
-                        )}
-                    </TabsContent>
-
-                    <TabsContent value="bookmarks" className="mt-0">
-                        {bookmarks.length === 0 ? (
-                            <div className="h-24 flex flex-col items-center justify-center text-muted-foreground text-[10px] bg-white/40 rounded-lg border border-dashed text-center px-4 gap-2">
-                                <BookMarked className="w-4 h-4 opacity-50" />
-                                <span>No saved hooks yet.<br />Save a configuration to see it here.</span>
-                            </div>
-                        ) : (
-                            <ScrollArea className="w-full whitespace-nowrap pb-2">
-                                <div className="flex w-max space-x-2">
-                                    {bookmarks.map((b: any) => (
-                                        <div key={b.id} onClick={() => handleSelectHook(b.data?.text || b.name)}
-                                            className="w-24 h-24 rounded-lg border bg-white/80 hover:border-indigo-500 cursor-pointer p-2 flex flex-col justify-between">
-                                            <Wand2 className="w-3 h-3 text-muted-foreground" />
-                                            <span className="text-[10px] truncate">{b.name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <ScrollBar orientation="horizontal" />
-                            </ScrollArea>
-                        )}
-                    </TabsContent>
-                </Tabs>
+                <VisualHookSelector
+                    value={visualHook || ""}
+                    onChange={(val) => onVisualHookChange?.(val)}
+                />
             </div>
 
             {/* BODY (Media Rail - Standard) */}

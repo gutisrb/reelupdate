@@ -19,3 +19,4 @@ CREATE TABLE IF NOT EXISTS viral_trends (
 ALTER TABLE viral_trends ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Enable read access for all users" ON viral_trends FOR SELECT USING (true);
+    

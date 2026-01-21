@@ -51,14 +51,15 @@ export class KieClient {
     }
 
     /**
-     * Generate video using Kling 2.1 Pro via Kie.ai
+     * Create a Kling video task and return the taskId
      */
-    async generateVideo(
+    async createVideoTask(
         prompt: string,
         startImageUrl: string,
-        endImageUrl?: string | null
+        endImageUrl?: string | null,
+        negativePrompt?: string
     ): Promise<string> {
-        console.log(`[KieClient] Generating Kling video with prompt: "${prompt}"`);
+        console.log(`[KieClient] Starting Kling video task with prompt: "${prompt}" (Negative: "${negativePrompt || 'Default'}")`);
 
         const imageInputs = [startImageUrl];
         if (endImageUrl) imageInputs.push(endImageUrl);
@@ -70,20 +71,14 @@ export class KieClient {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'kling/v2-1-pro-image-to-video', // Specific model for Pro
+                model: 'kling/v2-5-turbo-image-to-video-pro', // Upgraded to 2.5 Turbo Pro
                 input: {
                     prompt: prompt,
-                    image_input: imageInputs,
-                    duration: "5", // Standard duration
-                    aspect_ratio: "16:9", // Default, but usually input images dictate this for i2v
-                    output_format: "mp4",
-                    camera_control: {
-                        type: "simple", // Or advanced if needed, but simple is safer to start
-                        horizontal: 0,
-                        vertical: 0,
-                        zoom: 0,
-                        roll: 0
-                    }
+                    image_url: startImageUrl,
+                    tail_image_url: endImageUrl || undefined,
+                    duration: "5",
+                    cfg_scale: 0.8,
+                    negative_prompt: negativePrompt || "blur, distort, low quality, static, frozen"
                 }
             })
         });
@@ -100,13 +95,27 @@ export class KieClient {
             throw new Error(`Kie.ai (Kling) did not return a Task ID. Response: ${JSON.stringify(data)}`);
         }
 
-        console.log(`[KieClient] Kling Task started: ${taskId}. Waiting for completion...`);
+        return taskId;
+    }
 
-        // Poll for completion (reusing the robust logic)
+    /**
+     * Generate video using Kling 2.1 Pro via Kie.ai (Sync wrapper)
+     */
+    async generateVideo(
+        prompt: string,
+        startImageUrl: string,
+        endImageUrl?: string | null,
+        negativePrompt?: string
+    ): Promise<string> {
+        const taskId = await this.createVideoTask(prompt, startImageUrl, endImageUrl, negativePrompt);
+        console.log(`[KieClient] Kling Task started: ${taskId}. Waiting for completion...`);
         return await this.waitForCompletion(taskId);
     }
 
-    private async waitForCompletion(taskId: string): Promise<string> {
+    /**
+     * Poll for task completion
+     */
+    async waitForCompletion(taskId: string): Promise<string> {
         const MAX_RETRIES = 300; // Increased to 5 minutes for Video (Kling can be slow)
         const POLLING_INTERVAL = 3000; // Poll every 3 seconds to be nicer to API
 
@@ -119,6 +128,8 @@ export class KieClient {
 
             const data = await response.json();
             const status = data.data?.state;
+
+            console.log(`[KieClient] Polling ${taskId}: status=${status} (attempt ${i + 1}/${MAX_RETRIES})`);
 
             if (status === 'success') {
                 // Kling usually returns resultUrls
@@ -137,14 +148,59 @@ export class KieClient {
                     }
                 }
 
-                if (resultUrl) return resultUrl;
+                if (resultUrl) {
+                    console.log(`[KieClient] Task ${taskId} succeeded! URL: ${resultUrl}`);
+                    return resultUrl;
+                } else {
+                    console.error(`[KieClient] Task ${taskId} succeeded but NO URL found! Full data:`, JSON.stringify(data));
+                }
             } else if (status === 'failed') {
+                console.error(`[KieClient] Task ${taskId} failed! Full data:`, JSON.stringify(data));
                 throw new Error(`Kling task failed: ${data.data?.error || 'Unknown error'}`);
+            } else if (status === 'pending' || status === 'running' || status === 'queued' || status === 'waiting' || status === 'generating' || status === 'processing') {
+                // Continue polling
+                console.log(`[KieClient] Task ${taskId} is still ${status}. Retrying...`);
+            } else {
+                console.warn(`[KieClient] Polling ${taskId}: Unknown status '${status}'. Full data:`, JSON.stringify(data));
             }
 
             await new Promise(r => setTimeout(r, POLLING_INTERVAL));
         }
 
         throw new Error('Kling task timed out');
+    }
+
+    /**
+     * Single check for completion (used for recursive polling)
+     */
+    async waitForCompletionPollingOnce(taskId: string): Promise<string | null> {
+        const response = await fetch(API_ENDPOINTS.kie.getTask(taskId), {
+            headers: { 'Authorization': `Bearer ${this.apiKey}` }
+        });
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        const status = data.data?.state;
+
+        if (status === 'success') {
+            let resultUrl = null;
+            if (data.data?.resultUrls && Array.isArray(data.data.resultUrls)) {
+                resultUrl = data.data.resultUrls[0];
+            } else if (data.data?.resultJson) {
+                try {
+                    const parsed = JSON.parse(data.data.resultJson);
+                    if (parsed.resultUrls?.length) resultUrl = parsed.resultUrls[0];
+                    if (!resultUrl && parsed.video_url) resultUrl = parsed.video_url;
+                } catch (e) {
+                    console.warn('Failed to parse resultJson', e);
+                }
+            }
+            return resultUrl;
+        } else if (status === 'failed') {
+            throw new Error(`Kling task failed: ${data.data?.error || 'Unknown error'}`);
+        }
+
+        return null;
     }
 }

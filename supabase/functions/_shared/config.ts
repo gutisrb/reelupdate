@@ -69,7 +69,8 @@ export const API_ENDPOINTS = {
     getTask: (taskId: string) => `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
   },
   google: {
-    geminiVision: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+    geminiVision: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
+    geminiText: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
     geminiTTSFlash: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
     geminiTTSPro: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-tts:generateContent',
   },

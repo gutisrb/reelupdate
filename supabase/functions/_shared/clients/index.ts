@@ -26,7 +26,7 @@ export const initClients = () => {
     // const luma = new LumaClient(); // DISABLED
     const zapcap = new ZapCapClient();
     const kie = new KieClient();
-    const director = new DirectorClient(openai);
+    const director = new DirectorClient(google);
 
     return {
         openai,
