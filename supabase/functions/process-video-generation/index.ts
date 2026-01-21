@@ -553,7 +553,7 @@ async function initiateClip(
   const PRESET_HOOKS: Record<string, string> = {
     "Start with Blur": "Apply heavy gaussian blur to the entire image while keeping colors vibrant. The result must be a high-quality blurred version of this specific room.",
     "Agent Fail": "Add a professional real estate agent standing in the center of the room, professional attire.",
-    "Empty to Furnished": "Virtually stage this room to create a simple, modern, aesthetic look. Use stylish but normal furniture, neutral rugs, and cozy ambient lighting. Maintain the same floor and wall structure.",
+    "Empty to Furnished": "Virtually stage this room normally and intuitively. Realistic and aesthetic result.",
     "Furnished to Empty": "Completely remove all furniture, rugs, and decor from this room. Show only the empty architectural shell, clean floors, and bare walls. Professional and clean result.",
     "Labubu": "Add a giant 3D Labubu toy mascot character standing in the center of the room. High detail, matching lighting.",
     "Sketch": "Transform this photo into an artistic pencil sketch / architectural drawing. High contrast, graphite texture.",

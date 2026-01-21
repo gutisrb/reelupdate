@@ -70,7 +70,7 @@ export class GoogleAIClient {
     try {
       const resp1 = await fetch(firstImageUrl);
       const blob1 = await resp1.arrayBuffer();
-      const base64_1 = btoa(String.fromCharCode(...new Uint8Array(blob1)));
+      const base64_1 = this.base64Encode(blob1);
       imageParts.push({ inline_data: { mime_type: "image/jpeg", data: base64_1 } });
     } catch (e) { console.error("[GoogleAIClient] Failed to fetch first image", e); }
 
@@ -79,7 +79,7 @@ export class GoogleAIClient {
       try {
         const resp2 = await fetch(secondImageUrl);
         const blob2 = await resp2.arrayBuffer();
-        const base64_2 = btoa(String.fromCharCode(...new Uint8Array(blob2)));
+        const base64_2 = this.base64Encode(blob2);
         imageParts.push({ inline_data: { mime_type: "image/jpeg", data: base64_2 } });
       } catch (e) { console.error("[GoogleAIClient] Failed to fetch second image", e); }
     }
@@ -105,6 +105,12 @@ export class GoogleAIClient {
         body: JSON.stringify(body),
       }
     );
+
+    if (response.status === 503) {
+      console.warn('[GoogleAIClient] Gemini 503 Overloaded (Vision), retrying once...');
+      await new Promise(r => setTimeout(r, 2000));
+      return this.analyzeImagesForVideo(firstImageUrl, secondImageUrl, prompt);
+    }
 
     if (!response.ok) {
       const error = await response.text();
@@ -358,6 +364,18 @@ Rules:
       return null;
     }
     return data.candidates[0].content.parts[0].inlineData.data;
+  }
+
+  /**
+   * Robust base64 encoding that avoids 'Maximum call stack size exceeded'
+   */
+  private base64Encode(buffer: ArrayBuffer): string {
+    const uint8Array = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < uint8Array.byteLength; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    return btoa(binary);
   }
 
   /**
