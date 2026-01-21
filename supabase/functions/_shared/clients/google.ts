@@ -43,6 +43,12 @@ export class GoogleAIClient {
       }
     );
 
+    if (response.status === 503) {
+      console.warn('[GoogleAIClient] Gemini 503 Overloaded (Script), retrying once...');
+      await new Promise(r => setTimeout(r, 2000));
+      return this.generateVoiceoverScript(propertyData, visualContext, videoLength, scriptHook);
+    }
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Gemini 3.0 script generation failed: ${error}`);
@@ -418,6 +424,12 @@ Rules:
         body: JSON.stringify({ ...body, safetySettings }),
       }
     );
+
+    if (response.status === 503) {
+      console.warn('[GoogleAIClient] Gemini 503 Overloaded (Chat), retrying once...');
+      await new Promise(r => setTimeout(r, 2000));
+      return this.chat(params);
+    }
 
     if (!response.ok) {
       const error = await response.text();
