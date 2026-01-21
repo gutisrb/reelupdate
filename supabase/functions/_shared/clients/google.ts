@@ -26,12 +26,20 @@ export class GoogleAIClient {
       }
     };
 
-    const response = await fetch(
+    const safetySettings = [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
+    ];
+
+    let response = await fetch(
       `${API_ENDPOINTS.google.geminiText}?key=${this.apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, safetySettings }),
       }
     );
 
@@ -40,12 +48,35 @@ export class GoogleAIClient {
       throw new Error(`Gemini 3.0 script generation failed: ${error}`);
     }
 
-    const data = await response.json();
-    const text = this.safeExtractText(data);
+    let data = await response.json();
+    let text = this.safeExtractText(data);
+
+    // One-time retry if content is empty (safety refusal or non-deterministic behavior)
+    if (!text) {
+      console.warn('[GoogleAIClient] Voiceover script returned no content, retrying with lower temperature...');
+      const retryBody = {
+        ...body,
+        generationConfig: { ...body.generationConfig, temperature: 0.7 }
+      };
+
+      response = await fetch(
+        `${API_ENDPOINTS.google.geminiText}?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...retryBody, safetySettings }),
+        }
+      );
+
+      if (response.ok) {
+        data = await response.json();
+        text = this.safeExtractText(data);
+      }
+    }
 
     if (!text) {
       console.error('[GoogleAIClient] Voiceover script structure missing candidates/content:', JSON.stringify(data));
-      throw new Error('Gemini 3.0 script generation returned no content. Possible safety block.');
+      throw new Error('Gemini 3.0 script generation returned no content after retry. Possible safety block.');
     }
 
     if (!text) throw new Error('No text returned from Gemini 3.0');
@@ -102,12 +133,20 @@ export class GoogleAIClient {
       }
     };
 
+    const safetySettings = [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
+    ];
+
     const response = await fetch(
       `${API_ENDPOINTS.google.geminiVision}?key=${this.apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, safetySettings }),
       }
     );
 
@@ -157,12 +196,20 @@ Rules:
       }
     };
 
+    const safetySettings = [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
+    ];
+
     const response = await fetch(
       `${API_ENDPOINTS.google.geminiText}?key=${this.apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, safetySettings }),
       }
     );
 
@@ -215,12 +262,20 @@ Rules:
       },
     };
 
+    const safetySettings = [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
+    ];
+
     const response = await fetch(
       `${endpoint}?key=${this.apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, safetySettings }),
       }
     );
 
@@ -319,12 +374,20 @@ Rules:
       }
     };
 
-    const response = await fetch(
+    const safetySettings = [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
+    ];
+
+    let response = await fetch(
       `${API_ENDPOINTS.google.geminiText}?key=${this.apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, safetySettings }),
       }
     );
 
@@ -333,12 +396,35 @@ Rules:
       throw new Error(`Gemini 3.0 chat failed: ${error}`);
     }
 
-    const data = await response.json();
-    const text = this.safeExtractText(data);
+    let data = await response.json();
+    let text = this.safeExtractText(data);
+
+    // One-time retry if content is empty (safety refusal or non-deterministic behavior)
+    if (!text) {
+      console.warn('[GoogleAIClient] Chat returned no content, retrying with lower temperature...');
+      const retryBody = {
+        ...body,
+        generationConfig: { ...body.generationConfig, temperature: 0.7 }
+      };
+
+      response = await fetch(
+        `${API_ENDPOINTS.google.geminiText}?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...retryBody, safetySettings }),
+        }
+      );
+
+      if (response.ok) {
+        data = await response.json();
+        text = this.safeExtractText(data);
+      }
+    }
 
     if (!text) {
       console.error('[GoogleAIClient] Chat response structure missing candidates/content:', JSON.stringify(data));
-      throw new Error('Gemini 3.0 chat returned no content. This usually means a safety block or quota limit.');
+      throw new Error('Gemini 3.0 chat returned no content after retry. This usually means a safety block or quota limit.');
     }
 
     // Return in a structure similar to OpenAI for compatibility if needed, 
