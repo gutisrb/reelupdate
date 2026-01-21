@@ -161,17 +161,45 @@ export class GoogleAIClient {
       throw new Error(`Gemini 3.0 Vision failed: ${error}`);
     }
 
-    const data = await response.json();
-    const content = this.safeExtractText(data);
+    let data = await response.json();
+    let content = this.safeExtractText(data);
 
+    // One-time retry if content is empty (safety refusal or non-deterministic behavior)
     if (!content) {
-      console.error('[GoogleAIClient] Empty response from Gemini 3.0 Vision', JSON.stringify(data));
-      throw new Error('No content returned from Gemini 3.0 Vision');
+      console.warn('[GoogleAIClient] Gemini 3.0 Vision returned no content, retrying with lower temperature (0.3)...');
+      const retryBody = {
+        ...body,
+        generationConfig: { ...body.generationConfig, temperature: 0.3 }
+      };
+
+      const retryResponse = await fetch(
+        `${API_ENDPOINTS.google.geminiVision}?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...retryBody, safetySettings }),
+        }
+      );
+
+      if (retryResponse.ok) {
+        data = await retryResponse.json();
+        content = this.safeExtractText(data);
+      }
     }
 
-    const parsed = JSON.parse(content);
-    console.log(`[GoogleAIClient] Vision analysis complete. Prompt: "${parsed.luma_prompt?.substring(0, 50)}..."`);
-    return parsed;
+    if (!content) {
+      console.error('[GoogleAIClient] Empty response from Gemini 3.0 Vision after retry', JSON.stringify(data));
+      throw new Error('No content returned from Gemini 3.0 Vision after retry');
+    }
+
+    try {
+      const parsed = JSON.parse(content);
+      console.log(`[GoogleAIClient] Vision analysis complete. Prompt: "${parsed.luma_prompt?.substring(0, 50)}..."`);
+      return parsed;
+    } catch (e) {
+      console.error('[GoogleAIClient] Failed to parse vision JSON:', content);
+      throw new Error(`Invalid JSON from Gemini Vision: ${content.substring(0, 100)}...`);
+    }
   }
 
   /**
