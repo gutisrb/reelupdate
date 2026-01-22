@@ -1,9 +1,9 @@
 // Email Templates in Serbian
 
 export const emailTemplates = {
-    welcome: (userName: string, credits: number) => ({
-        subject: 'Dobrodošli u ReelUpdate! 🎥',
-        html: `
+  welcome: (userName: string, credits: number) => ({
+    subject: 'Dobrodošli u ReelUpdate! 🎥',
+    html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -57,11 +57,11 @@ export const emailTemplates = {
       </body>
       </html>
     `
-    }),
+  }),
 
-    lowCredits: (userName: string, creditsRemaining: number) => ({
-        subject: 'Preostali krediti: samo još ' + creditsRemaining,
-        html: `
+  lowCredits: (userName: string, creditsRemaining: number) => ({
+    subject: 'Preostali krediti: samo još ' + creditsRemaining,
+    html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -108,11 +108,11 @@ export const emailTemplates = {
       </body>
       </html>
     `
-    }),
+  }),
 
-    videoComplete: (userName: string, videoUrl: string) => ({
-        subject: '✅Video je spreman!',
-        html: `
+  videoComplete: (userName: string, videoUrl: string) => ({
+    subject: '✅Video je spreman!',
+    html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -154,11 +154,11 @@ export const emailTemplates = {
       </body>
       </html>
     `
-    }),
+  }),
 
-    paymentSuccess: (userName: string, planName: string, amount: string) => ({
-        subject: 'Plaćanje uspešno! 🎊',
-        html: `
+  paymentSuccess: (userName: string, planName: string, amount: string) => ({
+    subject: 'Plaćanje uspešno! 🎊',
+    html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -200,5 +200,97 @@ export const emailTemplates = {
       </body>
       </html>
     `
-    })
+  }),
+
+  intakeNotification: (data: any) => ({
+    subject: `🎯 Nova prijava - ${data.name} (${data.agency})`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; }
+          .header { background: #f8f9fa; padding: 20px; border-bottom: 2px solid #007bff; }
+          .content { padding: 20px; }
+          .field { margin-bottom: 10px; }
+          .label { font-weight: bold; color: #555; }
+          .value { color: #000; }
+          .section-title { font-size: 18px; font-weight: bold; margin: 20px 0 10px; border-bottom: 1px solid #eee; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>🎯 Nova prijava za pristup</h2>
+          </div>
+          <div class="content">
+            <div class="section-title">Kontakt Informacije</div>
+            <div class="field"><span class="label">Ime i prezime:</span> <span class="value">${data.name}</span></div>
+            <div class="field"><span class="label">Email:</span> <span class="value">${data.email}</span></div>
+            <div class="field"><span class="label">Telefon:</span> <span class="value">${data.phone}</span></div>
+            <div class="field"><span class="label">Agencija:</span> <span class="value">${data.agency}</span></div>
+
+            <div class="section-title">Kvalifikacioni Podaci</div>
+            <div class="field"><span class="label">Videa mesečno:</span> <span class="value">${data.videosPerMonth || 'Nije navedeno'}</span></div>
+            <div class="field"><span class="label">Nekretnina mesečno:</span> <span class="value">${data.propertiesPerMonth || 'Nije navedeno'}</span></div>
+            <div class="field"><span class="label">Platforme:</span> <span class="value">${data.platforms ? data.platforms.join(', ') : 'Nije navedeno'}</span></div>
+            <div class="field"><span class="label">Trenutni način pravljenja:</span> <span class="value">${data.currentMethod || 'Nije navedeno'}</span></div>
+            
+            <p style="margin-top: 30px; font-size: 12px; color: #999;">
+              Primljeno: ${new Date().toLocaleString('sr-RS')}
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  intakeAutoReply: (userName: string) => ({
+    subject: 'Primili smo vašu prijavu za ReelUpdate! 🎥',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 40px 20px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #ffffff; padding: 40px 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px; }
+          .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">🎥 ReelUpdate</h1>
+          </div>
+          <div class="content">
+            <p>Zdravo ${userName},</p>
+            
+            <p>Hvala vam na interesovanju za ReelUpdate platformu!</p>
+            
+            <p>Primili smo vašu prijavu i naš tim će je pregledati u najkraćem roku. S obzirom na veliku zainteresovanost, trudimo se da odgovorimo svima u roku od <strong>24 sata</strong>.</p>
+            
+            <p><strong>Šta je sledeći korak?</strong></p>
+            <p>Ukoliko se vaši odgovori uklapaju u naše trenutne beta kapacitete, kontaktiraćemo vas putem telefona ili emaila kako bismo vam kreirali nalog i objasnili kako da počnete sa kreiranjem vaših prvih AI video tura.</p>
+            
+            <p>U međuvremenu, možete pogledati primere videa na našem sajtu.</p>
+            
+            <p style="margin-top: 30px;">
+              Srdačan pozdrav,<br>
+              <strong>ReelUpdate Tim</strong>
+            </p>
+          </div>
+          <div class="footer">
+            <p>© 2026 ReelUpdate • office@smartflow.rs</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  })
 }
