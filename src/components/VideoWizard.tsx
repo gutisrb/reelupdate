@@ -179,7 +179,7 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
       maxW: 1280,
       maxH: 1280,
       quality: 0.72,
-      budgetBytes: 4.9 * 1024 * 1024
+      budgetBytes: 4.5 * 1024 * 1024
     });
 
     // Build FormData with compressed images

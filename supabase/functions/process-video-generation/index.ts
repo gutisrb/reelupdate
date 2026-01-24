@@ -2,7 +2,7 @@
 // Replaces Make.com workflow
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { initClients } from '../_shared/clients/index.ts';
 import { CREATIVE_WILDCARDS } from '../_shared/constants/wildcards.ts';
