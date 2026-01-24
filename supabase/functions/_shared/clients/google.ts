@@ -89,11 +89,24 @@ export class GoogleAIClient {
     if (!text) throw new Error('No text returned from Gemini 3.0');
 
     try {
-      const parsed: VoiceScriptResponse = JSON.parse(text);
-      if (parsed && typeof parsed.voice_text === 'string' && parsed.voice_text.length > 0) {
-        return parsed.voice_text;
+      const parsed: any = JSON.parse(text);
+
+      // Case 1: Standard object with voice_text (Expected)
+      if (parsed?.voice_text) return parsed.voice_text;
+
+      // Case 2: Array (e.g. [{ title: "...", body: "..." }])
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const first = parsed[0];
+        if (first.body) return first.body;
+        if (first.voice_text) return first.voice_text;
+        if (first.script) return first.script;
       }
-      console.warn('[GoogleAIClient] JSON parsed but voice_text missing/invalid. Returning raw text fallback.');
+
+      // Case 3: Flat object with 'body' or 'script' property
+      if (parsed?.body) return parsed.body;
+      if (parsed?.script) return parsed.script;
+
+      console.warn('[GoogleAIClient] JSON parsed but extraction failed. Returning raw text fallback.');
       return text;
     } catch (e) {
       // Fallback for non-JSON responses if any
