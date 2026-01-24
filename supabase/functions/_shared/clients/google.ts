@@ -325,8 +325,10 @@ Rules:
     const base64Audio = this.safeExtractInlineData(data);
 
     if (!base64Audio) {
-      console.error('[Gemini TTS] Response structure:', JSON.stringify(data, null, 2));
-      throw new Error('No audio data returned from Gemini TTS. Possible safety block?');
+      console.error('[Gemini TTS] Response contained no audio. Candidates:', JSON.stringify(data.candidates, null, 2));
+      // Fallback to 1 second of silence instead of crashing
+      console.warn('[Gemini TTS] Returning 1s silent buffer as fallback.');
+      return this.createSilentWav(1);
     }
 
     console.log(`[Gemini TTS] Base64 audio length: ${base64Audio.length} chars`);
@@ -345,6 +347,45 @@ Rules:
     console.log(`[Gemini TTS] WAV file size: ${wavBuffer.byteLength} bytes`);
 
     return wavBuffer;
+  }
+
+  /**
+   * Create a silent WAV buffer for fallback
+   */
+  private createSilentWav(durationSeconds: number): ArrayBuffer {
+    const sampleRate = 24000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const numSamples = sampleRate * durationSeconds;
+    const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+    const blockAlign = numChannels * (bitsPerSample / 8);
+
+    const dataSize = numSamples * blockAlign;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    // RIFF header
+    this.writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    this.writeString(view, 8, 'WAVE');
+
+    // fmt chunk
+    this.writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, numChannels, true); // Mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+
+    // data chunk
+    this.writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // Data is already zero-initialized (silence)
+
+    return buffer;
   }
 
   /**

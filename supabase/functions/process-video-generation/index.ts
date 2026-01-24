@@ -773,5 +773,66 @@ DO NOT SACRIFICE PROPERTY DETAILS OR CAMERA MOTION for this hook.
 - Sentence A MUST remain 100% focused on PROPERTY SHOWCASING (Camera + Anchors).
 - The HOOK ACTION MUST be restricted to Sentence B as an additive layer.${hookContext}` : "";
 
-  return 'You generate a compact control prompt for High-Fidelity AI Video Model (Kling Pro) from 1 or 2 property images(keyframes).\nReturn ONLY the JSON fields: is_keyframe, is_correlated, description, luma_prompt, negative_prompt, mood.' + instructionBlock + '\n\nALLOWED CAMERA MOTIONS(choose EXACTLY one token, verbatim)\nStatic | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down\n\n1) ANALYZE IMAGES\n- Room type & scale. Lighting.\n- Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.\n- "Center Anchor": Identify the most prominent object/feature in the center of the frame (e.g. "red sofa", "kitchen island", "window").\n- Visual hooks present: agent/actor, staging, balloons, mascot, text overlay.\n\n2) DIFFERENCE ANALYSIS (CRITICAL - IF 2 IMAGES PROVIDED)\n- Compare Image 1 (Start) vs Image 2 (End).\n- DID THE CAMERA MOVE LATERALLY? (e.g. Wall X was on right, now on left) -> USE "Move Left" or "Move Right".\n- DID THE CAMERA MOVE FORWARD? (e.g. Objects got larger but centered) -> USE "Push In".\n- IGNORE your imagination. DEDUCE motion ONLY from the visible shift in pixels.\n- VISUAL CORRELATION: Check if Image 1 and Image 2 are from the same room and same perspective sequence. If they are completely different rooms (e.g. Living room vs Bathroom) or uncorrelated angles that would cause morphing artifacts, set `is_correlated` to false.\n\n3) CAMERA MOTION SELECTION(pick ONE)\n- FORCE the motion to match your Difference Analysis.\n- "Zoom Out" requires safety keywords: "stable geometry preservation" and "gradual lens expansion".\n\n4) COMPOSE luma_prompt AS TWO SHORT SENTENCES\nSentence A(PROPERTY SHOWCASE):\n- Start with chosen CAMERA MOTION token, followed by a colon.\n- DIRECTIONAL LOGIC (CRITICAL):\n  * FOR PUSH IN / PULL OUT: Use "STRAIGHT toward [Center Anchor]" to lock the angle and prevent drift.\n  * FOR MOVE/PAN LEFT/RIGHT: Use "PARALLEL to [Side Anchor]" or "ALONG the [Wall]" to prevent crashing into walls.\n- NEVER use "STRAIGHT" for lateral moves (Move Left/Right) as it causes wall collisions.\n- Add 1-2 architectural anchors: e.g. "alongside window wall", "toward media wall".\n- MUST include quality clause: "revealing spatial flow with cinematic parallax" or "showcasing layout with fluid motion".\n- ALWAYS conclude Sentence A with stability rule: "seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve".\n\nSentence B(ADDITIVE ACTIONS & HOOKS):\n- Actors: use "characters hold still" or describe the specific HOOK ACTION if active (e.g. "character slips and falls rapidly").\n- Hooks: e.g., "balloons drift softly", "furniture appears naturally".\n- Lighting & Mood: End with one mood word from whitelist.\n\nGEOMETRY SAFETY RULES (CRITICAL):\n- LOCK ON VISIBLE ANCHORS: Movement must be relative to objects VISIBLE in the start frame.\n- NO IMAGINARY SPACES: NEVER describe entering a hallway or room that is not clearly visible.\n- NO WALL CLIPPING: Camera must stay strictly within the visible 3D volume.\n\nPROFESSIONAL EXAMPLES:\n✅ "Push In: camera glides smoothly STRAIGHT toward the visible red sofa, showcasing architectural flow with cinematic parallax; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Character slips and falls rapidly; bright daylight, upbeat."\n✅ "Move Right: camera tracks PARALLEL along the window wall, revealing natural light with fluid motion; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Furniture appears naturally; luxury."\n\n5) COMPOSE description(PROPERTY-ONLY, 12-18 words)\n- Architectural features only. EXCLUDE people, themes, or edited hooks.\n\n6) GENERATE negative_prompt (ROBUST ANTI-HALLUCINATION)\n- Must include: "moving walls, distorted geometry, morphing walls, sliding furniture, floating objects, sliding texture, disintegrating objects, new hallway, entering unseen room, passing through wall, blurry, shaky, low quality".\n\n7) OUTPUT FORMAT(JSON only)\n{\n  "is_keyframe": boolean,\n  "description": "string",\n  "luma_prompt": "string",\n  "negative_prompt": "string",\n  "mood": "luxury|modern|elegant|cozy|upbeat|calm|sophisticated|contemporary|warm|bright|minimalist|spacious|intimate|professional|stylish|chic|serene|energetic|ambient|classic|urban|trendy"\n}';
+  return `You generate a compact control prompt for High-Fidelity AI Video Model (Kling Pro) from 1 or 2 property images(keyframes).
+Return ONLY the JSON fields: is_keyframe, is_correlated, description, luma_prompt, negative_prompt, mood.${instructionBlock}
+
+ALLOWED CAMERA MOTIONS(choose EXACTLY one token, verbatim)
+Static | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down
+
+1) ANALYZE IMAGES
+- Room type & scale. Lighting.
+- Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.
+- "Center Anchor": Identify the most prominent object/feature in the center of the frame (e.g. "red sofa", "kitchen island", "window").
+- Visual hooks present: agent/actor, staging, balloons, mascot, text overlay.
+
+2) DIFFERENCE ANALYSIS (CRITICAL - IF 2 IMAGES PROVIDED)
+- Compare Image 1 (Start) vs Image 2 (End).
+- DID THE CAMERA MOVE LATERALLY? (e.g. Wall X was on right, now on left) -> USE "Move Left" or "Move Right".
+- DID THE CAMERA MOVE FORWARD? (e.g. Objects got larger but centered) -> USE "Push In".
+- IGNORE your imagination. DEDUCE motion ONLY from the visible shift in pixels.
+- VISUAL CORRELATION & MORPH SAFETY: Check if Image 1 and Image 2 share SIGNIFICANT VISUAL OVERLAP (at least 60% of the scene structure must explicitly align). logic: 'Can a camera physically move from A to B in 5 seconds without teleporting?'. If the angle change is too extreme (>45 degrees) or if the overlap is insufficient for optical flow interpolation, set \`is_correlated\` to false. UNLESS the overlap is obvious, default to false.
+
+3) CAMERA MOTION SELECTION(pick ONE)
+- FORCE the motion to match your Difference Analysis.
+- "Zoom Out" requires safety keywords: "stable geometry preservation" and "gradual lens expansion".
+
+4) COMPOSE luma_prompt AS TWO SHORT SENTENCES
+Sentence A(PROPERTY SHOWCASE):
+- Start with chosen CAMERA MOTION token, followed by a colon.
+- DIRECTIONAL LOGIC (CRITICAL):
+  * FOR PUSH IN / PULL OUT: Use "STRAIGHT toward [Center Anchor]" to lock the angle and prevent drift.
+  * FOR MOVE/PAN LEFT/RIGHT: Use "PARALLEL to [Side Anchor]" or "ALONG the [Wall]" to prevent crashing into walls.
+- NEVER use "STRAIGHT" for lateral moves (Move Left/Right) as it causes wall collisions.
+- Add 1-2 architectural anchors: e.g. "alongside window wall", "toward media wall".
+- MUST include quality clause: "revealing spatial flow with cinematic parallax" or "showcasing layout with fluid motion".
+- ALWAYS conclude Sentence A with stability rule: "seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve".
+
+Sentence B(ADDITIVE ACTIONS & HOOKS):
+- Actors: use "characters hold still" or describe the specific HOOK ACTION if active (e.g. "character slips and falls rapidly").
+- Hooks: e.g., "balloons drift softly", "furniture appears naturally".
+- Lighting & Mood: End with one mood word from whitelist.
+
+GEOMETRY SAFETY RULES (CRITICAL):
+- LOCK ON VISIBLE ANCHORS: Movement must be relative to objects VISIBLE in the start frame.
+- NO IMAGINARY SPACES: NEVER describe entering a hallway or room that is not clearly visible.
+- NO WALL CLIPPING: Camera must stay strictly within the visible 3D volume.
+
+PROFESSIONAL EXAMPLES:
+✅ "Push In: camera glides smoothly STRAIGHT toward the visible red sofa, showcasing architectural flow with cinematic parallax; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Character slips and falls rapidly; bright daylight, upbeat."
+✅ "Move Right: camera tracks PARALLEL along the window wall, revealing natural light with fluid motion; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Furniture appears naturally; luxury."
+
+5) COMPOSE description(PROPERTY-ONLY, 12-18 words)
+- Architectural features only. EXCLUDE people, themes, or edited hooks.
+
+6) GENERATE negative_prompt (ROBUST ANTI-HALLUCINATION)
+- Must include: "moving walls, distorted geometry, morphing walls, sliding furniture, floating objects, sliding texture, disintegrating objects, new hallway, entering unseen room, passing through wall, blurry, shaky, low quality".
+
+7) OUTPUT FORMAT(JSON only)
+{
+  "is_keyframe": boolean,
+  "description": "string",
+  "luma_prompt": "string",
+  "negative_prompt": "string",
+  "mood": "luxury|modern|elegant|cozy|upbeat|calm|sophisticated|contemporary|warm|bright|minimalist|spacious|intimate|professional|stylish|chic|serene|energetic|ambient|classic|urban|trendy"
+}`;
 }
