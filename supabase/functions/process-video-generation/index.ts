@@ -441,13 +441,31 @@ async function handleKlingPoll(payload: any, functionUrl: string, authToken: str
 
   if (skipVideoGeneration) {
     console.log(`[${video_id}] 🏁 Finalizing AUDIO ONLY (Admin Mode)...`);
-    // In audio only mode, we probably just want to return the script or voiceover as the "video"
-    // or just leave video_url null/empty and update status to ready so frontend can fetch details.
+
+    // Mix Voiceover + Music and trim to duration
+    // If we have dummy clips, use their count to determine duration.
+    const duration = clips.length * 5;
+    let finalAudioUrl = voiceoverUrl;
+
+    if (musicUrl && voiceoverUrl) {
+      try {
+        console.log(`[${video_id}] 🎚️ Mixing Audio (Duration: ${duration}s)...`);
+        finalAudioUrl = clients.cloudinary.mixAudio(
+          voiceoverUrl,
+          musicUrl,
+          duration,
+          userSettings?.default_music_volume_db ?? -60
+        );
+      } catch (e) {
+        console.error(`[${video_id}] Audio mixing failed, falling back to VO`, e);
+      }
+    }
+
     await supabase.from('videos').update({
       status: 'ready',
-      video_url: voiceoverUrl, // Return VO URL as the "video" for now so it's playable
+      video_url: finalAudioUrl,
       thumbnail_url: clips[0]?.first_image_url || null,
-      duration_seconds: 0,
+      duration_seconds: duration,
       title: `[AUDIO ONLY] ${(details.voiceover_script || '').substring(0, 50)}...`,
       updated_at: new Date().toISOString()
     }).eq('id', video_id);
