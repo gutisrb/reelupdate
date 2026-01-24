@@ -230,9 +230,10 @@ export class KieClient {
                 customMode: true,
                 instrumental: instrumental,
                 title: "Background Music", // Required if instrumental: true per docs
-                style: prompt // Using prompt as style if instrumental is true, since prompt field is ignored/secondary? 
+                style: prompt, // Using prompt as style if instrumental is true, since prompt field is ignored/secondary? 
                 // Docs: If instrumental: true: style and title are required.
                 // So we should map prompt -> style.
+                callBackUrl: "https://placeholder.com/callback" // Required by API even if polling
             })
         });
 
