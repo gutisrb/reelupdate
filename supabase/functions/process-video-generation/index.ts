@@ -341,23 +341,41 @@ async function handleKlingPoll(payload: any, functionUrl: string, authToken: str
   while (Date.now() - START_TIME < MAX_TIME_MS) {
     let pendingCount = 0;
     for (let i = 0; i < clips.length; i++) {
-      if (clips[i].clip_url) continue;
+      const clip = clips[i];
+      if (!clip) continue;
+
+      const taskIds = clip.kling_task_ids || (clip.kling_task_id ? [clip.kling_task_id] : []);
+      if (taskIds.length === 0) continue;
+
+      // If clip_url is set (for single task) or clip_urls is full (for multi task), it's done
+      if (clip.clip_url || (clip.clip_urls && clip.clip_urls.length === taskIds.length && taskIds.length > 0)) {
+        continue;
+      }
 
       pendingCount++;
-      const taskId = clips[i].kling_task_id;
-      if (!taskId) continue;
+      clip.clip_urls = clip.clip_urls || [];
 
-      try {
-        const finalUrl = await clients.kie.waitForCompletionPollingOnce(taskId);
-        if (finalUrl) {
-          console.log(`[${video_id}] Clip ${i} ready! Uploading to Cloudinary...`);
-          const cloudinaryUpload = await clients.cloudinary.uploadVideo(finalUrl, `clip_${video_id}_${i}.mp4`);
-          clips[i].clip_url = cloudinaryUpload.secure_url;
-          updatedSomething = true;
+      for (const taskId of taskIds) {
+        if (!taskId) continue;
+        // Skip if this specific task is already done
+        if (clip.clip_urls?.some((url: string) => url.includes(taskId))) continue;
+
+        try {
+          const finalUrl = await clients.kie.waitForCompletionPollingOnce(taskId);
+          if (finalUrl) {
+            console.log(`[${video_id}] Task ${taskId} for Clip ${i} ready! Uploading to Cloudinary...`);
+            const cloudinaryUpload = await clients.cloudinary.uploadVideo(finalUrl, `clip_${video_id}_${i}_${taskId}.mp4`);
+
+            if (taskIds.length === 1) {
+              clip.clip_url = cloudinaryUpload.secure_url;
+            } else {
+              clip.clip_urls?.push(cloudinaryUpload.secure_url);
+            }
+            updatedSomething = true;
+          }
+        } catch (e: any) {
+          console.error(`[${video_id}] Task ${taskId} check failed:`, e.message);
         }
-      } catch (e: any) {
-        // Log errors but continue polling other clips
-        console.error(`[${video_id}] Clip ${i} check failed:`, e.message);
       }
     }
 
@@ -399,13 +417,23 @@ async function handleKlingPoll(payload: any, functionUrl: string, authToken: str
     console.log(`[${video_id}] 🧱 ASSEMBLY: Starting assembly...`);
     await supabase.from('videos').update({ processing_status_text: 'Assembling video...' }).eq('id', video_id);
 
+    // Flatten all URLs from all clips
+    const allClipUrls: string[] = [];
+    for (const clip of clips) {
+      if (clip.clip_url) {
+        allClipUrls.push(clip.clip_url);
+      } else if (clip.clip_urls) {
+        allClipUrls.push(...clip.clip_urls);
+      }
+    }
+
     // Assemble (Stages 1: Cloudinary Native Assembly)
     const assemblyUrl = clients.cloudinary.assembleVideo(
-      clips.map(c => c.clip_url),
-      voiceoverUrl,
-      musicUrl,
-      clips.length * 5,
-      userSettings.default_music_volume_db || -60
+      allClipUrls,
+      voiceoverUrl || '',
+      musicUrl || '',
+      allClipUrls.length * 5,
+      userSettings?.default_music_volume_db ?? -60
     );
 
     const stage1Result = await clients.cloudinary.uploadVideoFromUrl(assemblyUrl, `stage1_assembly_${video_id}_${Date.now()}`);
@@ -418,7 +446,7 @@ async function handleKlingPoll(payload: any, functionUrl: string, authToken: str
         video_url: currentVideoUrl
       }).eq('id', video_id);
 
-      const zc = await clients.zapcap.createCaptionTask(currentVideoUrl, userSettings.caption_template_id);
+      const zc = await clients.zapcap.createCaptionTask(currentVideoUrl, userSettings?.caption_template_id || '');
       await supabase.from('video_generation_details').update({
         caption_data: {
           zapcap_task_id: zc.taskId,
@@ -653,7 +681,42 @@ async function initiateClip(
     promptSystemInstruction
   );
 
-  // Create Kling task (async)
+  // DECISION: Correlated or Transition?
+  const isCorrelated = visionAnalysis.is_correlated !== false; // Default to true if not specified
+
+  if (isKeyframe && !isCorrelated) {
+    console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Falling back to transitions (Hard Cut)`);
+    // Create TWO separate video tasks
+    const task1 = await clients.kie.createVideoTask(
+      `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
+      startUrl,
+      null,
+      visionAnalysis.negative_prompt
+    );
+    const task2 = await clients.kie.createVideoTask(
+      `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
+      endUrl!,
+      null,
+      visionAnalysis.negative_prompt
+    );
+
+    return {
+      slot_index: index,
+      luma_generation_id: task1,
+      kling_task_ids: [task1, task2],
+      luma_prompt: visionAnalysis.luma_prompt,
+      clip_url: '',
+      clip_urls: [],
+      first_image_url: startUrl,
+      second_image_url: endUrl,
+      is_keyframe: true,
+      is_correlated: false,
+      description: visionAnalysis.description,
+      mood: visionAnalysis.mood,
+    };
+  }
+
+  // STANDARD LOGIC (Single task)
   const taskId = await clients.kie.createVideoTask(
     visionAnalysis.luma_prompt,
     startUrl,
@@ -663,13 +726,14 @@ async function initiateClip(
 
   return {
     slot_index: index,
-    luma_generation_id: taskId, // Store taskId here
+    luma_generation_id: taskId,
     kling_task_id: taskId,
     luma_prompt: visionAnalysis.luma_prompt,
-    clip_url: '', // Empty for now
+    clip_url: '',
     first_image_url: startUrl,
     second_image_url: endUrl,
     is_keyframe: !!endUrl,
+    is_correlated: true,
     description: visionAnalysis.description,
     mood: visionAnalysis.mood,
   };
@@ -709,5 +773,5 @@ DO NOT SACRIFICE PROPERTY DETAILS OR CAMERA MOTION for this hook.
 - Sentence A MUST remain 100% focused on PROPERTY SHOWCASING (Camera + Anchors).
 - The HOOK ACTION MUST be restricted to Sentence B as an additive layer.${hookContext}` : "";
 
-  return 'You generate a compact control prompt for High-Fidelity AI Video Model (Kling Pro) from 1 or 2 property images(keyframes).\nReturn ONLY the JSON fields: is_keyframe, description, luma_prompt, negative_prompt, mood.' + instructionBlock + '\n\nALLOWED CAMERA MOTIONS(choose EXACTLY one token, verbatim)\nStatic | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down\n\n1) ANALYZE IMAGES\n- Room type & scale. Lighting.\n- Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.\n- "Center Anchor": Identify the most prominent object/feature in the center of the frame (e.g. "red sofa", "kitchen island", "window").\n- Visual hooks present: agent/actor, staging, balloons, mascot, text overlay.\n\n2) DIFFERENCE ANALYSIS (CRITICAL - IF 2 IMAGES PROVIDED)\n- Compare Image 1 (Start) vs Image 2 (End).\n- DID THE CAMERA MOVE LATERALLY? (e.g. Wall X was on right, now on left) -> USE "Move Left" or "Move Right".\n- DID THE CAMERA MOVE FORWARD? (e.g. Objects got larger but centered) -> USE "Push In".\n- IGNORE your imagination. DEDUCE motion ONLY from the visible shift in pixels.\n\n3) CAMERA MOTION SELECTION(pick ONE)\n- FORCE the motion to match your Difference Analysis.\n- "Zoom Out" requires safety keywords: "stable geometry preservation" and "gradual lens expansion".\n\n4) COMPOSE luma_prompt AS TWO SHORT SENTENCES\nSentence A(PROPERTY SHOWCASE):\n- Start with chosen CAMERA MOTION token, followed by a colon.\n- DIRECTIONAL LOGIC (CRITICAL):\n  * FOR PUSH IN / PULL OUT: Use "STRAIGHT toward [Center Anchor]" to lock the angle and prevent drift.\n  * FOR MOVE/PAN LEFT/RIGHT: Use "PARALLEL to [Side Anchor]" or "ALONG the [Wall]" to prevent crashing into walls.\n- NEVER use "STRAIGHT" for lateral moves (Move Left/Right) as it causes wall collisions.\n- Add 1-2 architectural anchors: e.g. "alongside window wall", "toward media wall".\n- MUST include quality clause: "revealing spatial flow with cinematic parallax" or "showcasing layout with fluid motion".\n- ALWAYS conclude Sentence A with stability rule: "seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve".\n\nSentence B(ADDITIVE ACTIONS & HOOKS):\n- Actors: use "characters hold still" or describe the specific HOOK ACTION if active (e.g. "character slips and falls rapidly").\n- Hooks: e.g., "balloons drift softly", "furniture appears naturally".\n- Lighting & Mood: End with one mood word from whitelist.\n\nGEOMETRY SAFETY RULES (CRITICAL):\n- LOCK ON VISIBLE ANCHORS: Movement must be relative to objects VISIBLE in the start frame.\n- NO IMAGINARY SPACES: NEVER describe entering a hallway or room that is not clearly visible.\n- NO WALL CLIPPING: Camera must stay strictly within the visible 3D volume.\n\nPROFESSIONAL EXAMPLES:\n✅ "Push In: camera glides smoothly STRAIGHT toward the visible red sofa, showcasing architectural flow with cinematic parallax; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Character slips and falls rapidly; bright daylight, upbeat."\n✅ "Move Right: camera tracks PARALLEL along the window wall, revealing natural light with fluid motion; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Furniture appears naturally; luxury."\n\n5) COMPOSE description(PROPERTY-ONLY, 12-18 words)\n- Architectural features only. EXCLUDE people, themes, or edited hooks.\n\n6) GENERATE negative_prompt (ROBUST ANTI-HALLUCINATION)\n- Must include: "moving walls, distorted geometry, morphing walls, sliding furniture, floating objects, sliding texture, disintegrating objects, new hallway, entering unseen room, passing through wall, blurry, shaky, low quality".\n\n7) OUTPUT FORMAT(JSON only)\n{\n  "is_keyframe": boolean,\n  "description": "string",\n  "luma_prompt": "string",\n  "negative_prompt": "string",\n  "mood": "luxury|modern|elegant|cozy|upbeat|calm|sophisticated|contemporary|warm|bright|minimalist|spacious|intimate|professional|stylish|chic|serene|energetic|ambient|classic|urban|trendy"\n}';
+  return 'You generate a compact control prompt for High-Fidelity AI Video Model (Kling Pro) from 1 or 2 property images(keyframes).\nReturn ONLY the JSON fields: is_keyframe, is_correlated, description, luma_prompt, negative_prompt, mood.' + instructionBlock + '\n\nALLOWED CAMERA MOTIONS(choose EXACTLY one token, verbatim)\nStatic | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoom In | Zoom Out | Pan Left | Pan Right | Orbit Left | Orbit Right | Crane Up | Crane Down\n\n1) ANALYZE IMAGES\n- Room type & scale. Lighting.\n- Stable parallax anchors: window wall, balcony doors, columns, beams, skylight, staircase, kitchen island, long sofa, media wall, floor pattern.\n- "Center Anchor": Identify the most prominent object/feature in the center of the frame (e.g. "red sofa", "kitchen island", "window").\n- Visual hooks present: agent/actor, staging, balloons, mascot, text overlay.\n\n2) DIFFERENCE ANALYSIS (CRITICAL - IF 2 IMAGES PROVIDED)\n- Compare Image 1 (Start) vs Image 2 (End).\n- DID THE CAMERA MOVE LATERALLY? (e.g. Wall X was on right, now on left) -> USE "Move Left" or "Move Right".\n- DID THE CAMERA MOVE FORWARD? (e.g. Objects got larger but centered) -> USE "Push In".\n- IGNORE your imagination. DEDUCE motion ONLY from the visible shift in pixels.\n- VISUAL CORRELATION: Check if Image 1 and Image 2 are from the same room and same perspective sequence. If they are completely different rooms (e.g. Living room vs Bathroom) or uncorrelated angles that would cause morphing artifacts, set `is_correlated` to false.\n\n3) CAMERA MOTION SELECTION(pick ONE)\n- FORCE the motion to match your Difference Analysis.\n- "Zoom Out" requires safety keywords: "stable geometry preservation" and "gradual lens expansion".\n\n4) COMPOSE luma_prompt AS TWO SHORT SENTENCES\nSentence A(PROPERTY SHOWCASE):\n- Start with chosen CAMERA MOTION token, followed by a colon.\n- DIRECTIONAL LOGIC (CRITICAL):\n  * FOR PUSH IN / PULL OUT: Use "STRAIGHT toward [Center Anchor]" to lock the angle and prevent drift.\n  * FOR MOVE/PAN LEFT/RIGHT: Use "PARALLEL to [Side Anchor]" or "ALONG the [Wall]" to prevent crashing into walls.\n- NEVER use "STRAIGHT" for lateral moves (Move Left/Right) as it causes wall collisions.\n- Add 1-2 architectural anchors: e.g. "alongside window wall", "toward media wall".\n- MUST include quality clause: "revealing spatial flow with cinematic parallax" or "showcasing layout with fluid motion".\n- ALWAYS conclude Sentence A with stability rule: "seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve".\n\nSentence B(ADDITIVE ACTIONS & HOOKS):\n- Actors: use "characters hold still" or describe the specific HOOK ACTION if active (e.g. "character slips and falls rapidly").\n- Hooks: e.g., "balloons drift softly", "furniture appears naturally".\n- Lighting & Mood: End with one mood word from whitelist.\n\nGEOMETRY SAFETY RULES (CRITICAL):\n- LOCK ON VISIBLE ANCHORS: Movement must be relative to objects VISIBLE in the start frame.\n- NO IMAGINARY SPACES: NEVER describe entering a hallway or room that is not clearly visible.\n- NO WALL CLIPPING: Camera must stay strictly within the visible 3D volume.\n\nPROFESSIONAL EXAMPLES:\n✅ "Push In: camera glides smoothly STRAIGHT toward the visible red sofa, showcasing architectural flow with cinematic parallax; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Character slips and falls rapidly; bright daylight, upbeat."\n✅ "Move Right: camera tracks PARALLEL along the window wall, revealing natural light with fluid motion; seamless geometry preservation; stay strictly within the visible 3D volume; avoid dissolve. Furniture appears naturally; luxury."\n\n5) COMPOSE description(PROPERTY-ONLY, 12-18 words)\n- Architectural features only. EXCLUDE people, themes, or edited hooks.\n\n6) GENERATE negative_prompt (ROBUST ANTI-HALLUCINATION)\n- Must include: "moving walls, distorted geometry, morphing walls, sliding furniture, floating objects, sliding texture, disintegrating objects, new hallway, entering unseen room, passing through wall, blurry, shaky, low quality".\n\n7) OUTPUT FORMAT(JSON only)\n{\n  "is_keyframe": boolean,\n  "description": "string",\n  "luma_prompt": "string",\n  "negative_prompt": "string",\n  "mood": "luxury|modern|elegant|cozy|upbeat|calm|sophisticated|contemporary|warm|bright|minimalist|spacious|intimate|professional|stylish|chic|serene|energetic|ambient|classic|urban|trendy"\n}';
 }

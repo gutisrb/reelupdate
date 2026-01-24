@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Check, Sparkles, Bookmark, Wand2, XCircle, RotateCcw } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -33,6 +33,8 @@ const PRESET_HOOKS = [
         value: "Agent Fail",
         description: "Agent pada na zabavan način",
         gradient: "from-orange-400 to-red-400",
+        videoUrl: "/hook-agent-fail.mp4",
+        previewUrl: "/thumbnails/hook-agent-fail.jpg"
     },
     {
         id: "empty-to-furnished",
@@ -40,6 +42,8 @@ const PRESET_HOOKS = [
         value: "Empty to Furnished",
         description: "Virtuelno opremanje prostora",
         gradient: "from-emerald-400 to-teal-500",
+        videoUrl: "/hook-empty-to-furnished.mp4",
+        previewUrl: "/thumbnails/hook-empty-to-furnished.jpg"
     },
     {
         id: "low-battery",
@@ -54,8 +58,96 @@ const PRESET_HOOKS = [
         value: "Labubu",
         description: "Džinovska Labubu maskota",
         gradient: "from-pink-400 to-rose-400",
+        videoUrl: "/hook-labubu.mp4",
+        previewUrl: "/thumbnails/hook-labubu.jpg"
     },
 ];
+
+function HookPreview({
+    videoUrl,
+    previewUrl,
+    gradient,
+    name,
+    icon: Icon
+}: {
+    videoUrl?: string;
+    previewUrl?: string;
+    gradient?: string;
+    name: string;
+    icon: any;
+}) {
+    const [isHovered, setIsHovered] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        if (!videoRef.current || !videoUrl) return;
+
+        if (isHovered) {
+            videoRef.current.play().catch(err => console.warn("Video play failed:", err));
+        } else {
+            videoRef.current.pause();
+            videoRef.current.currentTime = 0;
+        }
+    }, [isHovered, videoUrl]);
+
+    return (
+        <div
+            className={cn(
+                "w-full h-[55%] bg-gradient-to-br relative transition-transform duration-700 group-hover:scale-110",
+                gradient || "from-indigo-500 to-primary"
+            )}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {videoUrl ? (
+                <div className="absolute inset-0 w-full h-full overflow-hidden">
+                    <video
+                        ref={videoRef}
+                        src={videoUrl}
+                        className={cn(
+                            "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
+                            isHovered ? "opacity-100" : "opacity-0"
+                        )}
+                        muted
+                        loop
+                        playsInline
+                    />
+
+                    {/* Placeholder image/icon when not hovered */}
+                    <div className={cn(
+                        "absolute inset-0 transition-opacity duration-300",
+                        isHovered ? "opacity-0" : "opacity-100"
+                    )}>
+                        {previewUrl ? (
+                            <img
+                                src={previewUrl}
+                                alt={name}
+                                className="absolute inset-0 w-full h-full object-cover z-0"
+                            />
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/5 z-10">
+                                <Icon className="w-10 h-10 text-white/50 drop-shadow-2xl" />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : previewUrl ? (
+                <img
+                    src={previewUrl}
+                    alt={name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                />
+            ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                    <Icon className="w-12 h-12 text-white/50 drop-shadow-2xl animate-pulse" />
+                </div>
+            )}
+
+            {/* Intensity Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-10" />
+        </div>
+    );
+}
 
 export function VisualHookSelector({ value, onChange, className }: VisualHookSelectorProps) {
     const [tab, setTab] = useState<'presets' | 'saved'>('presets');
@@ -158,26 +250,14 @@ export function VisualHookSelector({ value, onChange, className }: VisualHookSel
                                         : "border-border/40 bg-background hover:border-primary/40"
                                 )}
                             >
-                                {/* Preview / Gradient */}
-                                <div className={cn(
-                                    "w-full h-[55%] bg-gradient-to-br relative transition-transform duration-700 group-hover:scale-110",
-                                    preset.gradient || "from-indigo-500 to-primary"
-                                )}>
-                                    {preset.previewUrl ? (
-                                        <img
-                                            src={preset.previewUrl}
-                                            alt={preset.name}
-                                            className="absolute inset-0 w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                                            <Icon className="w-12 h-12 text-white/50 drop-shadow-2xl animate-pulse" />
-                                        </div>
-                                    )}
-
-                                    {/* Intensity Overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                                </div>
+                                {/* Preview Component */}
+                                <HookPreview
+                                    videoUrl={preset.videoUrl}
+                                    previewUrl={preset.previewUrl}
+                                    gradient={preset.gradient}
+                                    name={preset.name}
+                                    icon={Icon}
+                                />
 
                                 {/* Content */}
                                 <div className="p-4 w-full flex flex-col flex-1 bg-white dark:bg-card relative z-10">

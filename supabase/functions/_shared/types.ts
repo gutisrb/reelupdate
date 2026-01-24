@@ -77,11 +77,14 @@ export interface ClipData {
   slot_index: number;
   luma_generation_id: string;
   kling_task_id?: string;
+  kling_task_ids?: string[];
   luma_prompt: string;
   clip_url: string;
+  clip_urls?: string[];
   first_image_url: string;
   second_image_url: string | null;
   is_keyframe: boolean;
+  is_correlated?: boolean;
   description?: string;
   mood?: string;
 }
@@ -120,6 +123,7 @@ export interface CloudinaryUploadResponse {
 
 export interface GPT4VisionResponse {
   is_keyframe: boolean;
+  is_correlated?: boolean;
   description: string;
   luma_prompt: string;
   mood: string;
