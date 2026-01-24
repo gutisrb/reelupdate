@@ -90,7 +90,11 @@ export class GoogleAIClient {
 
     try {
       const parsed: VoiceScriptResponse = JSON.parse(text);
-      return parsed.voice_text;
+      if (parsed && typeof parsed.voice_text === 'string' && parsed.voice_text.length > 0) {
+        return parsed.voice_text;
+      }
+      console.warn('[GoogleAIClient] JSON parsed but voice_text missing/invalid. Returning raw text fallback.');
+      return text;
     } catch (e) {
       // Fallback for non-JSON responses if any
       return text;

@@ -66,6 +66,7 @@ export const API_ENDPOINTS = {
   },
   kie: {
     createTask: 'https://api.kie.ai/api/v1/jobs/createTask',
+    generate: 'https://api.kie.ai/api/v1/generate',
     getTask: (taskId: string) => `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
   },
   google: {

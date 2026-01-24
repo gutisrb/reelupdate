@@ -210,22 +210,29 @@ export class KieClient {
     /**
      * Generate music using Suno via Kie.ai
      */
+    /**
+     * Generate music using Suno via Kie.ai
+     */
     async generateMusic(prompt: string, instrumental: boolean = true): Promise<string> {
-        console.log(`[KieClient] Starting Suno music task with prompt: "${prompt}"`);
+        console.log(`[KieClient] Starting Suno music task (V4) with prompt: "${prompt}"`);
 
-        const response = await fetch(API_ENDPOINTS.kie.createTask, {
+        // Based on docs: https://docs.kie.ai/suno-api/generate-music
+        // Uses separate generate endpoint and flat body structure
+        const response = await fetch(API_ENDPOINTS.kie.generate, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'suno',
-                input: {
-                    prompt: prompt,
-                    make_instrumental: instrumental,
-                    wait_audio: false // Async preferred for long generation
-                }
+                model: 'V4',
+                prompt: prompt,
+                customMode: true,
+                instrumental: instrumental,
+                title: "Background Music", // Required if instrumental: true per docs
+                style: prompt // Using prompt as style if instrumental is true, since prompt field is ignored/secondary? 
+                // Docs: If instrumental: true: style and title are required.
+                // So we should map prompt -> style.
             })
         });
 
