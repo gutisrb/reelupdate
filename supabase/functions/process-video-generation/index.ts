@@ -103,21 +103,26 @@ serve(async (req) => {
       property_type: formData.get('property_type') as string | undefined,
       script_hook: formData.get('script_hook') as string | undefined,
       visual_hook: formData.get('visual_hook') as string | undefined,
-      is_preview: formData.get('is_preview') === 'true'
+      is_preview: formData.get('is_preview') === 'true',
+      skip_video_generation: formData.get('skip_video_generation') === 'true'
     };
 
     // Initialize Supabase client
     const supabase = createClient(API_ENDPOINTS.supabase.url, API_ENDPOINTS.supabase.serviceRoleKey);
     const clients = initClients();
 
-    // 1. Check Credits
-    const { data: profileData, error: profileError } = await supabase.from('profiles').select('video_credits_remaining').eq('id', data.user_id).single();
-    if (profileError || !profileData || profileData.video_credits_remaining <= 0) {
-      return new Response(JSON.stringify({ error: 'NO_VIDEO_CREDITS' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // 1. Check Credits (Bypass if skip_video_generation is true)
+    if (!data.skip_video_generation) {
+      const { data: profileData, error: profileError } = await supabase.from('profiles').select('video_credits_remaining').eq('id', data.user_id).single();
+      if (profileError || !profileData || profileData.video_credits_remaining <= 0) {
+        return new Response(JSON.stringify({ error: 'NO_VIDEO_CREDITS' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      // 2. Deduct Credit & Create Record
+      await supabase.rpc('spend_video_credit', { p_user: data.user_id });
+    } else {
+      console.log(`[${data.video_id}] ⏩ Skipping credit deduction (Admin Mode)`);
     }
 
-    // 2. Deduct Credit & Create Record
-    await supabase.rpc('spend_video_credit', { p_user: data.user_id });
     await supabase.from('videos').insert({
       id: data.video_id, user_id: data.user_id, type: 'video', status: 'processing',
       title: data.property_data.title, thumbnail_url: null, video_url: null, duration_seconds: null,
@@ -221,6 +226,35 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
         slot_index: i, luma_generation_id: 'test', luma_prompt: 'test', clip_url: placeholderClips[i % 5],
         first_image_url: '', second_image_url: null, is_keyframe: false, description: 'test', mood: 'modern'
       }));
+    } else if (data.skip_video_generation) {
+      console.log(`[${data.video_id}] ⏩ SKIPPING CLIP GENERATION (Audio Only Mode)`);
+      // Create dummy clips for context (just using the images provided)
+      clips = data.image_slots.map((slot, i) => {
+        const firstImage = slot.images[0];
+        // We need a URL for the script generation context, so we might need to upload or just use placeholders if not critical.
+        // Actually initiateClip does the upload. Let's do a lightweight version.
+        return {
+          slot_index: i,
+          luma_generation_id: 'skipped',
+          luma_prompt: `Room ${i}: ${data.property_data.title} feature`, // Basic context
+          clip_url: 'skipped_video_url',
+          first_image_url: 'skipped_image_url', // Ideally we'd upload this for the thumbnail but skipping for speed in this mode
+          second_image_url: null,
+          is_keyframe: false,
+          description: `Room ${i} details`,
+          mood: 'modern'
+        };
+      });
+
+      // If we want real thumbnails, we should probably upload at least the first one.
+      if (data.image_slots.length > 0 && data.image_slots[0].images.length > 0) {
+        try {
+          const firstImg = data.image_slots[0].images[0];
+          const upload = await clients.cloudinary.uploadImage(firstImg.data, firstImg.name);
+          clips[0].first_image_url = upload.secure_url;
+        } catch (e) { console.error('Thumbnail upload failed in skip mode', e); }
+      }
+
     } else {
       console.log(`[${data.video_id}] 🎬 CLIPS: Preparing ${data.image_slots.length} clips...`);
       // If PREVIEW, only process the first slot (Visual Hook)
@@ -398,10 +432,27 @@ async function handleKlingPoll(payload: any, functionUrl: string, authToken: str
   }
 
   // ALL CLIPS READY -> FINALIZE
+  // ALL CLIPS READY -> FINALIZE
   const userSettings = details.settings_snapshot;
   const isPreview = userSettings?.is_preview;
+  const skipVideoGeneration = userSettings?.skip_video_generation;
   const voiceoverUrl = details.voiceover_url;
   const musicUrl = details.music_url;
+
+  if (skipVideoGeneration) {
+    console.log(`[${video_id}] 🏁 Finalizing AUDIO ONLY (Admin Mode)...`);
+    // In audio only mode, we probably just want to return the script or voiceover as the "video"
+    // or just leave video_url null/empty and update status to ready so frontend can fetch details.
+    await supabase.from('videos').update({
+      status: 'ready',
+      video_url: voiceoverUrl, // Return VO URL as the "video" for now so it's playable
+      thumbnail_url: clips[0]?.first_image_url || null,
+      duration_seconds: 0,
+      title: `[AUDIO ONLY] ${(details.voiceover_script || '').substring(0, 50)}...`,
+      updated_at: new Date().toISOString()
+    }).eq('id', video_id);
+    return;
+  }
 
   if (isPreview) {
     console.log(`[${video_id}] 🏁 Finalizing PREVIEW video...`);
