@@ -307,10 +307,10 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
         voiceoverUpload = await clients.cloudinary.uploadVideo(voiceoverPCM, `voiceover_${data.video_id}.wav`);
         console.log(`[${data.video_id}] 🗣️ VOICE READY: ${voiceoverUpload.secure_url}`);
 
-        await supabase.from('videos').update({ processing_status_text: 'Composing music...' }).eq('id', data.video_id);
+        await supabase.from('videos').update({ processing_status_text: 'Composing music (Suno)...' }).eq('id', data.video_id);
         const musicPrompt = clients.elevenlabs.generateMusicPrompt(clips[0]?.mood || 'modern', clips[0]?.description || '');
-        musicUrl = await clients.elevenlabs.generateMusic(musicPrompt, clips.length * 5 * 1000);
-        console.log(`[${data.video_id}] 🎶 MUSIC READY: ${musicUrl}`);
+        musicUrl = await clients.kie.generateMusic(musicPrompt, true);
+        console.log(`[${data.video_id}] 🎶 MUSIC READY (Suno): ${musicUrl}`);
       }
     }
 

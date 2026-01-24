@@ -192,15 +192,56 @@ export class KieClient {
                     const parsed = JSON.parse(data.data.resultJson);
                     if (parsed.resultUrls?.length) resultUrl = parsed.resultUrls[0];
                     if (!resultUrl && parsed.video_url) resultUrl = parsed.video_url;
+                    // Suno outputs might be in audio_url or similar
+                    if (!resultUrl && parsed.audio_url) resultUrl = parsed.audio_url;
+                    if (!resultUrl && parsed.audio_urls?.length) resultUrl = parsed.audio_urls[0];
                 } catch (e) {
                     console.warn('Failed to parse resultJson', e);
                 }
             }
             return resultUrl;
         } else if (status === 'failed') {
-            throw new Error(`Kling task failed: ${data.data?.error || 'Unknown error'}`);
+            throw new Error(`Kie task failed: ${data.data?.error || 'Unknown error'}`);
         }
 
         return null;
+    }
+
+    /**
+     * Generate music using Suno via Kie.ai
+     */
+    async generateMusic(prompt: string, instrumental: boolean = true): Promise<string> {
+        console.log(`[KieClient] Starting Suno music task with prompt: "${prompt}"`);
+
+        const response = await fetch(API_ENDPOINTS.kie.createTask, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'suno',
+                input: {
+                    prompt: prompt,
+                    make_instrumental: instrumental,
+                    wait_audio: false // Async preferred for long generation
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`Suno submission failed: ${err}`);
+        }
+
+        const data = await response.json();
+        const taskId = data.data?.taskId || data.data?.id;
+
+        if (!taskId) {
+            throw new Error(`Kie.ai (Suno) did not return a Task ID. Response: ${JSON.stringify(data)}`);
+        }
+
+        console.log(`[KieClient] Suno Task started: ${taskId}. Waiting for completion...`);
+        return await this.waitForCompletion(taskId);
     }
 }
