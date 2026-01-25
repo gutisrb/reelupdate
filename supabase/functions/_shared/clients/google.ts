@@ -11,47 +11,44 @@ export class GoogleAIClient {
    */
   async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string, retryCount: number = 0): Promise<string> {
     // ... Word count logic remains the same ...
-    const wordCountRange = videoLength >= 30 ? '80–85 reči' : '70–75 reči';
-    const hookWordLimit = videoLength >= 30 ? '≤14 reči' : '≤12 reči';
+    const wordCountRange = videoLength >= 30 ? '60–65 reči' : '50–55 reči';
+    const hookWordLimit = videoLength >= 30 ? '≤12 reči' : '≤10 reči';
 
-    const prompt = `Ti si profesionalni performance copywriter za nekretnine. Pišeš voiceover skriptu za Instagram Reel/TikTok video.
-CILJ: Zadržati pažnju gledaoca i prodati nekretninu koristeći SAMO istinite podatke.
+    const prompt = `
+    ULOGA: Ti si vrhunski "performance copywriter" za kratke viralne nekretninske videe na Instagramu (Reels/TikTok). Tvoj cilj je zadržati pažnju (retention) i prodati "vajb" nekretnine.
 
-ULAZNI PODACI:
-- Naslov: "${propertyData.title}"
-- Lokacija: "${propertyData.location}"
-- Cena: "${propertyData.price}"
-- Opis/Dodatno: "${propertyData.extras}"
-- Specifikacija: ${propertyData.beds} sobe, ${propertyData.baths} kupatila, ${propertyData.size}
-- Kontekst (Visuals): ${visualContext}
-- Očekivano trajanje: ${videoLength} sekundi (${wordCountRange})
-- HOOK ZADATAK: "${scriptHook || 'N/A'}" (Mora biti prva rečenica ako postoji)
+    ULAZNI PODACI (OVO MORAŠ KORISTITI):
+    - DETALJI NEKRETNINE: ${JSON.stringify(propertyData)}
+    - VISUALNI KONTEKST (ŠTA SE VIDI): "${visualContext}"
+    - CILJANA DUŽINA: ${wordCountRange} (Maksimalno ${wordCountRange.split('–')[1]} reči. OVO JE STROGO PRAVILO).
+    - SCRIPT HOOK (OBAVEZAN POČETAK AKO POSTOJI): "${scriptHook || ''}"
 
-PRAVILA (STROGO):
-1. JEZIK: ISKLJUČIVO SRPSKI JEZIK (ijekavica ili ekavica, ali dosledno). NE KORISTI HRVATSKE IZRAZE (poput "tjedan", "zrak", "kat", "kuhanje"). Koristi "nedelja", "vazduh", "sprat", "kuvanje".
-2. ISTINA: NE IZMIŠLJAJ LUKSUZ KOJI NE POSTOJI. Ako piše "stan za renoviranje", ne piši "luksuzna oaza". Ako nema lifta, ne pominji ga. Koristi samo podatke iz "ULAZNI PODACI".
-3. TON: Dinamičan, moderan, direktan. Izbegavaj "AI slop" reči kao: "ušuškano", "nestvarno", "biser", "dragulj", "zaronite". Budi konkretan.
-4. DUŽINA: Skripta MORA biti tačne dužine da stane u ${videoLength}s. To je oko ${wordCountRange}. Ne piši predugačke uvode.
-5. STRUKTURA:
-   - Hook (0-3s): Udarna rečenica koja zaustavlja skrol. Ako je zadat "HOOK ZADATAK", koristi ga doslovno.
-   - Body (3-20s): Ključne vrednosti (lokacija, struktura, aduti). Poveži se sa onim što se vidi u "Kontekst".
-   - CTA (zadnjih 3-5s): Poziv na akciju (npr. "Pozovite za gledanje", "Link u opisu"). Pomeni cenu ako je u podacima ("Cena: ${propertyData.price}").
+    PRAVILA JEZIKA I STILA (STROGO):
+    1. JEZIK: ISKLJUČIVO SRPSKI (Standardni srpski, EKAVICA).
+       - NE KORISTI hrvatske reči (npr. koristi "vazduh" a ne "zrak", "hiljada" a ne "tisuća", "sopstveni" a ne "vlastiti").
+       - NE KORISTI bosanske/crnogorske specifičnosti ako nisu standardni srpski.
+    2. STIL: Dinamičan, moderan, direktan ("Ti" obraćanje). Bez "poštovani gledaoci". Kao da pričaš prijatelju.
+    3. ISTINITOST: KORISTI SAMO PODATKE IZ "ULAZNIH PODATAKA". NE IZMIŠLJAJ BROJEVE, KVADRATURU ILI SOBE KOJE NISU NAVEDENE. Ako podatak fali, fokusiraj se na osećaj/vajb.
 
-ZABRANJENO:
-- Ne koristi reči: "zakoračite", "oaza mira", "simfonija", "prestiž" (osim ako je stan >500k EUR).
-- Ne piši tekst u zagradama poput (kamera zumira) ili (muzika). SAMO TEKST KOJI SE IZGOVARA.
+    STRUKTURA SKRIPTE:
+    1. HOOK (0-3s): Ako je zadat "SCRIPT HOOK", počni njime. Ako ne, smisli nešto udarno vezano za najjači adut nekretnine.
+    2. BODY (3-20s): Brzi opis glavnih prostorija (poveži sa vizualima). Fokus na LIFESTYLE benefitima (npr. ne "ima terasu", nego "jutarnja kafa na ovoj terasi...").
+    3. CTA (Kraj): Poziv na akciju (npr. "Zaprati za još", "Link u opisu", "Piši za cenu" ako je cena skrivena).
 
-FORMAT IZLAZA (JSON):
-{
-  "voice_text": "Ceo tekst skripte ovde..."
-}`;
+    FORMAT ODGOVORA (JSON):
+    Vrati SAMO validan JSON objekat bez markdown backtickova.
+    {
+      "voice_text": "Tekst koji će spiker pročitati. Bez emotikona, bez opisa scena u zagradi. Samo čisti izgovoreni tekst.",
+      "estimated_duration": "procena u sekundama"
+    }
+    `;
 
     const body = {
       contents: [{
         parts: [{ text: prompt }],
       }],
       generationConfig: {
-        temperature: 0.7, // Lower temperature to reduce hallucinations
+        temperature: 0.7, // Lower temperature for more adherence to facts
         responseMimeType: "application/json"
       }
     };

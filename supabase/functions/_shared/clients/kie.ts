@@ -124,11 +124,22 @@ export class KieClient {
                 headers: { 'Authorization': `Bearer ${this.apiKey}` }
             });
 
-            if (!response.ok) continue;
+            if (!response.ok) {
+                console.log(`[KieClient] Polling ${taskId} HTTP Error: ${response.status}. Retrying...`);
+                await new Promise(r => setTimeout(r, POLLING_INTERVAL));
+                continue;
+            }
 
             const data = await response.json();
-            const status = data.data?.state;
 
+            // Handle Kie's internal error codes in 200 response
+            if (data.code === 422 && (data.msg?.includes('recordInfo is null') || data.msg?.includes('null'))) {
+                console.log(`[KieClient] Polling ${taskId}: Result not ready yet (422 recordInfo is null). Retrying...`);
+                await new Promise(r => setTimeout(r, POLLING_INTERVAL));
+                continue;
+            }
+
+            const status = data.data?.state;
             console.log(`[KieClient] Polling ${taskId}: status=${status} (attempt ${i + 1}/${MAX_RETRIES})`);
 
             if (status === 'success') {
@@ -181,6 +192,10 @@ export class KieClient {
         if (!response.ok) return null;
 
         const data = await response.json();
+
+        // Handle internal 422 (not ready)
+        if (data.code === 422) return null;
+
         const status = data.data?.state;
 
         if (status === 'success') {
