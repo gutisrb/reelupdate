@@ -20,33 +20,33 @@ export class GoogleAIClient {
     retryCount: number = 0
   ): Promise<string> {
     // Calibrated for Serbian TTS speed (Standard-A)
-    // 25s: 65–75 words. 30s: 85–95 words.
+    // 25s: 60–70 words. 30s: 80–90 words.
     const isShort = videoLength <= 25;
-    const minWords = isShort ? 65 : 85;
+    const minWords = isShort ? 60 : 80;
 
     const systemInstruction = `
     ULOGA: Ti si vrhunski "performance copywriter" za viralne nekretninske videe. 
-    Tvoj cilj je da napišeš VO (voiceover) koji savršeno prati vizuelni sadržaj i zadržava pažnju.
+    Tvoj cilj je da napišeš VO (voiceover) koji je 100% TAČAN i zasnovan isključivo na pruženim podacima.
 
-    OBAVEZNI ULAZNI PODACI (ZABRANJENO JE KORISTITI BILO KOJE DRUGE CIFRE ILI LOKACIJE):
+    OBAVEZNI ULAZNI PODACI (GROUND TRUTH):
     - NASLOV: ${propertyData.title}
     - LOKACIJA: ${propertyData.location}
     - KVADRATURA: ${propertyData.size}
     - SOBNOST: ${propertyData.beds}
     - SPRAT: ${propertyData.sprat || 'Nije naveden'}
     - DODACI: ${propertyData.extras || ''}
-    - VIZUELNI KONTEKST (šta se vidi u videu): ${visualContext}
+    - VIZUELNI KONTEKST: ${visualContext}
     - TON I STRATEGIJA: ${directorPersonality || ''} / ${strategyName || ''}
 
-    STRIKTNA PRAVILA:
-    1. BEZ HALUCINACIJA: Koristi isključivo podatke iz gornje liste. Strogo je zabranjeno izmišljanje kvadrature, sobnosti ili sprata.
-    2. GRAMATIKA I PADEŽI: Obavezno menjaj sve reči po padežima u skladu sa srpskom gramatikom.
-    3. SINHRONIZACIJA: Detaljno poveži tekst sa VIZUELNIM KONTEKSTOM. Opisuj specifične prostore koji se vide.
-    4. DUŽINA: Tekst MORA imati najmanje ${minWords} reči. Ako je prekratak, detaljnije opiši lifestyle pogodnosti iz sekcije DODACI i specifičnosti prostorija iz VIZUELNOG KONTEKSTA.
-    5. CENA: ${propertyData.price_mention ? `Pomeni cenu (${propertyData.price}€).` : 'Napiši da je cena u opisu.'}
-    6. IZGOVOR I FORMAT:
-       - Reči na "ćol" koren piši sa "Dorr-", ali menjaj ih po padežima.
-       - Nazive opština piši sa crticom za bolji naglasak.
+    STRIKTNA PRAVILA PROTIV HALUCINACIJA:
+    1. FACT-CHECK: Zabranjeno je izmišljanje pojmova kao što su "spa", "teretana", "bazen" ili "panorama" ako nisu navedeni u DODACIMA ili VIZUELNOM KONTEKTU.
+    2. LOKACIJA: Koristi isključivo lokaciju "${propertyData.location}". Zabranjeno je pominjanje bilo kojih drugih delova grada.
+    3. SINHRONIZACIJA: Poveži tekst sa onim što se vidi u VIZUELNOM KONTEKSTU. Ako se vidi kuhinja, pričaj o kuhinji.
+    4. GRAMATIKA: Menjaj reči po padežima u skladu sa srpskom gramatikom (npr. "na Dorr-ćolu").
+    5. DUŽINA: Tekst MORA imati najmanje ${minWords} reči. Ako ti fali teksta, više pažnje posveti opisu materijala ili osećaja prostora koji se vidi u VIZUELNOM KONTEKSTU.
+    6. CENA: ${propertyData.price_mention ? `Izgovori cenu (${propertyData.price}€).` : 'Cena je u opisu.'}
+    7. FORMATIRANJE:
+       - Reči na "ćol" koren piši sa "Dorr-".
        - Sve brojeve piši REČIMA.
 
     Završi sa CTA: "Javite nam se za obilazak!"

@@ -25,10 +25,10 @@ GROUND TRUTH DATA (IMMUTABLE):
 - Features: ${propertyData.extras}
 
 STRICT RULES:
-1. SCRIPT HOOK: Write a viral opening line (max 15 words) in SERBIAN (Latin).
-2. NIKADA ne izmišljaj podatke. Ako ne piše "Vračar", ne pominji "Vračar".
-3. Ako piše "40+8", tvoj hook treba da pominje "četrdeset osam kvadrata".
-4. Ako SPRAT nije naveden, hook ne sme da pominje sprat.
+1. GROUND TRUTH: Your hook must ONLY use the provided Location, Size, and Features.
+2. NO HALLUCINATIONS: Never invent locations, districts, or amenities not present in the immutable data.
+3. SCRIPT HOOK: Write a viral opening line (max 15 words) in SERBIAN (Latin).
+4. NUMBERS: Write all numbers as words in Serbian (e.g., "četrdeset osam").
 
 OUTPUT FORMAT (JSON):
 {
