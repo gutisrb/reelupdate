@@ -1,6 +1,5 @@
 export const CREATIVE_WILDCARDS = [
     "Focus on the lighting",
-    "Focus on the kitchen",
     "Focus on the view/windows",
     "Focus on the flooring",
     "Focus on the storage/space",
@@ -22,14 +21,15 @@ export const CREATIVE_WILDCARDS = [
     "Highlight a specific flaw as a feature",
     "Compare to a hotel",
     "Compare to a previous sale",
-    "Focus on the bathroom/spa",
     "Focus on the outdoor space",
     "Focus on the technology/smart home",
     "Address a specific objection (e.g. price)",
     "Use a seasonal reference",
     "Make a pop culture reference",
     "Use a 'POV' style",
-    "Use a 'Day in the life' style"
+    "Use a 'Day in the life' style",
+    "Focus on the vibe",
+    "Tone: Cinematic"
 ];
 
 export const VIRAL_STRATEGIES = [

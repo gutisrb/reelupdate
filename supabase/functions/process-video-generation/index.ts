@@ -224,10 +224,18 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       }));
       if (data.image_slots.length > 0 && data.image_slots[0].images.length > 0) {
         try {
-          const firstImg = data.image_slots[0].images[0];
+          const slot = data.image_slots[0];
+          const firstImg = slot.images[0];
           const upload = await clients.cloudinary.uploadImage(firstImg.data, firstImg.name);
           clips[0].first_image_url = upload.secure_url;
-        } catch (e) { console.error('Thumbnail upload failed', e); }
+
+          // EAGER VISION: Even in skip mode, we need to know what's in the photo for the script!
+          console.log(`[${data.video_id}] 👁️ Performing Eager Vision analysis for skip mode...`);
+          const vision = await clients.google.analyzeImagesForVideo(upload.secure_url, null, getCinematicPrompt("General real estate"));
+          clips[0].description = vision.description;
+          clips[0].luma_prompt = vision.luma_prompt;
+          console.log(`[${data.video_id}] ✅ Vision result: ${vision.description.substring(0, 50)}...`);
+        } catch (e) { console.error('Eager vision upload failed', e); }
       }
     } else {
       console.log(`[${data.video_id}] 🎬 CLIPS: Preparing clips...`);

@@ -20,9 +20,9 @@ export class GoogleAIClient {
     retryCount: number = 0
   ): Promise<string> {
     // Calibrated for Serbian TTS speed (Standard-A)
-    // 25s: 60–70 words. 30s: 80–90 words.
+    // 25s: 70–80 words. 30s: 90–105 words.
     const isShort = videoLength <= 25;
-    const minWords = isShort ? 60 : 80;
+    const minWords = isShort ? 70 : 90;
 
     const systemInstruction = `
     ULOGA: Ti si vrhunski "performance copywriter" za viralne nekretninske videe. 
@@ -39,14 +39,15 @@ export class GoogleAIClient {
     - TON I STRATEGIJA: ${directorPersonality || ''} / ${strategyName || ''}
 
     STRIKTNA PRAVILA PROTIV HALUCINACIJA:
-    1. FACT-CHECK: Zabranjeno je izmišljanje pojmova kao što su "spa", "teretana", "bazen" ili "panorama" ako nisu navedeni u DODACIMA ili VIZUELNOM KONTEKTU.
-    2. LOKACIJA: Koristi isključivo lokaciju "${propertyData.location}". Zabranjeno je pominjanje bilo kojih drugih delova grada.
-    3. SINHRONIZACIJA: Poveži tekst sa onim što se vidi u VIZUELNOM KONTEKSTU. Ako se vidi kuhinja, pričaj o kuhinji.
-    4. GRAMATIKA: Menjaj reči po padežima u skladu sa srpskom gramatikom (npr. "na Dorr-ćolu").
-    5. DUŽINA: Tekst MORA imati najmanje ${minWords} reči. Ako ti fali teksta, više pažnje posveti opisu materijala ili osećaja prostora koji se vidi u VIZUELNOM KONTEKSTU.
-    6. CENA: ${propertyData.price_mention ? `Izgovori cenu (${propertyData.price}€).` : 'Cena je u opisu.'}
-    7. FORMATIRANJE:
-       - Reči na "ćol" koren piši sa "Dorr-".
+    1. FACT-CHECK: Zabranjeno je izmišljanje pojmova kao što su "spa", "wellness", "teretana", "bazen" ili "prirodni materijali" ako nisu navedeni u DODACIMA ili VIZUELNOM KONTEKTU.
+    2. METRIKA: Zabranjeno je menjanje kvadrature. Ako piše "${propertyData.size}", koristi TAJ broj.
+    3. SOBNOST: Koristi format "dvosoban", "trosoban", "četvorosoban". NIKADA ne piši "stan sa X soba".
+    4. LOKACIJA: Koristi isključivo lokaciju "${propertyData.location}". Zabranjeno je pominjanje bilo kojih drugih delova grada.
+    5. SINHRONIZACIJA: Poveži tekst sa onim što se vidi u VIZUELNOM KONTEKSTU. Ako se vidi kuhinja, pričaj o prodaji kuhinje.
+    6. DUŽINA: Tekst MORA imati najmanje ${minWords} reči. Da bi postigao dužinu, dodaj jednu rečenicu o LIFESTYLE-u (npr. gde popiti kafu, kakav je osećaj mira u kraju).
+    7. CENA: ${propertyData.price_mention ? `Izgovori cenu (${propertyData.price}€).` : 'Cena je u opisu.'}
+    8. FORMATIRANJE:
+       - Reči na "ćol" koren piši sa "Dorr-". Menjaj po padežima: "na Dorr-ćolu".
        - Sve brojeve piši REČIMA.
 
     Završi sa CTA: "Javite nam se za obilazak!"
