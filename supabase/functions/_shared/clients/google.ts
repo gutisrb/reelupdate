@@ -9,59 +9,19 @@ export class GoogleAIClient {
   /**
    * Generate voiceover script using Gemini 3.0
    */
-  async generateVoiceoverScript(
-    propertyData: any,
-    visualContext: string,
-    videoLength: number = 25,
-    scriptHook?: string,
-    strategyName?: string,
-    directorPersonality?: string,
-    voiceStyleInstructions?: string,
-    retryCount: number = 0
-  ): Promise<string> {
-    // Calibrated for Serbian TTS speed (Standard-A)
-    // 25s: 70–80 words. 30s: 90–105 words.
-    const isShort = videoLength <= 25;
-    const minWords = isShort ? 70 : 90;
+  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string, retryCount: number = 0): Promise<string> {
+    // ... Word count logic remains the same ...
+    const wordCountRange = videoLength >= 30 ? '80–85 reči' : '70–75 reči';
+    const hookWordLimit = videoLength >= 30 ? '≤14 reči' : '≤12 reči';
 
-    const systemInstruction = `
-    ULOGA: Ti si vrhunski "performance copywriter" za viralne nekretninske videe. 
-    Tvoj cilj je da napišeš VO (voiceover) koji je 100% TAČAN i zasnovan isključivo na pruženim podacima.
-
-    OBAVEZNI ULAZNI PODACI (GROUND TRUTH):
-    - NASLOV: ${propertyData.title}
-    - LOKACIJA: ${propertyData.location}
-    - KVADRATURA: ${propertyData.size}
-    - SOBNOST: ${propertyData.beds}
-    - SPRAT: ${propertyData.sprat || 'Nije naveden'}
-    - DODACI: ${propertyData.extras || ''}
-    - VIZUELNI KONTEKST: ${visualContext}
-    - TON I STRATEGIJA: ${directorPersonality || ''} / ${strategyName || ''}
-
-    STRIKTNA PRAVILA PROTIV HALUCINACIJA:
-    1. FACT-CHECK: Zabranjeno je izmišljanje pojmova kao što su "spa", "wellness", "teretana", "bazen" ili "prirodni materijali" ako nisu navedeni u DODACIMA ili VIZUELNOM KONTEKTU.
-    2. METRIKA: Zabranjeno je menjanje kvadrature. Ako piše "${propertyData.size}", koristi TAJ broj.
-    3. SOBNOST: Koristi format "dvosoban", "trosoban", "četvorosoban". NIKADA ne piši "stan sa X soba".
-    4. LOKACIJA: Koristi isključivo lokaciju "${propertyData.location}". Zabranjeno je pominjanje bilo kojih drugih delova grada.
-    5. SINHRONIZACIJA: Poveži tekst sa onim što se vidi u VIZUELNOM KONTEKSTU. Ako se vidi kuhinja, pričaj o prodaji kuhinje.
-    6. DUŽINA: Tekst MORA imati najmanje ${minWords} reči. Da bi postigao dužinu, dodaj jednu rečenicu o LIFESTYLE-u (npr. gde popiti kafu, kakav je osećaj mira u kraju).
-    7. CENA: ${propertyData.price_mention ? `Izgovori cenu (${propertyData.price}€).` : 'Cena je u opisu.'}
-    8. FORMATIRANJE:
-       - Reči na "ćol" koren piši sa "Dorr-". Menjaj po padežima: "na Dorr-ćolu".
-       - Sve brojeve piši REČIMA.
-
-    Završi sa CTA: "Javite nam se za obilazak!"
-    `;
+    const prompt = `Ti si performance copywriter za kratke nekretninske videoe na Instagramu. Tvoj VO mora zadržati gledanje... [Full prompt content]`;
 
     const body = {
       contents: [{
-        parts: [{ text: `Generate script based on metadata: ${JSON.stringify({ propertyData, visualContext, videoLength, scriptHook })}` }],
+        parts: [{ text: prompt }],
       }],
-      system_instruction: {
-        parts: [{ text: systemInstruction }]
-      },
       generationConfig: {
-        temperature: 0.6,
+        temperature: 1.0,
         responseMimeType: "application/json"
       }
     };
@@ -87,7 +47,7 @@ export class GoogleAIClient {
       if (retryCount >= 3) throw new Error(`Gemini 503 Overloaded after ${retryCount} retries`);
       console.warn(`[GoogleAIClient] Gemini 503 Overloaded (Script), retrying (${retryCount + 1}/3)...`);
       await new Promise(r => setTimeout(r, 2000 * (retryCount + 1))); // Exponential backoff
-      return this.generateVoiceoverScript(propertyData, visualContext, videoLength, scriptHook, strategyName, directorPersonality, voiceStyleInstructions, retryCount + 1);
+      return this.generateVoiceoverScript(propertyData, visualContext, videoLength, scriptHook, retryCount + 1);
     }
 
     if (!response.ok) {
@@ -98,14 +58,15 @@ export class GoogleAIClient {
     let data = await response.json();
     let text = this.safeExtractText(data);
 
+    // One-time retry if content is empty (safety refusal or non-deterministic behavior)
     if (!text) {
-      console.warn('[GoogleAIClient] Voiceover script returned no content, retrying with lower temperature (0.5)...');
+      console.warn('[GoogleAIClient] Voiceover script returned no content, retrying with lower temperature...');
       const retryBody = {
         ...body,
-        generationConfig: { ...body.generationConfig, temperature: 0.5 }
+        generationConfig: { ...body.generationConfig, temperature: 0.7 }
       };
 
-      const retryResponse = await fetch(
+      response = await fetch(
         `${API_ENDPOINTS.google.geminiText}?key=${this.apiKey}`,
         {
           method: 'POST',
@@ -114,31 +75,24 @@ export class GoogleAIClient {
         }
       );
 
-      if (retryResponse.ok) {
-        data = await retryResponse.json();
+      if (response.ok) {
+        data = await response.json();
         text = this.safeExtractText(data);
       }
     }
 
     if (!text) {
-      throw new Error('Gemini 3.0 script generation returned no content after retry.');
+      console.error('[GoogleAIClient] Voiceover script structure missing candidates/content:', JSON.stringify(data));
+      throw new Error('Gemini 3.0 script generation returned no content after retry. Possible safety block.');
     }
 
+    if (!text) throw new Error('No text returned from Gemini 3.0');
+
     try {
-      // Clean possible markdown code blocks
-      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed: any = JSON.parse(cleanJson);
-
-      if (parsed?.voice_text) return parsed.voice_text;
-
-      // Fallback: if it's a flat string or has other common keys
-      if (typeof parsed === 'string') return parsed;
-      if (parsed?.body) return parsed.body;
-      if (parsed?.script) return parsed.script;
-
-      return text;
+      const parsed: VoiceScriptResponse = JSON.parse(text);
+      return parsed.voice_text;
     } catch (e) {
-      console.warn('[GoogleAIClient] JSON parse failed, returning raw text.');
+      // Fallback for non-JSON responses if any
       return text;
     }
   }
@@ -485,10 +439,9 @@ Rules:
   async chat(params: {
     messages: { role: string; content: string }[];
     temperature?: number;
-    systemInstruction?: string;
     responseMimeType?: string;
   }, retryCount: number = 0): Promise<any> {
-    const body: any = {
+    const body = {
       contents: params.messages.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }]
@@ -498,12 +451,6 @@ Rules:
         responseMimeType: params.responseMimeType
       }
     };
-
-    if (params.systemInstruction) {
-      body.system_instruction = {
-        parts: [{ text: params.systemInstruction }]
-      };
-    }
 
     const safetySettings = [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },

@@ -346,47 +346,6 @@ export class CloudinaryClient {
   }
 
   /**
-   * Mix Voiceover and Background Music into a single audio file
-   * Trims to exact duration
-   */
-  mixAudio(
-    voiceoverUrl: string,
-    musicUrl: string,
-    durationSeconds: number,
-    musicVolume: number = -60
-  ): string {
-    const voicePublicId = this.extractPublicId(voiceoverUrl);
-    const musicPublicId = this.extractPublicId(musicUrl);
-
-    console.log(`[Cloudinary] Mixing Audio: VO=${voicePublicId}, Music=${musicPublicId}, Dur=${durationSeconds}s`);
-
-    // Use voiceover as base, overlay music? 
-    // Actually better to use music as base (looped) and overlay voiceover, 
-    // OR use a "null" video base if we wanted video, but here we want audio.
-    // Let's use 1s of silence or just the music track trimmed as base, then overlay VO.
-
-    const transformations: string[] = [];
-
-    // Base: Music track
-    // Trim to duration: du_{duration}
-    // Loop if needed (though Suno is usually long enough, loop ensures safety)
-    // Volume: e_volume:{musicVolume}
-    transformations.push(`du_${durationSeconds},e_loop:9,e_volume:${musicVolume}`);
-
-    // Overlay: Voiceover
-    // l_audio:{voiceId}
-    transformations.push(`l_audio:${voicePublicId.replace(/\//g, ':')}/fl_layer_apply`);
-
-    // Final boost
-    transformations.push('e_volume:20');
-
-    // Output as MP3
-    const transformStr = transformations.join('/');
-
-    return `https://res.cloudinary.com/${this.cloudName}/video/upload/${transformStr}/${musicPublicId}.mp3`;
-  }
-
-  /**
    * Add logo overlay to an existing Cloudinary video URL
    * This should be called AFTER video assembly for proper layering
    */

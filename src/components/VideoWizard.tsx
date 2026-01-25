@@ -232,53 +232,6 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
   };
 
 
-  const handleGenerateAudioOnly = async () => {
-    setIsLoading(true);
-    setProgress(20);
-
-    try {
-      const { form: multipartData, videoId } = await createMultipartFormData();
-
-      // Set audio only flag
-      multipartData.append('skip_video_generation', 'true');
-
-      // Store ID and start generation state
-      setCurrentVideoId(videoId);
-      setProgress(40);
-
-      // Get Supabase URL from environment or use default
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/process-video-generation`;
-
-      console.log('📡 Calling Edge Function (Audio Only):', edgeFunctionUrl);
-
-      const res = await fetch(edgeFunctionUrl, {
-        method: "POST",
-        body: multipartData,
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: Audio generation failed`);
-      }
-
-      setGenerationState('generating');
-      setProcessingStatus('Generisanje audio elemenata (Script + VO)...');
-      setProgress(50);
-
-    } catch (e) {
-      console.error(e);
-      toast({
-        title: "Greška",
-        description: "Došlo je do greške prilikom audio generisanja.",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-    }
-  };
-
   const handleGenerate = async () => {
     setIsLoading(true);
     setProgress(20);
@@ -538,23 +491,13 @@ export const VideoWizard = ({ user, session }: VideoWizardProps) => {
                 </Button>
               )}
               {wizardData.currentStep === 3 && (
-                <>
-                  <Button
-                    onClick={handleGenerate}
-                    disabled={isLoading}
-                    className="gradient-primary text-white hover-sheen rounded-full px-8 h-10 shadow-lg shadow-primary/20"
-                  >
-                    {isLoading ? "Generišem..." : "Generiši video"}
-                  </Button>
-                  <Button
-                    onClick={handleGenerateAudioOnly}
-                    disabled={isLoading}
-                    variant="outline"
-                    className="rounded-full px-6 h-10 ml-2 border-white/20 text-white hover:bg-white/10"
-                  >
-                    Samo Audio (No Credits)
-                  </Button>
-                </>
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isLoading}
+                  className="gradient-primary text-white hover-sheen rounded-full px-8 h-10 shadow-lg shadow-primary/20"
+                >
+                  {isLoading ? "Generišem..." : "Generiši video"}
+                </Button>
               )}
             </div>
           </div>

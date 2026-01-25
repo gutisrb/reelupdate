@@ -124,22 +124,11 @@ export class KieClient {
                 headers: { 'Authorization': `Bearer ${this.apiKey}` }
             });
 
-            if (!response.ok) {
-                console.log(`[KieClient] Polling ${taskId} HTTP Error: ${response.status}. Retrying...`);
-                await new Promise(r => setTimeout(r, POLLING_INTERVAL));
-                continue;
-            }
+            if (!response.ok) continue;
 
             const data = await response.json();
-
-            // Handle Kie's internal error codes in 200 response
-            if (data.code === 422 && (data.msg?.includes('recordInfo is null') || data.msg?.includes('null'))) {
-                console.log(`[KieClient] Polling ${taskId}: Result not ready yet (422 recordInfo is null). Retrying...`);
-                await new Promise(r => setTimeout(r, POLLING_INTERVAL));
-                continue;
-            }
-
             const status = data.data?.state;
+
             console.log(`[KieClient] Polling ${taskId}: status=${status} (attempt ${i + 1}/${MAX_RETRIES})`);
 
             if (status === 'success') {
@@ -192,10 +181,6 @@ export class KieClient {
         if (!response.ok) return null;
 
         const data = await response.json();
-
-        // Handle internal 422 (not ready)
-        if (data.code === 422) return null;
-
         const status = data.data?.state;
 
         if (status === 'success') {
@@ -207,65 +192,15 @@ export class KieClient {
                     const parsed = JSON.parse(data.data.resultJson);
                     if (parsed.resultUrls?.length) resultUrl = parsed.resultUrls[0];
                     if (!resultUrl && parsed.video_url) resultUrl = parsed.video_url;
-                    // Suno outputs might be in audio_url or similar
-                    if (!resultUrl && parsed.audio_url) resultUrl = parsed.audio_url;
-                    if (!resultUrl && parsed.audio_urls?.length) resultUrl = parsed.audio_urls[0];
                 } catch (e) {
                     console.warn('Failed to parse resultJson', e);
                 }
             }
             return resultUrl;
         } else if (status === 'failed') {
-            throw new Error(`Kie task failed: ${data.data?.error || 'Unknown error'}`);
+            throw new Error(`Kling task failed: ${data.data?.error || 'Unknown error'}`);
         }
 
         return null;
-    }
-
-    /**
-     * Generate music using Suno via Kie.ai
-     */
-    /**
-     * Generate music using Suno via Kie.ai
-     */
-    async generateMusic(prompt: string, instrumental: boolean = true, callbackUrl?: string): Promise<string> {
-        console.log(`[KieClient] Starting Suno music task (V3) with prompt: "${prompt}" (Callback: ${callbackUrl || 'None'})`);
-
-        const response = await fetch(API_ENDPOINTS.kie.generate, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'V3', // V3 is faster and closer to the desired duration than V4
-                prompt: prompt,
-                customMode: true,
-                instrumental: true,
-                title: "Real Estate Reel Background",
-                style: prompt,
-                callBackUrl: callbackUrl || "https://placeholder.com/callback"
-            })
-        });
-
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Suno submission failed: ${err}`);
-        }
-
-        const data = await response.json();
-        const taskId = data.data?.taskId || data.data?.id;
-
-        if (!taskId) {
-            throw new Error(`Kie.ai (Suno) did not return a Task ID. Response: ${JSON.stringify(data)}`);
-        }
-
-        console.log(`[KieClient] Suno Task started: ${taskId}.`);
-
-        // If we have a callback, we return the taskId so the caller can handle it async
-        if (callbackUrl) return taskId;
-
-        // Otherwise fallback to polling
-        return await this.waitForCompletion(taskId);
     }
 }

@@ -35,7 +35,6 @@ export interface VideoGenerationRequest {
   visual_hook?: string;
   is_preview?: boolean;
   price_mention?: 'video' | 'description' | 'contact_for_price';
-  skip_video_generation?: boolean;
 }
 
 export interface UserSettings {
