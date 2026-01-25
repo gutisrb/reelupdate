@@ -240,15 +240,13 @@ export class KieClient {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'V4',
+                model: 'V3', // V3 is faster and typically shorter (2 mins max) than V4 (4 mins)
                 prompt: prompt,
                 customMode: true,
-                instrumental: instrumental,
-                title: "Background Music", // Required if instrumental: true per docs
-                style: prompt, // Using prompt as style if instrumental is true, since prompt field is ignored/secondary? 
-                // Docs: If instrumental: true: style and title are required.
-                // So we should map prompt -> style.
-                callBackUrl: "https://placeholder.com/callback" // Required by API even if polling
+                instrumental: true, // Force instrumental for background tracks
+                title: "Real Estate Reel Background",
+                style: prompt,
+                callBackUrl: "https://placeholder.com/callback"
             })
         });
 
