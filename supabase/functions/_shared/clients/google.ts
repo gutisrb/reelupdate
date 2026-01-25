@@ -19,22 +19,16 @@ export class GoogleAIClient {
     voiceStyleInstructions?: string,
     retryCount: number = 0
   ): Promise<string> {
-    // wordCountRange, minChars, and minWords adjusted for Serbian TTS speed (Standard-A)
-    // 25s target: ~55-65 words. 30s target: ~75-85 words.
+    // Calibrated for Serbian TTS speed (Standard-A)
+    // 25s: 65–75 words. 30s: 85–95 words.
     const isShort = videoLength <= 25;
-    const targetWords = isShort ? '55–65 reči' : '75–85 reči';
-    const minWords = isShort ? 50 : 70;
+    const minWords = isShort ? 65 : 85;
 
     const systemInstruction = `
-    ULOGA: Ti si vrhunski "performance copywriter" za viralne nekretninske videe na Instagramu i TikToku. 
+    ULOGA: Ti si vrhunski "performance copywriter" za viralne nekretninske videe. 
     Tvoj cilj je da napišeš VO (voiceover) koji savršeno prati vizuelni sadržaj i zadržava pažnju.
 
-    TON I STRATEGIJA:
-    - TON (Vibe): "${directorPersonality || 'Modern, Engaging'}"
-    - STRATEGIJA (Struktura): "${strategyName || 'Lifestyle Showcase'}"
-    - INSTRUKCIJE ZA GLAS: "${voiceStyleInstructions || 'Natural, energetic sales tone'}"
-
-    ULAZNI PODACI (OBAVEZNO KORISTITI):
+    OBAVEZNI ULAZNI PODACI (ZABRANJENO JE KORISTITI BILO KOJE DRUGE CIFRE ILI LOKACIJE):
     - NASLOV: ${propertyData.title}
     - LOKACIJA: ${propertyData.location}
     - KVADRATURA: ${propertyData.size}
@@ -42,19 +36,18 @@ export class GoogleAIClient {
     - SPRAT: ${propertyData.sprat || 'Nije naveden'}
     - DODACI: ${propertyData.extras || ''}
     - VIZUELNI KONTEKST (šta se vidi u videu): ${visualContext}
+    - TON I STRATEGIJA: ${directorPersonality || ''} / ${strategyName || ''}
 
-    PRAVILA ZA PISANJE:
-    1. HOOK: Počni sa "${scriptHook || 'viralnim hook-om'}" koji koristi lokaciju ili najjači podatak.
-    2. SINHRONIZACIJA: Koristi "VIZUELNI KONTEKST" da povežeš tekst sa onim što se vidi (npr. "Kao što vidite...", "Ova kuhinja je...").
-    3. DETALJI: Obavezno pomeni ključne stvari iz sekcije "DODACI" (npr. terasa, lift, parking).
-    4. CENA: ${propertyData.price_mention ? `Pomeni cenu (${propertyData.price}€) na kraju.` : 'NIKADA ne pominji cenu, reci: "Cena je u opisu."'}
-    5. DUŽINA: Tvoj tekst MORA imati između ${minWords} i ${minWords + 15} reči kako bi se uklopio u ${videoLength} sekundi. Ne piši duže od toga!
-    6. REČENICE: Kratke, jasne, ritmične. Bez praznih fraza.
-
-    IZGOVOR (OBAVEZNO):
-    - Reči na "ćol" piši kao "Dorr-ćol".
-    - Nazive opština deli crticom za bolji naglasak: "Zvez-darra", "Vož-dovats", "Novi Beo-grad", "Vra-char".
-    - Sve brojeve piši REČIMA (npr. "četrdeset osam", "trećem spratu").
+    STRIKTNA PRAVILA:
+    1. BEZ HALUCINACIJA: Koristi isključivo podatke iz gornje liste. Strogo je zabranjeno izmišljanje kvadrature, sobnosti ili sprata.
+    2. GRAMATIKA I PADEŽI: Obavezno menjaj sve reči po padežima u skladu sa srpskom gramatikom.
+    3. SINHRONIZACIJA: Detaljno poveži tekst sa VIZUELNIM KONTEKSTOM. Opisuj specifične prostore koji se vide.
+    4. DUŽINA: Tekst MORA imati najmanje ${minWords} reči. Ako je prekratak, detaljnije opiši lifestyle pogodnosti iz sekcije DODACI i specifičnosti prostorija iz VIZUELNOG KONTEKSTA.
+    5. CENA: ${propertyData.price_mention ? `Pomeni cenu (${propertyData.price}€).` : 'Napiši da je cena u opisu.'}
+    6. IZGOVOR I FORMAT:
+       - Reči na "ćol" koren piši sa "Dorr-", ali menjaj ih po padežima.
+       - Nazive opština piši sa crticom za bolji naglasak.
+       - Sve brojeve piši REČIMA.
 
     Završi sa CTA: "Javite nam se za obilazak!"
     `;
