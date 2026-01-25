@@ -228,11 +228,9 @@ export class KieClient {
     /**
      * Generate music using Suno via Kie.ai
      */
-    async generateMusic(prompt: string, instrumental: boolean = true): Promise<string> {
-        console.log(`[KieClient] Starting Suno music task (V4) with prompt: "${prompt}"`);
+    async generateMusic(prompt: string, instrumental: boolean = true, callbackUrl?: string): Promise<string> {
+        console.log(`[KieClient] Starting Suno music task (V3) with prompt: "${prompt}" (Callback: ${callbackUrl || 'None'})`);
 
-        // Based on docs: https://docs.kie.ai/suno-api/generate-music
-        // Uses separate generate endpoint and flat body structure
         const response = await fetch(API_ENDPOINTS.kie.generate, {
             method: 'POST',
             headers: {
@@ -240,13 +238,13 @@ export class KieClient {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'V3', // V3 is faster and typically shorter (2 mins max) than V4 (4 mins)
+                model: 'V3', // V3 is faster and closer to the desired duration than V4
                 prompt: prompt,
                 customMode: true,
-                instrumental: true, // Force instrumental for background tracks
+                instrumental: true,
                 title: "Real Estate Reel Background",
                 style: prompt,
-                callBackUrl: "https://placeholder.com/callback"
+                callBackUrl: callbackUrl || "https://placeholder.com/callback"
             })
         });
 
@@ -262,7 +260,12 @@ export class KieClient {
             throw new Error(`Kie.ai (Suno) did not return a Task ID. Response: ${JSON.stringify(data)}`);
         }
 
-        console.log(`[KieClient] Suno Task started: ${taskId}. Waiting for completion...`);
+        console.log(`[KieClient] Suno Task started: ${taskId}.`);
+
+        // If we have a callback, we return the taskId so the caller can handle it async
+        if (callbackUrl) return taskId;
+
+        // Otherwise fallback to polling
         return await this.waitForCompletion(taskId);
     }
 }

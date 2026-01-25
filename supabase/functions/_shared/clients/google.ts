@@ -9,46 +9,65 @@ export class GoogleAIClient {
   /**
    * Generate voiceover script using Gemini 3.0
    */
-  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string, retryCount: number = 0): Promise<string> {
-    // ... Word count logic remains the same ...
-    const wordCountRange = videoLength >= 30 ? '60–65 reči' : '50–55 reči';
-    const hookWordLimit = videoLength >= 30 ? '≤12 reči' : '≤10 reči';
+  async generateVoiceoverScript(
+    propertyData: any,
+    visualContext: string,
+    videoLength: number = 25,
+    scriptHook?: string,
+    strategyName?: string,
+    directorPersonality?: string,
+    voiceStyleInstructions?: string,
+    retryCount: number = 0
+  ): Promise<string> {
+    // wordCountRange, minChars, and minWords adjusted for Serbian TTS speed (Standard-A)
+    // 25s target: ~55-65 words. 30s target: ~75-85 words.
+    const isShort = videoLength <= 25;
+    const targetWords = isShort ? '55–65 reči' : '75–85 reči';
+    const minWords = isShort ? 50 : 70;
 
-    const prompt = `
-    ULOGA: Ti si vrhunski "performance copywriter" za kratke viralne nekretninske videe na Instagramu (Reels/TikTok). Tvoj cilj je zadržati pažnju (retention) i prodati "vajb" nekretnine.
+    const systemInstruction = `
+    ULOGA: Ti si vrhunski "performance copywriter" za viralne nekretninske videe na Instagramu i TikToku. 
+    Tvoj cilj je da napišeš VO (voiceover) koji savršeno prati vizuelni sadržaj i zadržava pažnju.
 
-    ULAZNI PODACI (OVO MORAŠ KORISTITI):
-    - DETALJI NEKRETNINE: ${JSON.stringify(propertyData)}
-    - VISUALNI KONTEKST (ŠTA SE VIDI): "${visualContext}"
-    - CILJANA DUŽINA: ${wordCountRange} (Maksimalno ${wordCountRange.split('–')[1]} reči. OVO JE STROGO PRAVILO).
-    - SCRIPT HOOK (OBAVEZAN POČETAK AKO POSTOJI): "${scriptHook || ''}"
+    TON I STRATEGIJA:
+    - TON (Vibe): "${directorPersonality || 'Modern, Engaging'}"
+    - STRATEGIJA (Struktura): "${strategyName || 'Lifestyle Showcase'}"
+    - INSTRUKCIJE ZA GLAS: "${voiceStyleInstructions || 'Natural, energetic sales tone'}"
 
-    PRAVILA JEZIKA I STILA (STROGO):
-    1. JEZIK: ISKLJUČIVO SRPSKI (Standardni srpski, EKAVICA).
-       - NE KORISTI hrvatske reči (npr. koristi "vazduh" a ne "zrak", "hiljada" a ne "tisuća", "sopstveni" a ne "vlastiti").
-       - NE KORISTI bosanske/crnogorske specifičnosti ako nisu standardni srpski.
-    2. STIL: Dinamičan, moderan, direktan ("Ti" obraćanje). Bez "poštovani gledaoci". Kao da pričaš prijatelju.
-    3. ISTINITOST: KORISTI SAMO PODATKE IZ "ULAZNIH PODATAKA". NE IZMIŠLJAJ BROJEVE, KVADRATURU ILI SOBE KOJE NISU NAVEDENE. Ako podatak fali, fokusiraj se na osećaj/vajb.
+    ULAZNI PODACI (OBAVEZNO KORISTITI):
+    - NASLOV: ${propertyData.title}
+    - LOKACIJA: ${propertyData.location}
+    - KVADRATURA: ${propertyData.size}
+    - SOBNOST: ${propertyData.beds}
+    - SPRAT: ${propertyData.sprat || 'Nije naveden'}
+    - DODACI: ${propertyData.extras || ''}
+    - VIZUELNI KONTEKST (šta se vidi u videu): ${visualContext}
 
-    STRUKTURA SKRIPTE:
-    1. HOOK (0-3s): Ako je zadat "SCRIPT HOOK", počni njime. Ako ne, smisli nešto udarno vezano za najjači adut nekretnine.
-    2. BODY (3-20s): Brzi opis glavnih prostorija (poveži sa vizualima). Fokus na LIFESTYLE benefitima (npr. ne "ima terasu", nego "jutarnja kafa na ovoj terasi...").
-    3. CTA (Kraj): Poziv na akciju (npr. "Zaprati za još", "Link u opisu", "Piši za cenu" ako je cena skrivena).
+    PRAVILA ZA PISANJE:
+    1. HOOK: Počni sa "${scriptHook || 'viralnim hook-om'}" koji koristi lokaciju ili najjači podatak.
+    2. SINHRONIZACIJA: Koristi "VIZUELNI KONTEKST" da povežeš tekst sa onim što se vidi (npr. "Kao što vidite...", "Ova kuhinja je...").
+    3. DETALJI: Obavezno pomeni ključne stvari iz sekcije "DODACI" (npr. terasa, lift, parking).
+    4. CENA: ${propertyData.price_mention ? `Pomeni cenu (${propertyData.price}€) na kraju.` : 'NIKADA ne pominji cenu, reci: "Cena je u opisu."'}
+    5. DUŽINA: Tvoj tekst MORA imati između ${minWords} i ${minWords + 15} reči kako bi se uklopio u ${videoLength} sekundi. Ne piši duže od toga!
+    6. REČENICE: Kratke, jasne, ritmične. Bez praznih fraza.
 
-    FORMAT ODGOVORA (JSON):
-    Vrati SAMO validan JSON objekat bez markdown backtickova.
-    {
-      "voice_text": "Tekst koji će spiker pročitati. Bez emotikona, bez opisa scena u zagradi. Samo čisti izgovoreni tekst.",
-      "estimated_duration": "procena u sekundama"
-    }
+    IZGOVOR (OBAVEZNO):
+    - Reči na "ćol" piši kao "Dorr-ćol".
+    - Nazive opština deli crticom za bolji naglasak: "Zvez-darra", "Vož-dovats", "Novi Beo-grad", "Vra-char".
+    - Sve brojeve piši REČIMA (npr. "četrdeset osam", "trećem spratu").
+
+    Završi sa CTA: "Javite nam se za obilazak!"
     `;
 
     const body = {
       contents: [{
-        parts: [{ text: prompt }],
+        parts: [{ text: `Generate script based on metadata: ${JSON.stringify({ propertyData, visualContext, videoLength, scriptHook })}` }],
       }],
+      system_instruction: {
+        parts: [{ text: systemInstruction }]
+      },
       generationConfig: {
-        temperature: 0.7, // Lower temperature for more adherence to facts
+        temperature: 0.6,
         responseMimeType: "application/json"
       }
     };
@@ -74,7 +93,7 @@ export class GoogleAIClient {
       if (retryCount >= 3) throw new Error(`Gemini 503 Overloaded after ${retryCount} retries`);
       console.warn(`[GoogleAIClient] Gemini 503 Overloaded (Script), retrying (${retryCount + 1}/3)...`);
       await new Promise(r => setTimeout(r, 2000 * (retryCount + 1))); // Exponential backoff
-      return this.generateVoiceoverScript(propertyData, visualContext, videoLength, scriptHook, retryCount + 1);
+      return this.generateVoiceoverScript(propertyData, visualContext, videoLength, scriptHook, strategyName, directorPersonality, voiceStyleInstructions, retryCount + 1);
     }
 
     if (!response.ok) {
@@ -85,15 +104,14 @@ export class GoogleAIClient {
     let data = await response.json();
     let text = this.safeExtractText(data);
 
-    // One-time retry if content is empty (safety refusal or non-deterministic behavior)
     if (!text) {
-      console.warn('[GoogleAIClient] Voiceover script returned no content, retrying with lower temperature...');
+      console.warn('[GoogleAIClient] Voiceover script returned no content, retrying with lower temperature (0.5)...');
       const retryBody = {
         ...body,
-        generationConfig: { ...body.generationConfig, temperature: 0.7 }
+        generationConfig: { ...body.generationConfig, temperature: 0.5 }
       };
 
-      response = await fetch(
+      const retryResponse = await fetch(
         `${API_ENDPOINTS.google.geminiText}?key=${this.apiKey}`,
         {
           method: 'POST',
@@ -102,41 +120,31 @@ export class GoogleAIClient {
         }
       );
 
-      if (response.ok) {
-        data = await response.json();
+      if (retryResponse.ok) {
+        data = await retryResponse.json();
         text = this.safeExtractText(data);
       }
     }
 
     if (!text) {
-      console.error('[GoogleAIClient] Voiceover script structure missing candidates/content:', JSON.stringify(data));
-      throw new Error('Gemini 3.0 script generation returned no content after retry. Possible safety block.');
+      throw new Error('Gemini 3.0 script generation returned no content after retry.');
     }
 
-    if (!text) throw new Error('No text returned from Gemini 3.0');
-
     try {
-      const parsed: any = JSON.parse(text);
+      // Clean possible markdown code blocks
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed: any = JSON.parse(cleanJson);
 
-      // Case 1: Standard object with voice_text (Expected)
       if (parsed?.voice_text) return parsed.voice_text;
 
-      // Case 2: Array (e.g. [{ title: "...", body: "..." }])
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const first = parsed[0];
-        if (first.body) return first.body;
-        if (first.voice_text) return first.voice_text;
-        if (first.script) return first.script;
-      }
-
-      // Case 3: Flat object with 'body' or 'script' property
+      // Fallback: if it's a flat string or has other common keys
+      if (typeof parsed === 'string') return parsed;
       if (parsed?.body) return parsed.body;
       if (parsed?.script) return parsed.script;
 
-      console.warn('[GoogleAIClient] JSON parsed but extraction failed. Returning raw text fallback.');
       return text;
     } catch (e) {
-      // Fallback for non-JSON responses if any
+      console.warn('[GoogleAIClient] JSON parse failed, returning raw text.');
       return text;
     }
   }
@@ -483,9 +491,10 @@ Rules:
   async chat(params: {
     messages: { role: string; content: string }[];
     temperature?: number;
+    systemInstruction?: string;
     responseMimeType?: string;
   }, retryCount: number = 0): Promise<any> {
-    const body = {
+    const body: any = {
       contents: params.messages.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }]
@@ -495,6 +504,12 @@ Rules:
         responseMimeType: params.responseMimeType
       }
     };
+
+    if (params.systemInstruction) {
+      body.system_instruction = {
+        parts: [{ text: params.systemInstruction }]
+      };
+    }
 
     const safetySettings = [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },

@@ -41,6 +41,18 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+
+      // Suno Callback (Webhook)
+      if (payload.taskId && payload.data?.state === 'success' && req.url.includes('suno_callback')) {
+        const urlParams = new URL(req.url).searchParams;
+        const videoId = urlParams.get('video_id');
+        console.log(`[${videoId}] 🎵 Suno Callback received for task ${payload.taskId}`);
+        if (videoId) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(handleSunoCallback(payload, videoId));
+          return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
     }
 
     // Default: Initial connection (FormData)
@@ -233,32 +245,46 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
     // SCRIPT
     await supabase.from('videos').update({ processing_status_text: 'Writing script...' }).eq('id', data.video_id);
     const visualContext = clips.map(c => c.luma_prompt).join('; ');
-    const hookedPropertyData = {
-      ...data.property_data,
-      extras: `[IMPORTANT: START SCRIPT WITH THIS EXACT HOOK: "${blueprint.script_hook}"] ${data.property_data.extras}`
-    };
 
     const voiceoverScript = await clients.google.generateVoiceoverScript(
-      { ...hookedPropertyData, price_mention: data.price_mention },
+      { ...data.property_data, price_mention: data.price_mention },
       visualContext,
       clips.length * 5,
-      blueprint.script_hook
+      blueprint.script_hook,
+      blueprint.strategy_name,
+      data.director_personality,
+      userSettings.voice_style_instructions
     );
     console.log(`[${data.video_id}] 📜 SCRIPT: "${voiceoverScript}"`);
+
+    // UPDATE DB WITH SCRIPT IMMEDIATELY FOR TEST VISIBILITY
+    await supabase.from('video_generation_details').update({ voiceover_script: voiceoverScript }).eq('video_id', data.video_id);
+
+    // Skip expensive generations (TTS, Music, Assembly) in "Audio Only / Test" mode
+    if (data.skip_video_generation || isPreview) {
+      console.log(`[${data.video_id}] 🛑 TEST MODE: Skipping Voiceover/Music generation as requested.`);
+      await supabase.from('videos').update({
+        processing_status_text: 'Script generated (Test Mode)',
+        status: data.skip_video_generation ? 'completed' : 'draft'
+      }).eq('id', data.video_id);
+
+      return; // Stop here to save credits
+    }
 
     let voiceoverUploadUrl = '';
     let musicUrl = '';
 
-    if (!isPreview) {
-      await supabase.from('videos').update({ processing_status_text: 'Generating voiceover...' }).eq('id', data.video_id);
-      const voiceoverPCM = await clients.google.generateTTS(voiceoverScript, userSettings.voice_id, userSettings.voice_style_instructions);
-      const voUpload = await clients.cloudinary.uploadVideo(voiceoverPCM, `voiceover_${data.video_id}.wav`);
-      voiceoverUploadUrl = voUpload.secure_url;
+    await supabase.from('videos').update({ processing_status_text: 'Generating voiceover...' }).eq('id', data.video_id);
+    const voiceoverPCM = await clients.google.generateTTS(voiceoverScript, userSettings.voice_id, userSettings.voice_style_instructions);
+    const voUpload = await clients.cloudinary.uploadVideo(voiceoverPCM, `voiceover_${data.video_id}.wav`);
+    voiceoverUploadUrl = voUpload.secure_url;
 
-      await supabase.from('videos').update({ processing_status_text: 'Composing music (Suno)...' }).eq('id', data.video_id);
-      const musicPrompt = `Instrumental, modern, real estate showcase, ${clips[0]?.mood || 'luxury'}, ${clips[0]?.description || ''}`;
-      musicUrl = await clients.kie.generateMusic(musicPrompt, true);
-    }
+    await supabase.from('videos').update({ processing_status_text: 'Composing music (Suno)...' }).eq('id', data.video_id);
+    const musicPrompt = `Instrumental, modern, real estate showcase, ${clips[0]?.mood || 'luxury'}, ${clips[0]?.description || ''}`;
+    const callbackUrl = `${functionUrl}?mode=suno_callback&video_id=${data.video_id}`;
+    // Note: we don't await the URL here in the async flow, we get a taskId back
+    const musicTaskId = await clients.kie.generateMusic(musicPrompt, true, callbackUrl);
+    console.log(`[${data.video_id}] 🎵 Music Task Started: ${musicTaskId}`);
 
     // Details payload
     const detailsPayload = {
@@ -360,7 +386,22 @@ async function handleKlingPoll(payload: any, functionUrl: string, authToken: str
       }).eq('id', video_id);
     } else {
       const allUrls = clips.flatMap(c => c.clip_url ? [c.clip_url] : (c.clip_urls || []));
-      const assemblyUrl = clients.cloudinary.assembleVideo(allUrls, details.voiceover_url, details.music_url, allUrls.length * 5, settings.default_music_volume_db);
+      const videoDuration = allUrls.length * 5;
+
+      // WAIT FOR MUSIC (Max 30s more if not ready)
+      let musicUrl = details.music_url;
+      if (!musicUrl && !settings.is_preview) {
+        console.log(`[${video_id}] ⏳ Finalizing but music not ready yet... waiting.`);
+        const mStart = Date.now();
+        while (Date.now() - mStart < 30000) {
+          const { data: d } = await supabase.from('video_generation_details').select('music_url').eq('video_id', video_id).single();
+          if (d?.music_url) { musicUrl = d.music_url; break; }
+          await new Promise(r => setTimeout(r, 5000));
+        }
+      }
+
+      // ASSEMBLE (Trimming music to video duration)
+      const assemblyUrl = clients.cloudinary.assembleVideo(allUrls, details.voiceover_url, musicUrl, videoDuration, settings.default_music_volume_db);
       const upload = await clients.cloudinary.uploadVideoFromUrl(assemblyUrl, `stage1_${video_id}`);
 
       if (settings.caption_enabled && settings.caption_system === 'zapcap') {
@@ -412,6 +453,34 @@ async function handleZapCapPoll(payload: any, functionUrl: string, authToken: st
   } catch (error: any) {
     console.error(`[${video_id}] ❌ ZapCap Poll Fatal:`, error.message || error);
     await supabase.from('videos').update({ status: 'failed', processing_status_text: `Error: ${error.message}` }).eq('id', video_id);
+  }
+}
+
+async function handleSunoCallback(payload: any, videoId: string) {
+  const supabase = createClient(API_ENDPOINTS.supabase.url, API_ENDPOINTS.supabase.serviceRoleKey);
+  const clients = initClients();
+
+  try {
+    let audioUrl = null;
+    if (payload.data?.resultUrls && Array.isArray(payload.data.resultUrls)) {
+      audioUrl = payload.data.resultUrls[0];
+    } else if (payload.data?.resultJson) {
+      try {
+        const parsed = JSON.parse(payload.data.resultJson);
+        audioUrl = parsed.resultUrls?.[0] || parsed.audio_url || parsed.audio_urls?.[0];
+      } catch (e) { console.error('Failed to parse Suno resultJson', e); }
+    }
+
+    if (audioUrl) {
+      console.log(`[${videoId}] 🎵 Suno audio ready: ${audioUrl}. Uploading to Cloudinary...`);
+      const upload = await clients.cloudinary.uploadVideoFromUrl(audioUrl, `music_${videoId}`);
+      await supabase.from('video_generation_details').update({ music_url: upload.secure_url }).eq('video_id', videoId);
+      console.log(`[${videoId}] ✅ Music saved to DB.`);
+    } else {
+      console.warn(`[${videoId}] 🎵 Suno callback reached but no audio URL found in payload.`);
+    }
+  } catch (error: any) {
+    console.error(`[${videoId}] ❌ Suno Callback Error:`, error.message);
   }
 }
 
