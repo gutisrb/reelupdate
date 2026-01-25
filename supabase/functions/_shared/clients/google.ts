@@ -89,10 +89,13 @@ export class GoogleAIClient {
     if (!text) throw new Error('No text returned from Gemini 3.0');
 
     try {
-      const parsed: VoiceScriptResponse = JSON.parse(text);
-      return parsed.voice_text;
+      const parsed = JSON.parse(text);
+      const script = parsed.voice_text || parsed.text || parsed.script || text;
+      console.log(`[GoogleAIClient] Successfully parsed script (length: ${script.length})`);
+      return script;
     } catch (e) {
-      // Fallback for non-JSON responses if any
+      // Fallback for non-JSON responses
+      console.log(`[GoogleAIClient] Response was not JSON, returning raw text (length: ${text.length})`);
       return text;
     }
   }

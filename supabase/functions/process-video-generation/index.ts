@@ -588,6 +588,8 @@ async function initiateClip(
     "Low Battery": "Overlay a realistic iPhone 'Low Battery' warning popup (20% remaining) centered on the image."
   };
 
+  const isPreview = data.is_preview === true;
+
   if (index === 0 && blueprint && blueprint.visual_hook_type === 'motion') {
     const normalizedHook = (data.visual_hook || blueprint.visual_hook_instruction || "").trim();
     const PRESET_KEYS = Object.keys(PRESET_HOOKS);
@@ -595,11 +597,11 @@ async function initiateClip(
     const rawHook = matchedKey || normalizedHook;
     const mappedInstruction = PRESET_HOOKS[rawHook as keyof typeof PRESET_HOOKS] || rawHook;
 
-    console.log(`[${data.video_id}] 🎨 VISUAL HOOK LOGIC: Raw="${normalizedHook}" Matched="${rawHook}"`);
+    console.log(`[${data.video_id}] 🎨 VISUAL HOOK LOGIC: Raw="${normalizedHook}" Matched="${rawHook}" (Preview: ${isPreview})`);
 
     try {
       if (rawHook === 'Start with Blur') {
-        const blurredUrl = await clients.kie.editImage(startUrl, mappedInstruction);
+        const blurredUrl = isPreview ? startUrl : await clients.kie.editImage(startUrl, mappedInstruction);
         endUrl = endUrl || startUrl;
         startUrl = blurredUrl;
         usedInstruction = "Blurred start frame transition to clear original";
@@ -608,7 +610,7 @@ async function initiateClip(
         const prompt1 = "Professional real estate agent standing in the foreground, close to the camera, facing camera, professional business attire, full body, friendly smile, clear face.";
         const optimizedPrompt1 = await clients.google.optimizeImagePrompt(prompt1);
         console.log(`[${data.video_id}] 🎨 Kie Pass 1 (Standing Close): ${optimizedPrompt1}`);
-        const standingAgentUrl = await clients.kie.editImage(startUrl, optimizedPrompt1);
+        const standingAgentUrl = isPreview ? startUrl : await clients.kie.editImage(startUrl, optimizedPrompt1);
 
         // We use the standing agent for both frames (or just as the base) 
         // to let the video AI (Kling) animate the limbs and gravity without morphing artifacts.
@@ -618,11 +620,11 @@ async function initiateClip(
       } else if (rawHook === 'Empty to Furnished' || rawHook === 'Furnished to Empty') {
         const targetForEdit = endUrl || startUrl;
         console.log(`[${data.video_id}] 🎨 SENDING TO IMAGE EDITOR (Kie.ai): "${mappedInstruction}"`);
-        const editedImageUrl = await clients.kie.editImage(targetForEdit, mappedInstruction);
+        const editedImageUrl = isPreview ? targetForEdit : await clients.kie.editImage(targetForEdit, mappedInstruction);
         endUrl = editedImageUrl;
         usedInstruction = rawHook === 'Empty to Furnished' ? "STAGING_APPEAR: furniture appears naturally in room" : "STAGING_CLEAR: furniture clears naturally from room";
       } else if (rawHook === 'Labubu') {
-        const editedImageUrl = await clients.kie.editImage(startUrl, mappedInstruction);
+        const editedImageUrl = isPreview ? startUrl : await clients.kie.editImage(startUrl, mappedInstruction);
         // Apply to START frame as requested by user ("Labubu should be in the start frame")
         startUrl = editedImageUrl;
         // Keep endUrl null (or whatever it was) so we just animate the scene with Labubu present
@@ -663,7 +665,7 @@ async function initiateClip(
         } else {
           const targetForEdit = endUrl || startUrl;
           console.log(`[${data.video_id}] 🎨 SENDING TO IMAGE EDITOR (Kie.ai): "${mappedInstruction}"`);
-          const editedImageUrl = await clients.kie.editImage(targetForEdit, mappedInstruction, data.visual_hook);
+          const editedImageUrl = isPreview ? targetForEdit : await clients.kie.editImage(targetForEdit, mappedInstruction, data.visual_hook);
           endUrl = editedImageUrl;
           usedInstruction = `Image Edit Context: ${rawHook}`;
         }
@@ -687,13 +689,13 @@ async function initiateClip(
   if (isKeyframe && !isCorrelated) {
     console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Falling back to transitions (Hard Cut)`);
     // Create TWO separate video tasks
-    const task1 = await clients.kie.createVideoTask(
+    const task1 = data.is_preview === true ? 'preview_t1' : await clients.kie.createVideoTask(
       `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
       startUrl,
       null,
       visionAnalysis.negative_prompt
     );
-    const task2 = await clients.kie.createVideoTask(
+    const task2 = data.is_preview === true ? 'preview_t2' : await clients.kie.createVideoTask(
       `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
       endUrl!,
       null,
@@ -703,14 +705,38 @@ async function initiateClip(
     return {
       slot_index: index,
       luma_generation_id: task1,
-      kling_task_ids: [task1, task2],
+      kling_task_ids: data.is_preview === true ? [] : [task1, task2],
       luma_prompt: visionAnalysis.luma_prompt,
-      clip_url: '',
+      clip_url: data.is_preview === true ? 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_0_fmtela_iznuwx.mp4' : '',
       clip_urls: [],
       first_image_url: startUrl,
       second_image_url: endUrl,
       is_keyframe: true,
       is_correlated: false,
+      description: visionAnalysis.description,
+      mood: visionAnalysis.mood,
+    };
+  }
+
+  // PREVIEW DRY RUN: Skip Kling and return placeholder with REAL prompt
+  if (isPreview) {
+    console.log(`[${data.video_id}] 🧪 PREVIEW MODE (Dry Run): Skipping Kling video generation...`);
+    // Ensure visual hook is explicitly in the prompt even if AI missed it
+    let finalLumaPrompt = visionAnalysis.luma_prompt;
+    if (usedInstruction && !finalLumaPrompt.toLowerCase().includes(usedInstruction.split(':')[0].toLowerCase())) {
+      finalLumaPrompt += ` ${usedInstruction}`;
+    }
+
+    return {
+      slot_index: index,
+      luma_generation_id: `preview_${index}`,
+      kling_task_id: `preview_${index}`,
+      luma_prompt: finalLumaPrompt,
+      clip_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_0_fmtela_iznuwx.mp4', // Placeholder
+      first_image_url: startUrl,
+      second_image_url: endUrl,
+      is_keyframe: !!endUrl,
+      is_correlated: true,
       description: visionAnalysis.description,
       mood: visionAnalysis.mood,
     };
