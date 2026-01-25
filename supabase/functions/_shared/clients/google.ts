@@ -35,6 +35,20 @@ Sobnost (idiomatski): 0.5=garsonjera; 1.0=jednosoban; 1.5=jednoiposoban; 2.0=dvo
 Sprat: PR→"prizemlje"; VPR→"visoko prizemlje"; "X"→"na [X-ordinal] spratu".
 Bez halucinacija: koristi samo polja iz ULAZA.
 
+PRONUNCIATION GUIDE (BELGRADE LOCATIONS):
+Whenever using Belgrade districts, adhere to these phonetic and naming rules for natural TTS:
+- Vračar (vrah-char), Dorćol (dor-chol), Senjak (seh-nyak), Dedinje (deh-dee-nye)
+- Bežanijska kosa (beh-zhah-nyee-skah koh-sah), Mirijevo (mee-ryeh-vo)
+- Borča (bor-chah), Karaburma (kah-rah-boor-mah), Konjarnik (ko-nyar-neek)
+- Voždovac (vohzh-do-vats), Zvezdara (zvez-dah-rah), Palilula (pah-lee-loo-lah)
+- Novi Beograd (no-vee beh-oh-grad), Zemun (zeh-moon), Savski venac (sav-skee veh-nats)
+- Blokovi (blo-ko-vee), Arena (ah-reh-nah), Fontana (fon-tah-nah)
+- Autokomanda (ow-toh-ko-man-dah), Slavija (slah-vya), Banovo brdo (bah-no-vo br-do)
+
+Rules for Grammar:
+- Use correct locative case: "u srcu Dorćola", "na Vračaru", "u blizini Arene".
+- NEVER say "u Dorćol" or "na Vračar".
+
 HOOK (prva rečenica): Dužina ≤ 12 reči. Mora imati SPECIFIČAN detalj iz Location/Features.
 
 VO STRUKTURA:

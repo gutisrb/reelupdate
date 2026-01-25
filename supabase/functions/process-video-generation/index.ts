@@ -251,9 +251,13 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       const visualContext = clips.map(c => c.luma_prompt).join('; ');
 
       // Inject Script Hook via Extras
+      const hookText = blueprint.script_hook && blueprint.script_hook !== 'undefined'
+        ? `[IMPORTANT: START SCRIPT WITH THIS EXACT HOOK: "${blueprint.script_hook}"] `
+        : '';
+
       const hookedPropertyData = {
         ...data.property_data,
-        extras: `[IMPORTANT: START SCRIPT WITH THIS EXACT HOOK: "${blueprint.script_hook}"] ${data.property_data.extras}`
+        extras: `${hookText}${data.property_data.extras}`
       };
 
       await supabase.from('videos').update({ processing_status_text: 'Writing script...' }).eq('id', data.video_id);
