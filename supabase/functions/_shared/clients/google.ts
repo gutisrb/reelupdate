@@ -14,7 +14,42 @@ export class GoogleAIClient {
     const wordCountRange = videoLength >= 30 ? '80–85 reči' : '70–75 reči';
     const hookWordLimit = videoLength >= 30 ? '≤14 reči' : '≤12 reči';
 
-    const prompt = `Ti si performance copywriter za kratke nekretninske videoe na Instagramu. Tvoj VO mora zadržati gledanje... [Full prompt content]`;
+    const prompt = `Ti si performance copywriter za kratke nekretninske videoe na Instagramu. Tvoj VO mora zadržati gledanje: agresivan, istinit HOOK u prvoj rečenici; zatim jasan ishod za gledaoca i kratke činjenice koje postoje u ulazu.
+
+ULAZ (samo ovo smeš da koristiš)
+
+Title: ${propertyData.title}
+Location: ${propertyData.location}
+Price: ${propertyData.price}€ # cenu NE izgovaraj u VO
+Size: ${propertyData.size}m²
+Rooms: ${propertyData.beds}
+Features: ${propertyData.extras}
+VISUAL_CONTEXT: ${visualContext}
+VIDEO_LENGTH: ${videoLength} sekundi
+
+JEZIK I FORMAT
+
+Srpski, ekavica, latinica.
+Sve cifre u VO piši rečima (kvadratura, sprat).
+Sobnost (idiomatski): 0.5=garsonjera; 1.0=jednosoban; 1.5=jednoiposoban; 2.0=dvosoban; 2.5=dvoiposoban; 3.0=trosoban; 3.5=troiposoban; 4.0=četvorosoban.
+Sprat: PR→"prizemlje"; VPR→"visoko prizemlje"; "X"→"na [X-ordinal] spratu".
+Bez halucinacija: koristi samo polja iz ULAZA.
+
+HOOK (prva rečenica): Dužina ≤ 12 reči. Mora imati SPECIFIČAN detalj iz Location/Features.
+
+VO STRUKTURA:
+1. HOOK (≤12 reči).
+2. Ishod/Lifestyle (1-2 rečenice).
+3. Činjenice (2-3 rečenice).
+4. "cena je u opisu".
+5. CTA (zakazivanje/upit).
+
+Ukupna dužina: ${wordCountRange}.
+
+IZLAZ (SAMO JSON)
+{
+  "voice_text": "pun tekst vo-a"
+}`;
 
     const body = {
       contents: [{
@@ -206,7 +241,7 @@ export class GoogleAIClient {
 
     try {
       const parsed = JSON.parse(content);
-      console.log(`[GoogleAIClient] Vision analysis complete. Prompt: "${parsed.luma_prompt?.substring(0, 50)}..."`);
+      console.log(`[GoogleAIClient] Vision analysis complete. Prompt: "${parsed.luma_prompt}"`);
       return parsed;
     } catch (e) {
       console.error('[GoogleAIClient] Failed to parse vision JSON:', content);
