@@ -701,79 +701,57 @@ async function initiateClip(
   // DECISION: Correlated or Transition?
   const isCorrelated = visionAnalysis.is_correlated !== false; // Default to true if not specified
 
-  if (isKeyframe && !isCorrelated) {
-    console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Falling back to transitions (Hard Cut)`);
-    const task1 = data.is_preview === true ? 'preview_t1' : await clients.kie.createVideoTask(
-      `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
-      startUrl916,
-      null,
-      visionAnalysis.negative_prompt
-    );
-    const task2 = data.is_preview === true ? 'preview_t2' : await clients.kie.createVideoTask(
-      `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
-      endUrl916!,
-      null,
-      visionAnalysis.negative_prompt
-    );
+  // STANDARD LOGIC: Single task only (save credits)
+  let finalPrompt = visionAnalysis.luma_prompt;
+  let finalNegative = visionAnalysis.negative_prompt;
 
-    return {
-      slot_index: index,
-      luma_generation_id: task1,
-      kling_task_ids: data.is_preview === true ? [] : [task1, task2],
-      luma_prompt: visionAnalysis.luma_prompt,
-      clip_url: data.is_preview === true ? 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_0_fmtela_iznuwx.mp4' : '',
-      clip_urls: [],
-      first_image_url: startUrl,
-      second_image_url: endUrl,
-      is_keyframe: true,
-      is_correlated: false,
-      description: visionAnalysis.description,
-      mood: visionAnalysis.mood,
-    };
+  if (isKeyframe && !isCorrelated) {
+    console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Using Cinematic Blur transition...`);
+    finalPrompt = `Cinematic Transition: camera pans rapidly with heavy motion blur from ${visionAnalysis.description.split(';')[0]} to ${visionAnalysis.description.split(';')[1] || 'the next room'}; fast movement hides the shift; luxury quality.`;
+    finalNegative = `morphing faces, melting objects, ${visionAnalysis.negative_prompt}`;
   }
 
-  // PREVIEW DRY RUN: Skip Kling and return placeholder with REAL prompt
+  // STANDARD LOGIC (Single task)
+  const taskId = data.is_preview === true ? `preview_${index}` : await clients.kie.createVideoTask(
+    finalPrompt,
+    startUrl916,
+    endUrl916,
+    finalNegative
+  );
+
   if (isPreview) {
     console.log(`[${data.video_id}] 🧪 PREVIEW MODE (Dry Run): Skipping Kling video generation...`);
     // Ensure visual hook is explicitly in the prompt even if AI missed it
-    let finalLumaPrompt = visionAnalysis.luma_prompt;
-    if (usedInstruction && !finalLumaPrompt.toLowerCase().includes(usedInstruction.split(':')[0].toLowerCase())) {
-      finalLumaPrompt += ` ${usedInstruction}`;
+    let previewLuma = finalPrompt;
+    if (usedInstruction && !previewLuma.toLowerCase().includes(usedInstruction.split(':')[0].toLowerCase())) {
+      previewLuma += ` ${usedInstruction}`;
     }
 
     return {
       slot_index: index,
       luma_generation_id: `preview_${index}`,
       kling_task_id: `preview_${index}`,
-      luma_prompt: finalLumaPrompt,
-      clip_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_0_fmtela_iznuwx.mp4', // Placeholder
+      luma_prompt: previewLuma,
+      clip_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_0_fmtela_iznuwx.mp4',
       first_image_url: startUrl916,
       second_image_url: endUrl916,
       is_keyframe: !!endUrl916,
-      is_correlated: true,
+      is_correlated: isCorrelated,
       description: visionAnalysis.description,
       mood: visionAnalysis.mood,
     };
   }
 
-  // STANDARD LOGIC (Single task)
-  const taskId = await clients.kie.createVideoTask(
-    visionAnalysis.luma_prompt,
-    startUrl916,
-    endUrl916,
-    visionAnalysis.negative_prompt
-  );
-
   return {
     slot_index: index,
     luma_generation_id: taskId,
     kling_task_id: taskId,
-    luma_prompt: visionAnalysis.luma_prompt,
+    luma_prompt: finalPrompt,
     clip_url: '',
     first_image_url: startUrl916,
     second_image_url: endUrl916,
     is_keyframe: !!endUrl916,
-    is_correlated: true,
+    is_correlated: isCorrelated,
     description: visionAnalysis.description,
     mood: visionAnalysis.mood,
   };
@@ -830,7 +808,7 @@ Static | Move Left | Move Right | Move Up | Move Down | Push In | Pull Out | Zoo
 - DID THE CAMERA MOVE LATERALLY? (e.g. Wall X was on right, now on left) -> USE "Move Left" or "Move Right".
 - DID THE CAMERA MOVE FORWARD? (e.g. Objects got larger but centered) -> USE "Push In".
 - IGNORE your imagination. DEDUCE motion ONLY from the visible shift in pixels.
-- VISUAL CORRELATION & MORPH SAFETY: Check if Image 1 and Image 2 share SIGNIFICANT VISUAL OVERLAP (at least 60% of the scene structure must explicitly align). logic: 'Can a camera physically move from A to B in 5 seconds without teleporting?'. If the angle change is too extreme (>45 degrees) or if the overlap is insufficient for optical flow interpolation, set \`is_correlated\` to false. UNLESS the overlap is obvious, default to false.
+- VISUAL CORRELATION & MORPH SAFETY: Check if Image 1 and Image 2 share BASIC VISUAL OVERLAP (e.g. same room, similar furniture, or shared architecture). If they are FUNDAMENTALLY DIFFERENT (e.g. Kitchen vs Backyard), set is_correlated to false. For different angles of the same room, set is_correlated to true.
 
 3) CAMERA MOTION SELECTION(pick ONE)
 - FORCE the motion to match your Difference Analysis.
