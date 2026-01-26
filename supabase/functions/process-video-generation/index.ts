@@ -248,7 +248,7 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
       voiceoverUpload = { secure_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765407043/cwl0mqzkwc3xf7iesmgl.wav' };
       musicUrl = 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765440325/music_1765440324652.mp3';
     } else {
-      const visualContext = clips.map(c => c.luma_prompt).join('; ');
+      const visualContext = clips.map(c => `${c.description || 'Prostor'} (${c.luma_prompt})`).join('; ');
 
       // Inject Script Hook via Extras
       const hookText = blueprint.script_hook && blueprint.script_hook !== 'undefined'
