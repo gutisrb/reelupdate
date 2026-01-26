@@ -706,11 +706,11 @@ async function initiateClip(
   let finalNegative = visionAnalysis.negative_prompt;
 
   if (isKeyframe && !isCorrelated) {
-    console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Using Stylized Whip Pan transition...`);
+    console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Using Flash Warp transition...`);
     const roomA = visionAnalysis.description.split(';')[0]?.trim() || "the current room";
     const roomB = visionAnalysis.description.split(';')[1]?.trim() || "the next space";
-    finalPrompt = `Cinematic Whip Pan: camera performs a lightning-fast horizontal whip pan; the speed causes the entire screen to become a heavy motion blur for 1 second, masking the transition from ${roomA} to ${roomB}; fluid motion, luxury quality.`;
-    finalNegative = `morphing faces, melting objects, ${visionAnalysis.negative_prompt}`;
+    finalPrompt = `Cinematic Flash Warp Transition. Start Frame: ${roomA}. End Frame: ${roomB}. The camera performs an extreme high-speed whip pan; the velocity causes the view to instantly streak into a flat horizontal motion blur; this wall of blur masks the replacement of A with B; zero geometry reconstruction between rooms; fluid motion, luxury quality.`;
+    finalNegative = `hallway, new room, turning corner, floating geometry, doorway, portal, morphing faces, melting objects, ${visionAnalysis.negative_prompt}`;
   }
 
   // STANDARD LOGIC (Single task)
