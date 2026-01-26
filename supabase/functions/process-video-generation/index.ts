@@ -706,8 +706,10 @@ async function initiateClip(
   let finalNegative = visionAnalysis.negative_prompt;
 
   if (isKeyframe && !isCorrelated) {
-    console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Using Cinematic Blur transition...`);
-    finalPrompt = `Cinematic Transition: camera pans rapidly with heavy motion blur from ${visionAnalysis.description.split(';')[0]} to ${visionAnalysis.description.split(';')[1] || 'the next room'}; fast movement hides the shift; luxury quality.`;
+    console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Using Stylized Whip Pan transition...`);
+    const roomA = visionAnalysis.description.split(';')[0]?.trim() || "the current room";
+    const roomB = visionAnalysis.description.split(';')[1]?.trim() || "the next space";
+    finalPrompt = `Cinematic Whip Pan: camera performs a lightning-fast horizontal whip pan; the speed causes the entire screen to become a heavy motion blur for 1 second, masking the transition from ${roomA} to ${roomB}; fluid motion, luxury quality.`;
     finalNegative = `morphing faces, melting objects, ${visionAnalysis.negative_prompt}`;
   }
 
@@ -841,6 +843,7 @@ PROFESSIONAL EXAMPLES:
 
 5) COMPOSE description(PROPERTY-ONLY, 12-18 words)
 - Architectural features only. EXCLUDE people, themes, or edited hooks.
+- CRITICAL: IF 2 IMAGES ARE PROVIDED, you MUST describe BOTH rooms, separated by a semi-colon. Example: "Modern marble kitchen; Cozy blue bedroom".
 
 6) GENERATE negative_prompt (ROBUST ANTI-HALLUCINATION)
 - Must include: "moving walls, distorted geometry, morphing walls, sliding furniture, floating objects, sliding texture, disintegrating objects, new hallway, entering unseen room, passing through wall, blurry, shaky, low quality".
