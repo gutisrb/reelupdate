@@ -59,8 +59,7 @@ const ROOM_OPTIONS = [
   "Četvorosoban",
   "Četvoroiposoban",
   "Petosoban",
-  "Šestosoban",
-  "7+ soba"
+  "6+"
 ];
 
 const PROPERTY_TYPES = [

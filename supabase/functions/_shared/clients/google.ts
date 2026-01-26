@@ -33,7 +33,7 @@ Srpski, ekavica, latinica.
 Sve cifre u VO piši rečima (kvadratura, sprat).
 Sobnost (idiomatski): 0.5=garsonjera; 1.0=jednosoban; 1.5=jednoiposoban; 2.0=dvosoban; 2.5=dvoiposoban; 3.0=trosoban; 3.5=troiposoban; 4.0=četvorosoban.
 Sprat: PR→"prizemlje"; VPR→"visoko prizemlje"; "X"→"na [X-ordinal] spratu".
-Bez halucinacija: koristi samo polja iz ULAZA.
+Bez halucinacija: koristi samo polja iz ULAZA. Ako polje Rooms sadrži "6+", NE POMINJI sobnost/strukturu u scenariju uopšte.
 
 PRONUNCIATION GUIDE (BELGRADE LOCATIONS):
 Whenever using Belgrade districts, adhere to these phonetic and naming rules for natural TTS:
