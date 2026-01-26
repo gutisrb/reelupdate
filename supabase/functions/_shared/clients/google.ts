@@ -11,7 +11,7 @@ export class GoogleAIClient {
    */
   async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string, retryCount: number = 0): Promise<string> {
     // ... Word count logic remains the same ...
-    const wordCountRange = videoLength >= 30 ? '80–85 reči' : '70–75 reči';
+    const wordCountRange = videoLength >= 30 ? '70–75 reči' : '58–62 reči';
     const hookWordLimit = videoLength >= 30 ? '≤14 reči' : '≤12 reči';
 
     const prompt = `Ti si performance copywriter za kratke nekretninske videoe na Instagramu. Tvoj VO mora zadržati gledanje: agresivan, istinit HOOK u prvoj rečenici; zatim jasan ishod za gledaoca i kratke činjenice koje postoje u ulazu.

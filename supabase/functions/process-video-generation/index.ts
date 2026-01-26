@@ -679,11 +679,22 @@ async function initiateClip(
     }
   }
 
+  // Force 9:16 aspect ratio via Cloudinary transformations
+  const force916 = (url: string | null) => {
+    if (!url || !url.includes('/upload/')) return url;
+    const parts = url.split('/upload/');
+    // ar_9:16,c_fill,g_auto,w_720 ensures vertical cropping
+    return `${parts[0]}/upload/ar_9:16,c_fill,g_auto,w_720/${parts[1]}`;
+  };
+
+  const startUrl916 = force916(startUrl)!;
+  const endUrl916 = force916(endUrl);
+
   const promptSystemInstruction = getCinematicPrompt(usedInstruction);
 
   const visionAnalysis = await clients.google.analyzeImagesForVideo(
-    startUrl,
-    endUrl,
+    startUrl916,
+    endUrl916,
     promptSystemInstruction
   );
 
@@ -692,16 +703,15 @@ async function initiateClip(
 
   if (isKeyframe && !isCorrelated) {
     console.log(`[${data.video_id}] ⚠️ UNCORRELATED IMAGES DETECTED: Falling back to transitions (Hard Cut)`);
-    // Create TWO separate video tasks
     const task1 = data.is_preview === true ? 'preview_t1' : await clients.kie.createVideoTask(
       `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
-      startUrl,
+      startUrl916,
       null,
       visionAnalysis.negative_prompt
     );
     const task2 = data.is_preview === true ? 'preview_t2' : await clients.kie.createVideoTask(
       `Static: camera remains perfectly still, stable geometry; luxury quality. ${visionAnalysis.description}`,
-      endUrl!,
+      endUrl916!,
       null,
       visionAnalysis.negative_prompt
     );
@@ -737,9 +747,9 @@ async function initiateClip(
       kling_task_id: `preview_${index}`,
       luma_prompt: finalLumaPrompt,
       clip_url: 'https://res.cloudinary.com/dyarnpqaq/video/upload/v1765287500/clip_7f7e06bb-39d0-4add-b358-ea333ade6a04_0_fmtela_iznuwx.mp4', // Placeholder
-      first_image_url: startUrl,
-      second_image_url: endUrl,
-      is_keyframe: !!endUrl,
+      first_image_url: startUrl916,
+      second_image_url: endUrl916,
+      is_keyframe: !!endUrl916,
       is_correlated: true,
       description: visionAnalysis.description,
       mood: visionAnalysis.mood,
@@ -749,8 +759,8 @@ async function initiateClip(
   // STANDARD LOGIC (Single task)
   const taskId = await clients.kie.createVideoTask(
     visionAnalysis.luma_prompt,
-    startUrl,
-    endUrl,
+    startUrl916,
+    endUrl916,
     visionAnalysis.negative_prompt
   );
 
@@ -760,9 +770,9 @@ async function initiateClip(
     kling_task_id: taskId,
     luma_prompt: visionAnalysis.luma_prompt,
     clip_url: '',
-    first_image_url: startUrl,
-    second_image_url: endUrl,
-    is_keyframe: !!endUrl,
+    first_image_url: startUrl916,
+    second_image_url: endUrl916,
+    is_keyframe: !!endUrl916,
     is_correlated: true,
     description: visionAnalysis.description,
     mood: visionAnalysis.mood,
