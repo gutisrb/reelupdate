@@ -29,7 +29,12 @@ export const CREATIVE_WILDCARDS = [
     "Use a 'POV' style",
     "Use a 'Day in the life' style",
     "Focus on the vibe",
-    "Tone: Cinematic"
+    "Tone: Cinematic",
+    "Use a 'Never buy' curiosity hook",
+    "Use a 'Luxury for less' angle",
+    "Focus on 'Quiet Luxury' aesthetics",
+    "Use a 'Game changer' hook",
+    "Focus on 'First-time buyer' relief"
 ];
 
 export const VIRAL_STRATEGIES = [
@@ -42,5 +47,9 @@ export const VIRAL_STRATEGIES = [
     "The Lifestyle Tease",
     "The Neighborhood Secret",
     "The Renovation Potential",
-    "The Cozy Vibes"
+    "The Cozy Vibes",
+    "The 'Don't Buy Until' Warning",
+    "The POV Dream Home",
+    "The 0 Euro Downpayment (Mock)",
+    "The Transformation Story"
 ];

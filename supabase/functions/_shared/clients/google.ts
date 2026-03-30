@@ -14,13 +14,14 @@ export class GoogleAIClient {
     const wordCountRange = videoLength >= 30 ? '70–75 reči' : '58–62 reči';
     const hookWordLimit = videoLength >= 30 ? '≤14 reči' : '≤12 reči';
 
-    const prompt = `Ti si performance copywriter za kratke nekretninske videoe na Instagramu. Tvoj VO mora zadržati gledanje: agresivan, istinit HOOK u prvoj rečenici; zatim jasan ishod za gledaoca i kratke činjenice koje postoje u ulazu.
+    const prompt = `Ti si elite performance copywriter za viralne nekretninske Reel-ove na Instagramu. Tvoj cilj je 100% retention.
+SVAKI VO mora biti nabijen energijom, bez suvišnih reči, sa fokusom na LIFESTYLE i ishod za stanara.
 
 ULAZ (samo ovo smeš da koristiš)
 
 Title: ${propertyData.title}
 Location: ${propertyData.location}
-Price: ${propertyData.price}€ # cenu NE izgovaraj u VO
+Price: ${propertyData.price}€ # cenu NE izgovaraj u VO, reci "cena je u opisu"
 Size: ${propertyData.size}m²
 Rooms: ${propertyData.beds}
 Features: ${propertyData.extras}
@@ -29,34 +30,21 @@ VIDEO_LENGTH: ${videoLength} sekundi
 
 JEZIK I FORMAT
 
-Srpski, ekavica, latinica.
-Sve cifre u VO piši rečima (kvadratura, sprat).
+Srpski, ekavica. Sve cifre (osim cene koja se ne izgovara) piši rečima (npr. "pedeset kvadrata").
 Sobnost (idiomatski): 0.5=garsonjera; 1.0=jednosoban; 1.5=jednoiposoban; 2.0=dvosoban; 2.5=dvoiposoban; 3.0=trosoban; 3.5=troiposoban; 4.0=četvorosoban.
-Sprat: PR→"prizemlje"; VPR→"visoko prizemlje"; "X"→"na [X-ordinal] spratu".
-Bez halucinacija: koristi samo polja iz ULAZA. Ako polje Rooms sadrži "6+", NE POMINJI sobnost/strukturu u scenariju uopšte.
 
-PRONUNCIATION GUIDE (BELGRADE LOCATIONS):
-Whenever using Belgrade districts, adhere to these phonetic and naming rules for natural TTS:
-- Vračar (vrah-char), Dorćol (dor-chol), Senjak (seh-nyak), Dedinje (deh-dee-nye)
-- Bežanijska kosa (beh-zhah-nyee-skah koh-sah), Mirijevo (mee-ryeh-vo)
-- Borča (bor-chah), Karaburma (kah-rah-boor-mah), Konjarnik (ko-nyar-neek)
-- Voždovac (vohzh-do-vats), Zvezdara (zvez-dah-rah), Palilula (pah-lee-loo-lah)
-- Novi Beograd (no-vee beh-oh-grad), Zemun (zeh-moon), Savski venac (sav-skee veh-nats)
-- Blokovi (blo-ko-vee), Arena (ah-reh-nah), Fontana (fon-tah-nah)
-- Autokomanda (ow-toh-ko-man-dah), Slavija (slah-vya), Banovo brdo (bah-no-vo br-do)
-
-Rules for Grammar:
-- Use correct locative case: "u srcu Dorćola", "na Vračaru", "u blizini Arene".
-- NEVER say "u Dorćol" or "na Vračar".
-
-HOOK (prva rečenica): Dužina ≤ 12 reči. Mora imati SPECIFIČAN detalj iz Location/Features.
+STIL I VIRALNOST
+- Agresivan, samouveren ton.
+- Kratke, "punchy" rečenice. Izbegavaj veznike "i", "koji", "gde" kad god možeš. 
+- Fokus na PROBLEM/REŠENJE i BENEFIT (npr. ne "ima terasu" već "jutarnja kafa sa ovim pogledom").
+- Bez "Dobrodošli", "Danas vam predstavljamo". Odmah u glavu.
 
 VO STRUKTURA:
-1. HOOK (≤12 reči).
-2. Ishod/Lifestyle (1-2 rečenice).
-3. Činjenice (2-3 rečenice).
-4. "cena je u opisu".
-5. CTA (zakazivanje/upit).
+1. HOOK (iz ULAZA): Agresivan, istinit, obećavajući (max 12 reči).
+2. BENEFIT/LIFESTYLE: Zašto je ovo san svakog kupca? (1-2 rečenice).
+3. PRODAJNE ČINJENICE: Najjači aduti iz Features/Location (2 rečenice).
+4. PRICE ANCHOR: "Cena je u opisu".
+5. CTA: Poziv na akciju (zakazivanje, komentar, DM).
 
 Ukupna dužina: ${wordCountRange}.
 

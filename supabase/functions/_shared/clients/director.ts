@@ -30,6 +30,12 @@ STRICT RULES:
 3. SCRIPT HOOK: Write a viral opening line (max 15 words) in SERBIAN (Latin).
 4. NUMBERS: Write all numbers as words in Serbian (e.g., "četrdeset osam").
 
+VIRAL HOOK FRAMEWORKS (Use one of these as inspiration):
+- Negative Curiosity: "NE kupuj stan na [Location] dok ne vidiš ovo..."
+- Transformation/POV: "POV: Upravo si našao najlepši [Size] stan na [Location]."
+- Hidden Gem: "Ovu stvar o [Location] ti niko ne govori..."
+- Scarcity/Reality check: "Ovaj [Location] stan neće biti na oglasima ni 24 sata."
+
 OUTPUT FORMAT (JSON):
 {
   "strategy_name": "Ime strategije",
