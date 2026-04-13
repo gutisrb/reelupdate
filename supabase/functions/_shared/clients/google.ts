@@ -9,7 +9,7 @@ export class GoogleAIClient {
   /**
    * Generate voiceover script using Gemini 3.0
    */
-  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string, retryCount: number = 0): Promise<string> {
+  async generateVoiceoverScript(propertyData: any, visualContext: string, videoLength: number = 25, scriptHook?: string, strategy?: string, retryCount: number = 0): Promise<string> {
     // ... Word count logic remains the same ...
     const wordCountRange = videoLength >= 30 ? '70–75 reči' : '58–62 reči';
     const hookWordLimit = videoLength >= 30 ? '≤14 reči' : '≤12 reči';
@@ -26,6 +26,7 @@ Size: ${propertyData.size}m²
 Rooms: ${propertyData.beds}
 Features: ${propertyData.extras}
 VISUAL_CONTEXT: ${visualContext}
+STRATEGY: ${strategy || 'Viral Real Estate Reel'}
 VIDEO_LENGTH: ${videoLength} sekundi
 
 JEZIK I FORMAT

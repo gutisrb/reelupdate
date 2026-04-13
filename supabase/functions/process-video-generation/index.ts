@@ -266,7 +266,8 @@ async function startVideoGeneration(data: VideoGenerationRequest, supabase: any,
         { ...hookedPropertyData, price_mention: data.price_mention }, // Pass price_mention
         visualContext,
         clips.length * 5,
-        blueprint.script_hook
+        blueprint.script_hook,
+        blueprint.strategy_name
       );
       console.log(`[${data.video_id}] 📜 SCRIPT: "${voiceoverScript}"`);
 
