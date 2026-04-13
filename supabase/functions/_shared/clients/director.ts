@@ -35,6 +35,10 @@ VIRAL HOOK FRAMEWORKS (Use one of these as inspiration):
 - Transformation/POV: "POV: Upravo si našao najlepši [Size] stan na [Location]."
 - Hidden Gem: "Ovu stvar o [Location] ti niko ne govori..."
 - Scarcity/Reality check: "Ovaj [Location] stan neće biti na oglasima ni 24 sata."
+- Contrarian Truth: "Svi kažu da su stanovi u [Location] skupi, ali ovaj menja sve."
+- The Comparison: "Da li biste radije kupili [Location A] ili ovaj luksuz u [Location B]?"
+- Mistake Avoidance: "Glavna greška koju kupci prave na [Location] je ova."
+- Hypothetical POV: "Zamisli da se svako jutro budiš uz ovaj pogled na [Location]."
 
 OUTPUT FORMAT (JSON):
 {

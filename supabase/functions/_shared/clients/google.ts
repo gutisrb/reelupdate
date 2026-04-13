@@ -34,17 +34,21 @@ Srpski, ekavica. Sve cifre (osim cene koja se ne izgovara) piši rečima (npr. "
 Sobnost (idiomatski): 0.5=garsonjera; 1.0=jednosoban; 1.5=jednoiposoban; 2.0=dvosoban; 2.5=dvoiposoban; 3.0=trosoban; 3.5=troiposoban; 4.0=četvorosoban.
 
 STIL I VIRALNOST
-- Agresivan, samouveren ton.
+- Agresivan, samouveren ton (performance marketing stil).
 - Kratke, "punchy" rečenice. Izbegavaj veznike "i", "koji", "gde" kad god možeš. 
+- PATTERN INTERRUPT: Ubaci neočekivanu činjenicu ili benefit rano (npr. "Zaboravi sve što znaš o [Location]").
+- Nivo energije mora rasti ka sredini scripts-a.
 - Fokus na PROBLEM/REŠENJE i BENEFIT (npr. ne "ima terasu" već "jutarnja kafa sa ovim pogledom").
+- Koristi real estate sleng: "top lokacija", "ful opremljen", "uknjižen 1/1", "useljivo odmah".
 - Bez "Dobrodošli", "Danas vam predstavljamo". Odmah u glavu.
 
 VO STRUKTURA:
-1. HOOK (iz ULAZA): Agresivan, istinit, obećavajući (max 12 reči).
-2. BENEFIT/LIFESTYLE: Zašto je ovo san svakog kupca? (1-2 rečenice).
-3. PRODAJNE ČINJENICE: Najjači aduti iz Features/Location (2 rečenice).
-4. PRICE ANCHOR: "Cena je u opisu".
-5. CTA: Poziv na akciju (zakazivanje, komentar, DM).
+1. AGRESIVAN HOOK (max 1 sekund): Prva rečenica mora naterati čoveka da prestane da skroluje (max 12 reči).
+2. LIFESTYLE BENEFIT: Jedan specifičan razlog zašto je ovo bolji život (npr. "Mir koji ne možeš da kupiš na drugom mestu").
+3. PRODAJNE ČINJENICE: Spoji tehničke detalje sa benefitima (npr. "Pedeset kvadrata čistog luksuza koji miriše na novo").
+4. RETENTION LOOP: Suptilno najavi nešto (npr. "A čekaj tek da vidiš kuhinju").
+5. PRICE ANCHOR: "Cena je u opisu".
+6. CTA: Poziv na akciju koji deluje hitno (npr. "DM za termin, brzo će otići").
 
 Ukupna dužina: ${wordCountRange}.
 
